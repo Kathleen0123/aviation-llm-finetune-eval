@@ -1,0 +1,495 @@
+
+	
+	
+		
+I. Introductionhe safe and efficient planning of airport surface operations using augmented decision support tools is required to meet the projected increase in air traffic demand forecasted by the Joint Planning and Development Office 1 .Previous work has shown the airport surface to be a bottleneck among various infrastructure components in the National Airspace System (NAS) 2 .Augmenting throughput through additional infrastructure (for example, additional runways, gates and taxiways) is a challenging proposition due to geographical, societal and monetary considerations.Therefore, optimizing the use of current airport infrastructure through innovative concepts, technologies and procedures is desirable.Research has been conducted in the United States and Europe in the area of surface traffic planning using various optimization techniques.Existing literature primarily focuses on developing optimal solutions for operations of aircraft on the airport surface, including ramp area, taxiways, and runways.Runway system has been identified as the main source of delay in airport surface operations 3 .The departure scheduling problem addresses the above by finding the take-off time of each aircraft while optimizing different objectives (throughput, delay and/or equity).A dynamic programming algorithm for single machine scheduling has been developed 4 , which was extended into a generalized dynamic program for solving the departure scheduling problem 5 .This method determines paretooptimal solutions for multiple objectives, but does not address optimal departure queue assignment.For the dynamic scheduling of arrival aircraft, Constraint Position Shifting (CPS) has been studied 6 , along with heuristics to solve it.The idea of CPS was further extended into a dynamic programming approach for scheduling aircraft landings 7 , and was later extended to departure scheduling 8 .Recently, an efficient Mixed Integer Linear Program (MILP) has been proposed for departure runway scheduling in the presence as well as absence of departure queues 9 .Another area to improve the efficiency of airport operations is the taxiway.The taxi scheduling problem finds the optimal times for the aircraft to leave the gate and to reach different points (nodes) along its route.Taxiways have been modeled by dividing them into several smaller links and allowing each link to hold at most one aircraft 10 .However, this approach results in a large set of variables and is computationally expensive.The air traffic flow management formulation 11 has been extended to the airport problem using an Integer Linear Program 12 .However, this formulation does not consider overtaking constraints, i.e., aircraft sequences may not be preserved on taxiway.A MILP based taxiway model has also been develpoed which models the taxiways as a network of links and a Associate Research Scientist, UARC, Building 210, MS 210-8, Moffett Field, CA-94035.wmalik@ucsc.edu.b Associate Research Scientist, UARC, Building 210, MS 210-8, Moffett Field, CA-94035.ggupta@ucsc.edu.c Aerospace Engineer, NASA Ames Research Center, MS 210-6, Moffett Field, CA 94035.yoon.c.jung@nasa.gov.T nodes 13 .This model was later simplified along with the addition of minimum separation constraints between aircraft 14 .However, Ref. 14 does not consider a lower bound on the speed, which would allow stop-and-go situations where an aircraft may wait at a node on the taxiway to allow another aircraft to pass.Moreover, the absence of a lower bound on the speed increases the search space of the solution leading to large solution times.The push-back sequence and spot-release sequence have also been identified as potential control points for departure operations 3 .A possible scheme to optimize departure operations is to hold aircraft at the gates/spots and release them "at the right time."The Surface Management System (SMS), a surface decision support tool, currently employs a heuristic to sequence aircraft at the spots 15 .Further, the concept of Collaborative Airspace Surface Metering (CASM) has also been introduced and empirically studied to assess the benefits of controlled push-back in efficiency and resulting environmental benefits like reduction in emissions 16 .However, there is a gap in optimally addressing the access to the taxiway system itself through spots or gates.Further, the issues of robustness and computational costs during implementation have not been adequately addressed.This study attempts to fill that gap by introducing a metering mechanism for departure aircraft.In addition, a concept of operations is explored, including roles and responsibilities of air traffic controllers and pilots.We propose an algorithm for calculating the spot/gate release times for the departure aircraft.Further, we propose a taxirouting scheme which, in conjunction with the above spot/gate metering, avoids unnecessary congestion at the taxiway and departure queues.Delays at spots could potentially be more fuel efficient than delays at taxiways and departure queues, since pilots could power down one or more engines at the spot.Further, with advance knowledge of release times, airlines could opt to keep the aircraft at the gates (depending on gate availability) utilizing ground power instead of auxiliary power units, resulting in further fuel savings.Besides reducing delays, this proposed algorithm reduces the number of stop-and-go situations, reducing the number of "high-thrust" events, and thereby further improving fuel consumption.The proposed algorithm can also provide a tool for collaborative decision making between ATC and airline on gate pushback for departures.The rest of the paper is organized as follows: In Section II, we provide the problem formulation and the algorithmic framework.In Section III, simulation results are provided for East side departure operations at the Dallas-Fort Worth International Airport (DFW).Section IV discusses the operational concept for implementation of the proposed framework.The paper ends with conclusions in Section V, summarizing the findings and giving directions for future work.
+II. Problem setup A. Two Different Planning Horizons: Long Term and Short TermThe purpose of departure management is to generate an optimal schedule for spot-release/gate pushback to provide maximum runway throughput.This process involves a design phase, where a schedule of optimal releases is designed, followed by an implementation phase, where the previously designed schedule is implemented addressing uncertainties due to weather, the airline schedule, ramp operations, aircraft turn-around time and other factors.The design should be applied to a future time period such that airlines have enough time to adjust their operations accordingly, and possibly influence the design itself through collaborative decision making.However, given the uncertainties planning too far in the future might have little effect on the system.Thus, we identify two different planning horizons for implementing the metering: long term for the design phase; and short term for the implementation phase.At airports where the Air Traffic Control Tower (ATCT) manages the gate push-back (for example, Logan Airport at Boston), the proposed scheme can be used to determine the optimal push-back times from the gate.At airports where ATCT has no authority on gate push-back (for example, DFW), the proposed scheme can be used to determine the release times from the spot.The scheme can be used for both cases, and henceforth we call it the Spot Release Planner (SRP), using spot release to denote gate push-back wherever applicable.Based on the above discussion, SRP operates over two different planning horizons: SRP Long Term (SRP-LT): SRP-LT calculates the optimal spot release schedule for aircraft that are scheduled to pushback and reach the spot approximately an hour in the future with a planning horizon of 15 minutes.The larger time frame allows for Collaborative Decision Making (CDM) between ATC and the airlines for operations such as gate pushback and/or ramp area control.In SRP-LT, the algorithm is run over 15 minute, non-overlapping time periods, with recalculation only to accommodate airline requests under CDM.The 15 minute planning horizon is also selected based on FAA's "on time performance metric", which measures delays greater than 15 minutes 17 .Since any sequence will still limit the maximum waiting to 15 minutes, the 15 minute planning window for SRP-LT will not force airlines to violate this metric.Of course, the planning period could be changed during implementation based on airline preferences.SRP Short Term (SRP-ST): SRP-ST works in the immediate time window of 0-15 minutes and accounts for uncertainty in the airline schedule, ramp operations, aircraft turn-around time and other factors.SRP-ST is applied under a rolling planning horizon scheme, with periodic recalculation after "freezing" some of the decisions from the previous computation.Immediate re-calculation can also be done due to significant changes in the scenario.The fast running time of the algorithm (as demonstrated later) facilitates this quick re-calculation.It should be noted that aircraft can be metered at the spot using SRP-ST alone.SRP-LT allows for CDM, and provides additional improvement as compared to SRP-ST alone.Although SRP runs over two different time horizons, both SRP-LT and SRP-ST solve the same mathematical problem for different data sets.Thus, we test the computational efficiency using randomly generated problem sets as described in Section III.In the rest of this section, we detail the assumptions and inputs required for this scheme.We then describe the algorithmic framework in detail.
+B. Assumptions and InputsWe make the following assumptions about operations and policies:Airlines are able to provide an estimated pushback time an hour prior to push-back.It is assumed that there is sufficient surveillance coverage (aircraft position information) in the ramp area.The surveillance data of aircraft moving in the ramp area would be used for predicting Estimated Time of Arrivals (ETAs) of departure aircraft at spots (for airports with spots as control points).ATCT controllers have authority to hold a departure aircraft at the gate or spot for a specified time interval before aircraft are cleared to move into taxiways.The time interval limit for holding becomes even more relevant when the holding is at a gate, since an arrival aircraft might need to utilize that gate.ATC may want to impose a minor penalty to the aircraft that is not able to meet the mutually agreed upon spot or gate release time.The late aircraft may lose the slot for spot release and may be penalized in some manner.This is a policy issue pertaining to collaborative decision making and both ATC and airlines should reach an agreement for any penalty scheme.The following are the inputs required for SRP.Unless stated otherwise, the inputs are required for both SRP-LT and SRP-ST:Estimated spot arrival times.For SRP-LT, estimated pushback times are used to predict the spot arrival times for the aircraft.Surveillance data in the ramp area is used for predicting the spot arrival time for SRP-ST.The spot and runway assigned to each aircraft.This information is used to choose the route used for the aircraft.The type (weight class) of each aircraft to be scheduled, along with required wake vortex separation criteria for take-off for each weight class.Other separation criteria for particular aircraft pairs, like Miles-In-Trail (MIT) restrictions applied to aircraft pairs flying over the same departure fix.The approximate taxi times for each departing aircraft.For SRP-LT, good estimates of un-impeded taxi times (where the aircraft taxies un-interrupted by other aircraft) are required for the routes the aircraft are most likely to take to the designated runway.For SRP-ST, better estimates of taxi times would yield better results.Knowledge of existing traffic conditions, weather conditions and other factors could supplement the un-impeded times to yield these better estimates.Individual time-windows of intended take-off times for departing aircraft.This information can be used for handling any priority flights, flights under Expected Departure Clearance Time (EDCT) restrictions, etc.
+C. Algorithmic DetailsThis sub-section details the two-step algorithm for spot release for both long-term and short-term planning.The algorithm for both SRP-ST and SRP-LT is the same with the difference being in the definition of one parameter as described below.
+Basic Mixed Integer Linear Program (MILP) for Spot ReleaseThe calculation of the optimal gate/spot release involves two steps: The first step involves solving a MILP for the optimal take-off times of the aircraft; and the second step involves calculating the corresponding gate/spot release times to meet the optimal take-off times and to avoid re-sequencing on the taxiway.The MILP used to solve for the optimal departure throughput is given below.We first define the parameters and variables, followed by the mathematical expressions and their explanation. .This depends on the weight class or type of aircraft for flight and , and also the departure fix for both the flights, and is the maximum of all the required minimum separation criteria between the pair.
+Parameters
+Note the different definition offor the two variants of the algorithm.In the short term, an aircraft is released from the spot only after the expected spot arrival time.In the long term, we re-sequence aircraft completely within the planning horizon; hence an estimated spot arrival time is not needed.
+VariablesBinary, and is 1 when flight departs before flight , zero otherwise Calculated take-off time for flight
+Mathematical Formulation(1) such that(2)(3) (4)(5)Equation ( 1) specifies the objective function for maximizing the throughput, which is equivalent to minimizing the take-off time of the last aircraft.Equation (2) represents the linear ordering constraints, i.e., given any two aircraft, one always leads the other while departing.Equation (3) ensures the required separation when departs before .This constraint is a linear relaxation of the quadratic separation constraint , where denotes a large positive constant.Equations ( 4) and ( 5) constrain the departure time of the aircraft within the specified time window .The above formulation does not consider departure queue assignment, since in our next step we calculate the spot/gate release times such that there is no re-sequencing required on the taxiway or the queuing area.
+Valid Inequalities for Improving Computational Efficiency of MILPTo obtain faster solutions to the MILP defined above, we introduce a few valid inequalities:Equation ( 6) represents the 3-cycle inequalities, which strengthens the linear ordering of the variable , and eliminate the possibility of three aircraft forming a cycle.Similar constraints for larger cycles (4 or more) can be constructed.However, each such constraint adds to the solution time of the problem, and our experiments show the marginal benefit of including larger cycle constraints is outweighed by the marginal cost in most of the cases.Thus, we limit it to three cycle constraints only.(7)   Equation ( 7) imposes a restriction on the number of variables which can take a value of 1.Given a feasible output sequence, there will be (n-1) aircraft following the first aircraft, (n-2) following the second, and so on.Thus, .Equation ( 8) imposes a lower bound on the time of departure of aircraft when departs after .It enforces the departure time for to be greater than the earliest departure time of plus the minimum required separation.The MILP given above is "symmetric," i.e., there are multiple sequences with the same objective value.Proving the optimality of a given "feasible solution" thus requires that all symmetric variants in the search tree be explored before the solution is deemed optimal.The following constraint tries to mitigate this scenario.(9)   The above constraint ensures that two aircraft of the same type retain their relative sequence since it has no effect on the throughput.It should be noted that ( 9) is valid only when there are no additional restrictions on aircraft going to the same departure fix besides the wake vortex separation.
+Calculation of Spot/Gate Release TimesGiven the optimal take-off times for the aircraft, the next step is to calculate the pertinent spot release times.In most of the airports, predetermined standard taxi routes for different conditions are available to the pilot and controller.Unimpeded taxi times coupled with standard taxi routes can then be used to calculate the spot release time from the optimal take-off time.However, aircraft routed in such a manner might be re-sequenced on the taxiway or in the queuing area.Furthermore, such routing might result in more stop-and-go situations on the taxiway, which is at odds with unimpeded time-based calculation.In places where taxi-routes cannot be altered for some reason, the above method could still be used with a marginal decrease in overall benefit.In cases where the taxi route selection (out of multiple routes, possibly all standard) can be altered, a method of calculating spot release time, route selection and queue assignment for a spot and runway combination is proposed below:1. Choose a single queue to be used by all aircraft (This assumption is valid since aircraft arrive in the queuing area in the optimal sequence).2. Find the shortest path to this queue.3. The combination of the queue and the path will provide a route for each aircraft from the spot/gate to the runway.Using this scheme, the routes of any two aircraft will merge at some node (say ), and will remain the same from that node to the runway.Since only a single queue was chosen for all aircraft in step 1, there will be a common shortest route from to the queue for both the aircraft.Next, if the time separation at the runway is to be maintained, the same separation would need to be maintained at .As a result, the spot release time for each departing aircraft can be calculated by simply subtracting its estimated taxi time from its optimal take-off time.Thus, the spot release time for aircraft is given by (10)   The above scheme assumes the same nominal taxi speed for every aircraft.To accommodate variable aircraft speed, the above scheme can be modified into a simple linear program based on Ref. 14, where the sequence of aircraft at various nodes is provided and the model just introduces a required separation in node times.In the absence of arrival aircraft, this method ensures that there is no re-sequencing and/or stoppages on the taxiway or the queuing area.
+III. Simulation ResultsIn this section, we present the results for SRP-LT and SRP-ST over one planning horizon at DFW airport for randomly generated problem sets.The results include varied traffic levels and aircraft mix.The potential benefits of SRP-ST and SRP-LT over a first-come-first-serve (FCFS) spot release are tested.There is evidence of use of a firstcome-first-serve rule being used at DFW 18 , and thus serves as a baseline for comparing SRP.
+A. Setup DetailsThe proposed SRP algorithm was implemented for departure operations at DFW.We consider only the East side of the airport operating in South Flow configuration, with runway 17R being used for the departures.There are three standard routes: Inner, Outer and Full Length.Each route serves one of the three departure queues, and use taxiways K, L and J respectively.Any of these routes can be chosen without altering the procedure or solution time.However, the outer and full length routes have two additional sharp (right-angled) turns as compared to the inner route.Since making a sharp turn requires a higher thrust resulting in potentially more fuel consumption, we use only the inner route for these simulations.Figure 1 shows a layout of the East side of DFW, with the inner route marked in black arrows.
+Figure 1: Dallas Fort Worth International Airport (East Side). The black arrows depict the standard InnerRoute for departures in South Flow configuration.
+Taxiway
+Kilo(K) L JDifferent traffic scenarios ranging from low (48 aircraft/hour) to high (80 aircraft/hour) traffic density were tested, along with different aircraft mixes.The aircraft were randomly assigned a spot and the spot arrival times of all the aircraft were randomly chosen using a uniform distribution between 0-900 seconds, which represents scheduling over a 15 minute planning horizon.The airport surface was modeled as a network of links and nodes.A nominal speed of 16 knots was considered for each aircraft, and the taxi times were calculated using the route information and the nominal speed.The required wake vortex separation between consecutive departures 17 was converted from distance into time based on observed actual take-off speeds using the Surface Operations Data Analysis and Adaptation tool (SODAA) d , resulting in the separations listed in Table 1.SODAA stores airport surface and terminal area data, and facilitates the search and analysis of this data.This provides the average take-off speeds used to calculate the time-based wake-vortex separation.For each of the traffic scenarios, 180 different problem sets were generated.A first-come-first-served (FCFS) policy was used to model the baseline operations, i.e., the sequence at which aircraft arrive at each node are maintained as they leave the node (the departure runway is considered the final node).The throughput calculated from the FCFS policy was compared with the results obtained through the SRP-LT algorithm.The mixed integer linear program was solved using commercially available optimization software CPLEX 11.2 (http://www.ilog.com/products/cplex/) on a Pentium Xeon 2.0 GHz CPU, and all problems were solved to within 0.01% of optimality.All the reported computational times are observed times and not CPU time.
+B. Results with Current Aircraft MixThe majority of the aircraft at DFW are currently of type Large.Analysis of SODAA data shows a distribution of 80% Large, 10% Heavy, 5% Small, and 5% B757.SRP-LT and SRP-ST were applied using this observed aircraft mix for 16 aircraft in 15 minutes, and Figure 2 and Figure 3 show these results for 180 random problem sets.The average improvement in throughput was 17.4% for SRP-LT and 4.1% from SRP-ST.
+C. Results with Uniform Aircraft MixThe solution times for problems based on current aircraft mix are fast partly due to equation ( 9), which reduces the number of binary variables.Further, the aircraft type mix might change in the future, and hence testing is required for other distributions.Since the uniformly distributed mix of aircraft type would be computationally challenging due to less usage of equation ( 9), we present results for a uniformly distributed mix (approximately 25% aircraft of each type in table 1) of 12, 16 and 20 aircraft per 15 minutes.Table 1 shows the runway capacity is, at best, one aircraft per minute.Thus, 12 aircraft in 15 minutes is the under-saturated case, whereas 20 aircraft is the highly over-saturated case.Figure 4, Figure 5 and Figure 6 show the percentage improvement in throughput over FCFS using the SRP-LT algorithm for 12, 16, and 20 aircraft (in 15 minutes) cases respectively, each for 180 random problem sets.The average improvement in throughput for current traffic density (12 aircraft) was around 20%, while in high-density scenarios (20 aircraft) the average improvement in throughput was around 14%. Figure 7, Figure 8 and Figure 9 show the percentage improvement in throughput over FCFS using the SRP-ST algorithm for 12, 16, and 20 aircraft (in 15 minutes) cases respectively.The average improvement in throughput for current traffic density (12 aircraft) was around 3.5%, while in high-density scenarios (20 aircraft) the average improvement in throughput was around 6%. SRP-ST provides less benefit as compared to SRP-LT, which is expected since SRP-LT does complete re-sequencing whereas SRP-ST does partial re-sequencing (aircraft are released only after the actual spot arrival).It should be noted that for SRP-ST, the uniformly distributed spot arrival times is the worst case scenario in terms of benefits, since aircraft are "spaced-out" within the planning horizon.The benefits would be higher when multiple aircraft arrivals are more closely packed, a phenomenon occurring for higher traffic density too.
+D. Effect of Increased TrafficAs observed in the previous section, increased traffic leads to increased solution times for the algorithm.We tested this variance for a uniform mix between 10 to 20 aircraft, with 100 runs for each aircraft count for both SRP-LT and SRP-ST.Figure 10 shows the variation in solution times for within .01% of optimality for SRP-LT and Figure 11 shows the same for SRP-ST.Each dot represents a mean over 100 runs, and we also plot the 95 th percentile of solution time.As expected, solution time increases exponentially with traffic size.However, solution times for near-capacity traffic levels (16 aircraft) are within 5 seconds.Further, these are solution times for the uniform aircraft mix where the solution times are longer than those of the observed mix.These fast solution times would potentially allow the implementation of the proposed algorithm in real time decision support tools.In Figure 12 and Figure 13, we plot the mean and 90% confidence interval for percentage throughput improvement over FCFS using SRP-LT and SRP-ST respectively for the above simulations.For SRP-LT, the percentage improvement decreases with increasing traffic, but even for the high density traffic scenario (20 aircraft) we observe an operationally promising improvement (over 10% improvement in 95% of the problem sets).For SRP-ST, the percentage improvement increases with increasing traffic, since the aircraft are more closely packed in higher traffic scenarios allowing for better partial re-sequencing.
+E. Effect of uncertaintyAs described in Section II.A, SRP-LT and SRP-ST work over two different planning horizons.If all the aircraft adhere to the times provided by SRP-LT, there would be no need for SRP-ST since there is little need for tactical planning when the strategic plan has been realized completely.However, the uncertainty in meeting SRP-LT's longterm schedule would necessitate the use of SRP-ST.In this section we study the benefits from the combined SRP scheme in the presence of uncertainty in meeting the SRP-LT schedule.On one end of the spectrum is the ideal case of complete adherence to the SRP-LT schedule, and on the other end is the limiting case of very large uncertainty which reduces to using SRP-ST alone.To test the effect of increasing uncertainty, we generate random problems of varying size with uniform aircraft mix.We vary the problem size from 10 to 20 aircraft, with 20 different problem sets for each aircraft count.For each problem, we first evaluate the SRP-LT solution.We then perturb the spot availability time by a given "uncertainty window" around the SRP-LT solution.This perturbed problem is used as an input for SRP-ST, and the improvement in throughput over FCFS is evaluated.Figure 14 shows the results from this analysis.The "uncertainty window" size is varied from 30 to 300 seconds and the throughput improvements over FCFS are presented, along with the improvements from SRP-LT alone (no uncertainty) and SRP-ST alone (very large uncertainty).The results show diminishing improvement with increasing uncertainty.Further, the figure shows that even with two minute "uncertainty window" in meeting the SRP-LT schedule, more than half of the potential benefits of SRP-LT can still be realized.
+F. Incorporating arrival aircraftThe grid-like geometry of DFW and the choice of a same route (standard Inner route) for each departing aircraft simplify the calculation of the spot release time from the calculated take-off time .Moreover, the time gap between any two aircraft on the taxiway will be equal to the difference between their take-off times.Since we assume a nominal speed of 16 knots, and the minimum wake vortex separation is 59 seconds, the distance between any two aircraft on the taxiway will be at least 480m.Ref. 10 assumes the safety distance between two aircraft to be 200m.Hence, the resulting separation between the departure aircraft maybe sufficient for a controller to guide an arrival aircraft between them without any separation violation.Arrival aircraft have to cross taxiway Kilo (see figure 1) or move along it for a short distance to enter a spot.Since standard routes at DFW allow only single direction of motion along taxiway Kilo, there can be no head-on conflict.Based on these observations, it appears that arrivals can be accommodated by the controller with suitably timed clearances, even though they have not been implicitly included in the setup.The results presented in this paper are based on a nominal taxi speed of 16 knots for every aircraft.As stated before, different speeds for different aircraft can be accommodated by a using a linear program based on Ref. 14, where the sequence of aircraft at various nodes is given.Further, this model can be also used to incorporate arrival aircraft.In this case, the relative sequence of departure aircraft at the nodes will be fixed and the appropriate sequence of arrival aircraft is decided.This leads to a MILP with reduced number of discrete variables resulting in increased computational efficiency.
+IV. Operational ConceptThe introduction of a decision support tool based on the above set of algorithms would alter the current operations to a certain extent.We envision the SRP modules as providing advisories to the controllers, informing them about upcoming releases through a visual display (for example, on timelines).It should be noted that this concept does not require any additions to the cockpit.All controller inputs to the pilot can be transferred over voice communication as in current operations.The concept does require a greater degree of participation by the airlines, especially for the use of SRP-LT.In this section, we briefly discuss the operational concept based on this scheme through a scenario description.Suppose the current local time at the airport is 2:00pm.Based on scheduled departures and inputs from arrival aircraft intended for turn-around, airlines provide as input a list of potential departure aircraft intended for push-back between 3:00 to 3:15pm to SRP-LT.Using this list and other known constraints, SRP-LT will output the expected spot release time (or preferably, a spot release time window) to the airline and the ramp controller.As we get nearer to the spot release times estimated by SRP-LT, surveillance in the ramp area may show the inability of an aircraft to adhere to the spot release time provided by SRP-LT.The ramp controller or the pilot may detect the inability to meet a given spot release time, and communicate it to SRP-ST.SRP-ST then provides the controller with the optimum schedule to release the aircraft from the spot.This schedule covers spot release for up to a 15-minute time horizon and needs to be updated, as necessary, when additional information is available.The controller uses this schedule and issues clearances to the pilots for taxiing either through voice or data-link.It should be noted that data-link is not a requirement for this concept, but can be utilized when available.The penalty for an aircraft that does not arrive at the spot within the assigned time window (through SRP-LT) will be a minimum delay of the aircraft assigned by adding a constraint to SRP-ST during re-computation.The magnitude of this delay is based on the situation and guidelines for this should be developed in collaboration with airlines.
+V. ConclusionsAn algorithm for optimizing the departure throughput on the airport surface was presented in this paper.The proposed algorithm considers the gates/spots (depending on the airport layout) as the control point to achieve the given objective.By metering aircraft at the gate/spot, the algorithm avoids unnecessary congestion in the taxiway and departure queues.Besides reducing delays, the algorithm aids in reducing the number of stop-and-go situations, which improves the airport's environmental efficiency.The algorithm can also form the basis of collaborative decision making, with airlines, on gate pushback for departures.The proposed SRP algorithm was implemented for departure operations in the South Flow configuration on the East side of the Dallas Fort Worth International Airport (DFW).Current and high-density traffic scenarios were generated, and results indicate an average 10% improvement in throughput as compared to a FCFS solution even with up to two minutes of uncertainty in spot arrival schedule produced by SRP-LT.The fast solution times (5 seconds) facilitate implementation in a real time decision support tool.Ongoing research at NASA includes the development of fast-time simulation tools, which will allow further testing of the operational concept based on this scheme as well as integration in a decision support tool.Future work involves modifying the proposed algorithm to incorporate multiple runways and consider arrival aircraft directly in the model where necessary (for example, active runway crossing).Set of incoming flights Set of all incoming flights of aircraft type , where is an aircraft type Nominal taxi time for flight Estimated spot arrival time for flight Earliest un-impeded take-off time for flight .SRP-LT: SRP-ST: Time window of departure for flight Required separation when flight departs before flight
+Figure 2 :Figure 3 :23Figure 2: Percent improvement in throughput over FCFS using SRP-LT for 16 aircraft.(Average solution time = 0.3 seconds)
+Figure 4 :Figure 5 :Figure 6 :456Figure 4: Percent improvement in throughput over FCFS using SRP-LT for 12 aircraft.(Average solution time = 0.2 seconds)
+Figure 7 :Figure 8 :Figure 9 :789Figure 7: Percent improvement in throughput over FCFS using SRP-ST for 12 aircraft.(Average solution time = 0.1 seconds)
+Figure 10 :10Figure 10: Mean and 95 th percentile solution times for SRP-LT over 100 simulations each of 10 to 20 aircraft scenarios.
+Figure 11 :11Figure 11: Mean and 95 th percentile solution times for SRP-ST over 100 simulations each of 10 to 20 aircraft scenarios.
+Figure 12 :12Figure 12: Mean and 90% confidence interval for throughput improvement over FCFS using SRP-LT for 100 simulations each of 10 to 20 aircraft scenarios.
+Figure 13 :13Figure 13: Mean and 90% confidence interval for throughput improvement over FCFS using SRP-ST for 100 simulations each of 10 to 20 aircraft scenarios.
+Figure 14 :14Figure 14: Variation in throughput improvement over FCFS with increasing uncertainty.
+
+
+Table 1 : Wake vortex separation (in seconds) for departure aircraft.1Leading AircraftTrailing AircraftSmall Large HeavyB-757Small5988109110Large596110991Heavy59619091B757596110991
+		
+		
+			
+
+				
+
+
+	
+		Strategic alliance to promote next-generation air transportation system
+		
+			Jpdo
+		
+		10.1108/aeat.2007.12779caf.010
+	
+	
+		Aircraft Engineering and Aerospace Technology
+		0002-2667
+		
+			79
+			3
+			2007
+			Emerald
+		
+	
+	JPDO. "Concept of Operations for the Next Generation Air Transportation System." 2007.
+
+
+
+	
+		Next Generation Air Transportation System (NGATS) Air Traffic Management (ATM)-Airportal Project
+		
+			DHinton
+		
+		
+			JKoelling
+		
+		
+			MMadson
+		
+	
+	
+		NASA
+		
+			2007
+		
+	
+	Hinton, D., Koelling, J., and Madson, M. "Next Generation Air Transportation System (NGATS) Air Traffic Management (ATM)-Airportal Project." NASA, 2007.
+
+
+
+	
+		Identification of flow constraint and control points in departure operations at airport systems
+		
+			HusniIdris
+		
+		
+			BertrandDelcaire
+		
+		
+			IoannisAnagnostakis
+		
+		
+			WilliamHall
+		
+		
+			NicolasPujet
+		
+		
+			EricFeron
+		
+		
+			RHansman
+		
+		
+			John-PaulClarke
+		
+		
+			AmedeoOdoni
+		
+		10.2514/6.1998-4291
+	
+	
+		Guidance, Navigation, and Control Conference and Exhibit
+		
+			American Institute of Aeronautics and Astronautics
+			2000
+			7
+		
+	
+	Idris, H., Delcaire, B., Anagnostakis, I., Hall, W., Pujet, N., Feron, E., Hansman, R., Clarke, J., and Odoni, A. "Identification of flow constraint and control points in departure operations at airport systems," Air Traffic Control Quarterly Vol. 7, No. 4, 2000,
+
+
+
+	
+		A Dynamic Programming Approach for Sequencing Groups of Identical Jobs
+		
+			HarilaosNPsaraftis
+		
+		10.1287/opre.28.6.1347
+	
+	
+		Operations Research
+		Operations Research
+		0030-364X
+		1526-5463
+		
+			28
+			6
+			
+			1980
+			Institute for Operations Research and the Management Sciences (INFORMS)
+		
+	
+	Psaraftis, H. N. "A Dynamic Programming Approach for Sequencing Groups of Identical Jobs," Operations Research Vol. 28, No. 6, 1980, pp. 1347-1359
+
+
+
+	
+		A Generalized Dynamic Programming Approach for a Departure Scheduling Problem
+		
+			SivakumarRathinam
+		
+		
+			ZacharyWood
+		
+		
+			BanavarSridhar
+		
+		
+			YoonJung
+		
+		10.2514/6.2009-6250
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		Chicago, Illinois
+		
+			American Institute of Aeronautics and Astronautics
+			2009
+		
+	
+	Rathinam, S., Wood, Z., Sridhar, B., and Jung, Y. C. "A Generalized Dynamic Programming Approach for a Departure Scheduling Problem," AIAA Guidance, Navigation, and Control Conference. Chicago, Illinois, 2009.
+
+
+
+	
+		The dynamic scheduling of aircraft in high density terminal areas
+		
+			RogerGDear
+		
+		
+			YosefSSherif
+		
+		10.1016/0026-2714(89)90171-6
+	
+	
+		Microelectronics Reliability
+		Microelectronics Reliability
+		0026-2714
+		
+			29
+			5
+			
+			1989
+			Elsevier BV
+		
+	
+	Dear, R. G., and Sherif, Y. S. "Dynamic scheduling of aircraft in high density terminal areas," Microelectronics Reliability Vol. 29, No. 5, 1989, pp. 743-749
+
+
+
+	
+		Scheduling Aircraft Landings Under Constrained Position Shifting
+		
+			HamsaBalakrishnan
+		
+		
+			BalaChandran
+		
+		10.2514/6.2006-6320
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		Keystone, CO, United states
+		
+			American Institute of Aeronautics and Astronautics
+			2006
+			4
+			
+		
+	
+	Balakrishnan, H., and Chandran, B. "Scheduling Aircraft Landings under constrained position shifting," AIAA Guidance, Navigation, and Control Conference. Vol. 4, American Institute of Aeronautics and Astronautics Inc., Keystone, CO, United states, 2006, pp. 2175-2197.
+
+
+
+	
+		Efficient and Equitable Departure Scheduling in Real-time: New Approaches to Old Problems
+		
+			HBalakrishnan
+		
+		
+			BChandran
+		
+		
+			2007
+			Barcelona, Spain
+		
+		
+			USA -Europe Air Traffic Management Research and Development Seminar
+		
+	
+	Balakrishnan, H., and Chandran, B. "Efficient and Equitable Departure Scheduling in Real-time: New Approaches to Old Problems," 7th USA -Europe Air Traffic Management Research and Development Seminar. Barcelona, Spain, 2007.
+
+
+
+	
+		A Mixed Integer Linear Program for Airport Departure Scheduling
+		
+			GautamGupta
+		
+		
+			WaqarMalik
+		
+		
+			YoonJung
+		
+		10.2514/6.2009-6933
+	
+	
+		9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO)
+		
+			American Institute of Aeronautics and Astronautics
+			2009
+		
+	
+	Gupta, G., Malik, W., and Jung, Y. C. "A Mixed Integer Linear Program for Airport Departure Scheduling," 9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO). AIAA, Hilton Head, South Carolina, 2009.
+
+
+
+	
+		Optimal Airport Surface Traffic Planning Using Mixed Integer Linear Programming
+		
+			HendrikusVisser
+		
+		
+			PaulRoling
+		
+		10.2514/6.2003-6797
+	
+	
+		AIAA's 3rd Annual Aviation Technology, Integration, and Operations (ATIO) Forum
+		Denver, Colorado
+		
+			American Institute of Aeronautics and Astronautics
+			2003
+		
+	
+	AIAAs 3rd Annual Aviation Technology, Integration, and Operations (ATIO) Forum
+	Visser, H., and Roling, P. "Optimal airport surface traffic planning using mixed integer linear programming," AIAAs 3rd Annual Aviation Technology, Integration, and Operations (ATIO) Forum. AIAA, Denver, Colorado, 2003.
+
+
+
+	
+		The Air Traffic Flow Management Problem with Enroute Capacities
+		
+			DimitrisBertsimas
+		
+		
+			SarahStockPatterson
+		
+		10.1287/opre.46.3.406
+	
+	
+		Operations Research
+		Operations Research
+		0030-364X
+		1526-5463
+		
+			46
+			3
+			
+			1998
+			Institute for Operations Research and the Management Sciences (INFORMS)
+		
+	
+	Bertsimas, D., and Patterson, S. "The air traffic flow management problem with enroute capacities," Operations Research Vol. 46, No. 3, 1998, pp. 406-422
+
+
+
+	
+		A Framework for Coordinated Surface Operations Planning at Dallas-Fort Worth International Airport
+		
+			HamsaBalakrishnan
+		
+		
+			YoonJung
+		
+		10.2514/6.2007-6553
+	
+	
+		AIAA Guidance, Navigation and Control Conference and Exhibit
+		Hilton Head, SC, United states
+		
+			American Institute of Aeronautics and Astronautics
+			2007
+			3
+			
+		
+	
+	Balakrishnan, H., and Yoon, J. "A framework for coordinated surface operations planning at dallas-fort worth international airport," AIAA Guidance, Navigation, and Control Conference. Vol. 3, American Institute of Aeronautics and Astronautics Inc., Hilton Head, SC, United states, 2007, pp. 2382-2400.
+
+
+
+	
+		An Optimisation Model for Airport Taxi Scheduling
+		
+			JSmeltink
+		
+		
+			MSoomer
+		
+		
+			PDe Waal
+		
+		
+			Van Der
+		
+		
+			RMei
+		
+	
+	
+		Thirtieth Conference on the Mathematics of Operations Research
+		Lunteren, The Netherlands
+		
+			2005
+		
+	
+	Smeltink, J., Soomer, M., de Waal, P., and Van Der Mei, R. "An Optimisation Model for Airport Taxi Scheduling," Thirtieth Conference on the Mathematics of Operations Research. Lunteren, The Netherlands, 2005.
+
+
+
+	
+		An Optimization Model for Reducing Aircraft Taxi Times at the Dallas Fort Worth International Airport
+		
+			SRathinam
+		
+		
+			JMontoya
+		
+		
+			YJung
+		
+	
+	
+		26th International Congress of the Aeronautical Sciences (ICAS)
+		Anchorage, Alaska
+		
+			2008
+			
+		
+	
+	Rathinam, S., Montoya, J., and Jung, Y. "An Optimization Model for Reducing Aircraft Taxi Times at the Dallas Fort Worth International Airport," 26th International Congress of the Aeronautical Sciences (ICAS). Anchorage, Alaska, 2008, pp. 14-19.
+
+
+
+	
+		Concept description and development plan for the Surface Management System
+		
+			SAtkins
+		
+		
+			CBrinton
+		
+	
+	
+		Journal of Air Traffic Control
+		
+			44
+			1
+			2002
+		
+	
+	Atkins, S., and Brinton, C. "Concept description and development plan for the Surface Management System," Journal of Air Traffic Control Vol. 44, No. 1, 2002,
+
+
+
+	
+		Collaborative Airport Surface Metering for Efficiency and Environmental Benefits
+		
+			ChristopherRBrinton
+		
+		
+			LaraCook
+		
+		
+			StephenCAtkins
+		
+		10.1109/icnsurv.2007.384164
+	
+	
+		2007 Integrated Communications, Navigation and Surveillance Conference
+		Herndon, VA, United states
+		
+			IEEE
+			2007
+		
+	
+	Brinton, C. R., Cook, L., and Atkins, S. C. "Collaborative airport surface metering for efficiency and environmental benefits," 2007 Integrated Communications, Navigation and Surveillance Conference (ICNS). IEEE, Herndon, VA, United states, 2007.
+
+
+
+	
+		Air Traffic Control
+		
+			Faa
+		
+	
+	
+		Federal Aviation Administration
+		
+			2008
+		
+	
+	FAA. "Air Traffic Control." Federal Aviation Administration, 2008.
+
+
+
+	
+		Microscopic Analysis of Airport Surface Sequencing (ALTERNATE PAPER)
+		
+			ChrisBrinton
+		
+		
+			BryanWood
+		
+		
+			ShawnEngelland
+		
+		10.2514/6.2008-8961
+	
+	
+		The 26th Congress of ICAS and 8th AIAA ATIO
+		Anchorage, Alaska
+		
+			American Institute of Aeronautics and Astronautics
+			2008
+		
+	
+	The 26th Congress of ICAS and 8th AIAA ATIO
+	Brinton, C., Wood, B., and Engelland, S. "Microscopic Analysis of Airport Surface Sequencing," The 26th Congress of ICAS and 8th AIAA ATIO. Anchorage, Alaska, 2008.
+
+
+				
+			
+		
+	

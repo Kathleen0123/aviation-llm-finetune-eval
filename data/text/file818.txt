@@ -1,0 +1,662 @@
+
+	
+	
+		
+IntroductionIn the National Airspace System (NAS) terminal airspace, hundreds of flights must depart or arrive within a short time period every day.Limited airspace, complicated operations, and diverse uncertainties can easily impose inefficiency on terminal airspace operations, and form choke points in the system.Improving the operation efficiency in constrained terminal airspace in the presence of uncertainty becomes critical for achieving an efficient air traffic system.In order to improve the efficiency, researchers have addressed different perspectives of terminal airspace research, including arrival scheduling, departure scheduling, surface scheduling, and corresponding uncertainty analyses [1][2][3][4][5][6][7][8][9].Additionally, when arrivals and departures share the same resources such as runways, waypoints and route segments, recent studies [10][11][12][13] found that optimized integrated arrivals and/or departures in major airports showed promise for improving operation efficiency.Besides the constrained airspace, uncertainty sources, such as flight time and weather, play an important role in scheduling problems in terminal airspace.The benefits from optimal schedules calculated under deterministic scenarios are usually sensitive to these uncertainties.A conventional way to deal with uncertainty is to use extra buffers in addition to the required aircraft separations.Previous work [14] proposed a proactive method -a stochastic scheduler -that directly takes uncertainty into account by optimizing integrated arrivals and departures under uncertainty.Compared with deterministic optimization using extra buffers, the stochastic scheduler can find better solutions under the guidance of uncertainty costs.This work extends the previous stochastic scheduler by integrating dynamic capability such that the scheduler can be applied to real-time traffic sequentially and seamlessly.With this dynamic stochastic scheduler, the investigations of integrated arrivals and departures are enabled for traffic with much longer time windows, while the capability of optimization under uncertainty is still intact.The Los Angeles terminal area was used as an example for demonstrating integrated arrivals and departures, because previous works showed potential benefits if departures and arrivals were scheduled to share waypoints.Experiments were run with given daily traffic in the LAX terminal area.Current terminal arrival and departure procedures along with firstcome-first-serve (FCFS) like scheduling represented a baseline, and the proposed dynamic stochastic scheduler, which performs optimization for integrated operations, was compared against the baseline.The outputs from these two methods were evaluated using a standalone simulator, in which flight departure and arrival times were assumed to be uncertain.In the experiments, different separation buffer sizes were used.Results showed hours of flight time reduction in a typical day when comparing with current arrival and departure procedures.Also time-varied uncertainties were introduced into departure times.These uncertainties were assumed to increase with look-ahead time.Experiments were then conducted with various window sizes to gain insights into the impact of time-dependent uncertainties.In the paper, Section II describes the problem studied in the work.Section III presents the methodology including the sliding window method, trajectory synthesizer, and standalone simulations.Section III provides the results and analysis.Section IV concludes this work.
+Problem and BackgroundLos Angeles terminal airspace is a challenging airspace to study because there exists potential inefficiency due to interactions between arrivals and departures.This type of interactions between different flows may happen more often in the future due to the deployment of Optimized Profile Descents (OPD).Recent studies [15][16] are focusing on potential arrival and/or departure interactions in NYC when executing OPD.Although the Los Angeles terminal airspace is studied in this work, the methodology can be applied to other areas.According to the Standard Terminal Arrival Routes (STARs) and the Standard Instrument Departures (SIDs) of Los Angeles terminal airspace, the arrivals from the FIM fix are required to follow procedure SADDE6 (FIM-SYMON-SADDE-SMO) and the departures to the North need to use procedure CASTA2 (RWY-NAANC-GHART-SILEX) (see Figure 1).The arrivals are requested to maintain their flight altitudes above 10,000 feet at fix GHART and the departures have to keep theirs at or below 9,000 feet at the same fix to procedurally avoid potential conflicts between arrivals and departures.If there were no interactions, departures to the North and arrivals from FIM would have flown direct routes.The direct routes would be RWY-WPT2-WPT1 and FIM-WPT1-SMO for departures and arrivals, respectively, as shown in the figure .WPT1 and WPT2 are made-up fix names for simplicity.Compared to these direct routes, besides flying nonpreferred altitudes, individual arrival and departure flights following current procedures will waste approximately 60 and 120 seconds, respectively.
+Figure 1. Interactions Between Arrivals and Departures at Los Angeles Terminal AirspaceIn order to study the benefit of sharing waypoints, a hybrid approach that included temporal control and routing was proposed such that both departures and arrivals can have two route options besides metering.Previous work [13] showed great benefits of delay savings when comparing against the current procedure without route options.Subsequently, a stochastic scheduler was developed [14] to cope with schedule optimization under uncertain environment.The results showed promising statistical delay/fuel savings over current procedures even with the same statistical controller intervention level as using current procedures, where the controller intervention was a cost purely caused by uncertainty in flight departure/arrival times.In that study, it was also found that, with the guidance of uncertainty costs, stochastic optimization can achieve better solutions than deterministic optimization in which extra buffers were used to deal with uncertainty.
+MethodThe static stochastic scheduler in previous work [14] was developed for a single fixed short time window (e.g. 30 minutes).It was assumed that the flights hadn't entered the route structure when scheduling.Therefore, only three categories of flights were formulated: departure flights to the North, arrival flights via Fillmore/FIM, and arrival flights from the East.For each FIM arrival that has not reached FIM, there are four design variables: delay before FIM, route option, speed between FIM and WPT1 for the direct route or speed between FIM and WPT2 for the indirect route, and delay between WPT1/WPT2 and SUTIE.For a departure flight that hasn't departed yet, three decision variables are defined: delay before departure, route option, and speed.For arrivals from the East, only one decision variable is defined, which is the delay before SUTIE.In this multiple-objective problem, there are two stochastic costs defined.One is the total delay compared to unimpeded operations where no separation is required.Another is the total count of controller interventions, that is the number of times a controller would be required to intervene to maintain separation.To introduce uncertainty, perturbations are imposed on the flight entry times: takeoff times for departures and entry waypoint (e.g.FIM or SUT) arrival times for arrivals.In both current and previous works, the perturbations follow a normal distribution.Unless otherwise defined, departures have a mean of -30 seconds and a standard deviation of 1.5 minutes, whereas arrivals are zero mean with a standard deviation of 30 seconds.It can be changed to other distributions if it is needed in the future.Given a solution, the costs are evaluated statistically over thousands of perturbed inputs/entry times.Both costs are evaluated stochastically with thousands of simulations.In previous work [14], an optimization method based on Non-dominated Sorting Genetic Algorithm (NSGA) and Monte Carlo simulation was developed for the stochastic scheduler and its implementation using Graphics Processing Units (GPUs) [17][18] enabled fast-time applications after dramatic reduction of computational time.The core scheduler in this work will adopt the same implementation.
+Sliding WindowIn order to investigate the benefit for daily traffic, and furthermore, to enrich the scheduler with the capability of scheduling continuously in real application for traffic with long periods, a dynamic stochastic scheduler that can sequentially provide updated optimal schedules is desired.To achieve that capability, a sliding window method is utilized.The main idea of the sliding window is to divide a large time frame (e.g. a day) into small time windows (e.g. 30 minutes) and then to apply the scheduler to these small windows sequentially.In this work these small windows are chosen to have no overlaps.When scheduling for a small time window, the flights that come from the previous time window but still remain in the airspace would be included in the updated flight states.These updates will be fed into the optimization for next window.Three categories of flight state in the previous static scheduler will not be enough as the categories only cover flights that haven't entered the entry fixes/waypoints.In the sequential scheduler, a total of nine flight state categories were formulated.For instance, flights that are between FIM and WPT1 would be one category with three decision variables, and flights that are between WPT1 and SMO will be in another category with one less decision variable.With this enriched formulation, the scheduler is ready to handle flights at any stage on the designated route structure.
+Trajectory SynthesizerThe Trajectory Synthesizer (TS), which is the trajectory calculation engine of the Center TRACON Automation System (CTAS) [19], is applied before the optimization process to generate various feasible high-fidelity trajectory profiles for arrivals and departures.When producing those profiles, the route structures associated with waypoints, altitude ranges, and speed requirements are imposed on the inputs of TS.TS will only generate trajectory profiles for feasible speed and route options based on the aircraft aerodynamics.These pre-processed feasible trajectory profiles, including speed options and fuel consumptions for flights with different aircraft types, will then be fed into the optimization and postanalysis to increase the fidelity of the results.
+Standalone SimulatorTo set-up a complete and seamless experiment environment for the sequential stochastic scheduler, a standalone simulation platform, which includes Monte Carlo simulations, is needed to provide objective updated flight states by mimicking reality through incorporating randomness to flight entry times for next time window.To perform this functionality, the number of simulation is set to one to generate traffic scenario for next window.On the other hand, a standalone platform is also necessary for testing or verifying the benefits claimed in the optimization process.In the optimization process, only 1,000 Monte Carlo simulations are conducted when evaluating an individual solution for a given time window of flight states because of the limits on running time for real-time application feasibility.Because the run-time requirements are not as strict for post-processing, the standalone simulation platform used 5,000 Monte Carlo simulations in postprocessing to verify the solution benefits.
+Figure 2. Work Flow for the Sequential Stochastic SchedulerThe overall process is shown in Figure 2. The traffic including flight information is split to small time windows.After incorporating updated flight information (including uncertain departure/arrival times) provided by the standalone simulator, the traffic scenario is passed to the static scheduler, where trajectory/speed options provided by TS for each flight would be used in the optimization.The output schedule is recorded and it is tested using the standalone simulator.After that, the standalone simulator will provide: flight departure/arrival times based on the given distribution, updated flight states for flights that are still remaining on the route, and flights to be scheduled in next window.The process will be repeated till the time reaches the end of the traffic.
+ResultsIn these experiments, a daily schedule along with aircraft types was built according to the traffic on December 4, 2012 (Tuesday).There are a total of 378 flights, including 290 arrivals from Fillmore and the East and 88 northbound departures in that day.The separation criteria between different aircraft follow the published FAA ATC regulations [20] as shown in Table 1.Experiments were run on HP Z820 workstation with multicores and 32GB memory.Two GTX690 with four GPUs were installed in the system.And expected values (averages) were used as the measurement of the stochastic results.
+Table 1. Separation Based on Wake Category
+Pareto FrontPareto fronts representing ranges of solutions minimizing flight time and controller interventions were used to evaluate optimization outputs.In this work, Pareto fronts were obtained for each 30-minute time window.At the end of the process, dozens of Pareto fronts were generated corresponding to all 30minute windows in a day.To obtain a single front, the collection of Pareto fronts were combined and ranked one by one in a temporal order.Figure 3 shows the final augmented Pareto front, which is represented by a curve composed of black dots.The coordinates of these dots are expected values of the costs associated, and they are evaluated in the optimization process.The curve composed of blue dots is based on re-evaluated costs of the same solutions using the standalone simulator with large number of Monte Carlo simulations.It is noted that these two curves almost overlap with each other, which further testifies that reducing the number of Monte Carlo simulations to one thousand in optimization doesn't sacrifice the cost evaluation accuracy too much while saving running time of optimization as pointed out in previous work [14].It is shown that the front from stochastic optimization with hybrid approach covers a large range of delays and there is clearly a trade-off between delay and controller intervention count.When the solution with the least delay is chosen, the average delay is less than 100 minutes in a day relative to unimpeded operations, whereas the expected value of controller intervention count would be over 100.That means, to achieve the least delay, if flights follow the optimized schedule at the beginning of every 30-minute window, controllers need to statistically take 100 actions on average during the day to prevent unexpected loss of separations due to departure and arrival time uncertainty.
+Stochastic vs. DeterministicA popular approach of deterministic schedulers to deal with uncertainty is to add a buffer to the separation requirement.Figure 3 also shows solutions from a deterministic method with different buffers.As identified in the figure, the left circular, triangular, and square dots were produced using deterministic optimization with 0s, 30s, and 60s buffer, respectively.The data suggests that, under the guidance of stochastic costs, stochastic optimization performs better than the deterministic method.With the same controller intervention levels, stochastic optimization can provide an extra 50 to 150 minutes of delay savings.The right circular, triangular, and square dots were generated from deterministic optimization using only segregated procedural routes as in the published STARs and SIDs without direct route options.The differences between the stochastic hybrid method and the deterministic spatial method demonstrate the benefits brought by combining the hybrid separation approach with stochastic optimization.With the same level of controller intervention, hybrid separation approach with stochastic optimization can provide an extra 150 to 250 minutes of flight time savings in a day over hybrid separation with deterministic optimization.Select delays from the stochastic hybrid approach and deterministic spatial approach are shown in Figure 4 and5.For the former approach, the solutions with the least delay were chosen.These figures present comparisons using different extra buffers.It is noted that the total daily delay savings corresponding to different buffers vary from 5 hours to 7.5 hours.Whereas despite various buffers, the daily fuel savings stabilize around 32,000 lbs/4712 gallons per day, which can be translated to 10 million dollars saving per year based on the average Jet A fuel price ($6.08/gal) in LAX area.
+Window size vs. UncertaintyIn previous experiments, it was assumed that the uncertainties of both departure times and arrival times had constant means and standard deviations in spite of the look-ahead time.This may be a reasonable assumption for arrival times based on arrival time prediction research [21] [22], but not for departures where uncertainty always increases with look-ahead time.In the work done by Capps et al [23], a relationship between wheels off prediction accuracy at DFW and look-ahead time in June 2011 was presented, where the wheels off time was predicted using the Surface Decision Support System (SDSS) [24] [25].Although that relationship may change with traffic scenarios, available information, and airport, it is nevertheless a good reference for setting up experiments in this work.The simple linear relationships shown in Eq.( 1) and (2) were applied in this work, where the mean and standard deviation were assumed to linearly increase with look-ahead time ( T L ).Mean = 0.39 × T L (1) Std.dev.= 0.41 × T L (2)Figure 6 shows the Pareto fronts for the optimizations conducted under time-varied means and standard deviations that follow Eq. ( 1) and ( 2).The blue curve is the Pareto front produced using 20-minute windows.Whereas the green curve and black curve are Pareto fronts obtained using 30 and 60 minute windows, respectively.In deterministic cases or stochastic cases with constant uncertainty, the optimality of the results should increase with the window size because larger window size allows more space for optimization.This may not always be true when uncertainties grow with look-ahead time.The enlarged uncertainties will contradict the benefit brought by a large planning window and reduce the likelihood of planned benefits.As shown in Figure 6, at the high delay cost part of the front, large planning windows still produces better solutions than small ones.Whereas, at the low delay cost part of the front, the small window tends to be a better choice.The hypothesis is that when delay costs are relatively high, gaps between flights are large in associated solutions and uncertainty is less critical than planning duration.However, when delay costs are low, spaces between flights are tight such that uncertainty becomes the key impact on the final costs.Figure 6 also shows that the margins between different window sizes are relatively small when the delay costs are low.The reason could be that the time-varied uncertainties were only applied to 88 departure flights, while the remaining 290 arrival flights still held constant uncertainties.The impact of time-varied uncertainties was only strong enough to eliminate the advantage brought by large window size but not strong enough to reverse it much.The other take-away message from this figure is that time-dependent uncertainties should not be a concern when delay saving are moderate as the spaces between flights can absorb the impact of varied uncertainties.When schedules with aggressive delay saving are desired, a small window may be a better choice than a large window as it finds better solutions with less computational time.
+Figure 6. Pareto Fronts Under Different Uncertainties Using Expected Values
+ConclusionsThis work extends the static stochastic scheduler with dynamic capability such that the scheduler can be applied to real-time traffic continuously.Using this dynamic stochastic scheduler enabled investigations of optimized integrated arrivals and departures under uncertainty for extended traffic periods.sliding window method was proposed to divide a large time frame into small time windows to which the scheduler can be applied.In order to increase the fidelity of results, TS was used to calculate possible trajectory profiles in preprocess and resulting speed options were then fed into the schedule optimization.Additionally, a standalone simulator was developed to simulate the effects of uncertainty and to provide updated flight states for following time window.The standalone simulator was also used to verify the results from optimization.The Los Angeles terminal area was used as a test location for demonstrating integrated arrivals and departures.Experiments were run using given daily traffic in LAX terminal area, which covered 30% of arrival traffic and 10% of departures.With a 30-minute time window, the stochastic scheduler can find better solutions than the deterministic scheduler using buffers to account for stochastic impacts.The results show that with the same controller intervention level, additional delay savings vary from 50 to 150 minutes.Compared to the baseline, which utilized current terminal arrival and departure procedures with first-come-first-serve (FCFS) like scheduling, the stochastic scheduler can provide an extra 150 to 250 minutes delay savings at the same controller intervention level.If an aggressive solution is allowed, an average of 5.2 hours can be saved in a day in LAX.The expected value of annual fuel saving would be more than 10 million dollars.However, the cost of potential controller intervention, which results from the uncertainty of estimated departure and arrival times, will increase by 50% on average.If a moderate solution is chosen instead, with the same level of controller intervention, there is still more than four hours of delay saving.Time-varied uncertainties were introduced to departure times, where uncertainties increased with the look-ahead time.Using constant uncertainties for arrival times and time-varying uncertainties for departure times, experiments were conducted with 20, 30, and 60-minute windows.It was shown that to search for solutions with moderate delays, window size played a more important role than uncertainty.When the target was to find solutions with aggressive delay savings, the impact of uncertainty dominated, which made small windows a better choice.The sequential stochastic scheduler developed in this work showed its promising capability in continuously optimizing schedules under timevaried uncertainties.In future work, the scheduler will be extended to cover all departures and arrivals in LAX for both airborne and surface operations.Figure 3 .3Figure 3. Solutions Using Different Approaches
+Figure 4 .Figure 5 .45Figure 4. Daily Delay Comparisons
+
+			October 5-9, 2014
+		
+		
+
+			
+AcknowledgementsThe authors gratefully acknowledge the contribution of Dr. Minghong (Gilbert) Wu of University Affiliated Research Center, University of California at Santa Cruz.Dr. Wu guided the usage of TS and associated tools, and helped generate appropriate trajectory profiles for different aircraft and speeds.
+			
+
+			
+
+				
+
+
+	
+		The dynamic scheduling of aircraft in the near terminal area
+		
+			RGDear
+		
+		10.1016/0041-1647(78)90133-8
+	
+	
+		Transportation Research
+		Transportation Research
+		0041-1647
+		
+			12
+			3
+			
+			September 1976
+			Elsevier BV
+		
+	
+	Dear, R. G., September 1976, "The Dynamic Scheduling of Aircraft in the Near Terminal Area", Tech. Rep. Flight Transportation Laboratory Report R76-9, MIT.
+
+
+
+	
+		An algorithm for computer assisted sequencing and scheduling of terminal area operations
+		
+			RogerGDear
+		
+		
+			YosefSSherif
+		
+		10.1016/0191-2607(91)90132-a
+	
+	
+		Transportation Research Part A: General
+		Transportation Research Part A: General
+		0191-2607
+		
+			25
+			2-3
+			
+			1991
+			Elsevier BV
+		
+	
+	Dear, R. G., Y. S. Sherif, 1991, "An Algorithm For Computer Assisted Sequencing and Scheduling of Terminal Operations", Transportation Research A, Vol. 25A, No. 2/3, pp. 120-139.
+
+
+
+	
+		Analysis of Delay Reducing and Fuel Saving Sequencing and Spacing Algorithms for Arrival Spacing
+		
+			FNeuman
+		
+		
+			HErzberger
+		
+		Memorandum 103880
+		
+			October 1991
+		
+	
+	Tech. Rep. NASA Technical
+	Neuman, F., H. Erzberger, October 1991, "Analysis of Delay Reducing and Fuel Saving Sequencing and Spacing Algorithms for Arrival Spacing", Tech. Rep. NASA Technical Memorandum 103880.
+
+
+
+	
+		Scheduling Aircraft Landings Under Constrained Position Shifting
+		
+			HamsaBalakrishnan
+		
+		
+			BalaChandran
+		
+		10.2514/6.2006-6320
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		Keystone, CO
+		
+			American Institute of Aeronautics and Astronautics
+			August 2006
+			
+		
+	
+	Balakrishnan, H., B. Chandran, 21-24 August 2006, "Scheduling Aircraft Landings Under Constrained Position Shifting", AIAA Guidance, Navigation, and Control Conference, Keystone, CO.
+
+
+
+	
+		Scheduling Aircraft Landings—The Static Case
+		
+			JEBeasley
+		
+		
+			MKrishnamoorthy
+		
+		
+			YMSharaiha
+		
+		
+			DAbramson
+		
+		10.1287/trsc.34.2.180.12302
+	
+	
+		Transportation Science
+		Transportation Science
+		0041-1655
+		1526-5447
+		
+			34
+			2
+			
+			2000
+			Institute for Operations Research and the Management Sciences (INFORMS)
+		
+	
+	Beasley, J. E., M. Krishnamoorthy, Y. M. Sharaiha, D. Abramson, 2000, "Scheduling Aircraft Landings -The Static Case", Transportation Science, Vol. 34, No. 2, pp. 180-197.
+
+
+
+	
+		Scheduling Aircraft Landings to Closely Spaced Parallel Runways
+		
+			MKupfer
+		
+	
+	
+		Europe Air Traffic Management Research and Development Seminar
+		
+			June 2009
+			Napa, CA
+		
+	
+	The Eighth USA
+	Kupfer, M., June 2009, "Scheduling Aircraft Landings to Closely Spaced Parallel Runways", The Eighth USA/Europe Air Traffic Management Research and Development Seminar, Napa, CA.
+
+
+
+	
+		A Mixed Integer Linear Program for Airport Departure Scheduling
+		
+			GautamGupta
+		
+		
+			WaqarMalik
+		
+		
+			YoonJung
+		
+		10.2514/6.2009-6933
+	
+	
+		9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO)
+		Hilton Head, South Carolina
+		
+			American Institute of Aeronautics and Astronautics
+			21-23 September 2009
+		
+	
+	A Mixed Integer Linear Program for Airport Departure Scheduling
+	Gupta, G., W. Malik, Y. C. Jung, 21-23 September 2009, "A Mixed Integer Linear Program for Airport Departure Scheduling", 9th AIAA Aviation Technology, Integration and Operations Conference (ATIO), Hilton Head, South Carolina.
+
+
+
+	
+		A Mixed Integer Linear Program for Solving a Multiple Route Taxi Scheduling Problem
+		
+			JustinMontoya
+		
+		
+			ZacharyWood
+		
+		
+			SivakumarRathinam
+		
+		
+			WaqarMalik
+		
+		10.2514/6.2010-7692
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		Toronto, Canada
+		
+			American Institute of Aeronautics and Astronautics
+			2-5 August 2010
+		
+	
+	Montoya, J., Z. Wood, S. Rathinam, W. Malik, 2-5 August 2010, "A Mixed Integer Linear Program for Solving a Multiple Route Taxi Scheduling Problem", AIAA Guidance, Navigation, and Control Conference, Toronto, Canada.
+
+
+
+	
+		A Generalized Dynamic Programming Approach for a Departure Scheduling Problem
+		
+			SivakumarRathinam
+		
+		
+			ZacharyWood
+		
+		
+			BanavarSridhar
+		
+		
+			YoonJung
+		
+		10.2514/6.2009-6250
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		Chicago, IL
+		
+			American Institute of Aeronautics and Astronautics
+			10-13 August 2009
+		
+	
+	Rathinam, S., Z. Wood, B. Sridhar, Y. C. Jung, 10-13 August 2009, "A Generalized Dynamic Programming Approach for a Departure Scheduling Problem", AIAA Guidance, Navigation, and Control Conference, Chicago, IL.
+
+
+
+	
+		A Hybrid Optimization Approach to Air Traffic Management for Metroplex Operations
+		
+			BrianCapozzi
+		
+		
+			StephenAtkins
+		
+		10.2514/6.2010-9062
+	
+	
+		10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Fort Worth, Texas
+		
+			American Institute of Aeronautics and Astronautics
+			September 2010
+			
+		
+	
+	Capozzi, B. J., S. C. Atkins, 13-15 September 2010, "Hybrid Optimization Approach to Air Traffic Management for Metroplex Operations", 10th AIAA Aviation Technology, Integration and Operations Conference (ATIO), Fort Worth, Texas.
+
+
+
+	
+		Towards Optimal Routing and Scheduling of Metroplex Operations
+		
+			BrianCapozzi
+		
+		
+			StephenAtkins
+		
+		
+			SeongimChoi
+		
+		10.2514/6.2009-7037
+	
+	
+		9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO)
+		Hilton Head, South Carolina
+		
+			American Institute of Aeronautics and Astronautics
+			21-23 September 2009
+		
+	
+	Capozzi, B. J., S. C. Atkins, 21-23 September 2009, "Towards Optimal Routing and Scheduling of Metroplex Operations", 9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO), Hilton Head, South Carolina.
+
+
+
+	
+		Sequential Dynamic Strategies for Real-Time Scheduling of Terminal Traffic
+		
+			HemingChen
+		
+		
+			YiyuanJZhao
+		
+		10.2514/1.c031503
+	
+	
+		Journal of Aircraft
+		Journal of Aircraft
+		0021-8669
+		1533-3868
+		
+			49
+			1
+			
+			2012
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Chen, H., Y. J. Zhao, 2012, "Sequential Dynamic Strategies for Real-Time Scheduling of Terminal Traffic", American Institute of Aeronautics and Astronautics, Journal of Aircraft, Vol. 49, No. 1. pp.237-249.
+
+
+
+	
+		Optimal Integration of Departures and Arrivals in Terminal Airspace
+		
+			MinXue
+		
+		
+			ShannonZelinski
+		
+		10.2514/1.60489
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		Journal of Guidance, Control, and Dynamics
+		0731-5090
+		1533-3884
+		
+			37
+			1
+			
+			2014
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Xue, M., S. Zelinski, 2014, "Optimal Integration of Departures and Arrivals in Terminal Airspace", Journal of Guidance, Control, and Dynamics, AIAA, Vol.37, No.1, pp.207-213.
+
+
+
+	
+		Optimization of Integrated Departures and Arrivals Under Uncertainty
+		
+			MinXue
+		
+		
+			ShannonZelinski
+		
+		10.2514/6.2013-4322
+	
+	
+		2013 Aviation Technology, Integration, and Operations Conference
+		Los Angeles, CA
+		
+			American Institute of Aeronautics and Astronautics
+			August 12-14, 2013
+		
+	
+	Xue, M., S. Zelinski, August 12-14, 2013, "Optimization of Integrated Departures and Arrivals Under Uncertainty", AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Los Angeles, CA.
+
+
+
+	
+		Development of a route crossing tool for shared airspace environments
+		
+			DaphneRein-Weston
+		
+		
+			EricChevalley
+		
+		10.1109/dasc.2014.6979655
+	
+	
+		2014 IEEE/AIAA 33rd Digital Avionics Systems Conference (DASC)
+		Colorado Springs, Colorado
+		
+			IEEE
+			October 5-9, 2014
+		
+	
+	Rein-Weston, D., E. Chevalley, A. Globus, R. Jacoby, E. Palmer, October 5-9, 2014, "Development of Route Crossing Tool for Shared Airspace Environments", 33 rd Digital Avionics Systems Conference, Colorado Springs, Colorado.
+
+
+
+	
+		Improving departure throughput by dynamically adjusting inter-arrival spacing
+		
+			Hyo-SangYoo
+		
+		
+			PaulLee
+		
+		
+			EverettPalmer
+		
+		10.1109/dasc.2014.6979546
+	
+	
+		2014 IEEE/AIAA 33rd Digital Avionics Systems Conference (DASC)
+		Colorado Springs, Colorado
+		
+			IEEE
+			October 5-9, 2014
+		
+	
+	Yoo, H. S., E. Palmer, October 5-9, 2014, "Improving Departure Throughput by Dynamically Adjusting Inter-Arrival Spacing", 33 rd Digital Avionics Systems Conference, Colorado Springs, Colorado.
+
+
+
+	
+		GPU-based Parallelization for Schedule Optimization with Uncertainty
+		
+			ChristabelleBosson
+		
+		
+			MinXue
+		
+		
+			ShannonZelinski
+		
+		10.2514/6.2014-2024
+	
+	
+		14th AIAA Aviation Technology, Integration, and Operations Conference
+		Atlanta, Georgia
+		
+			American Institute of Aeronautics and Astronautics
+			June 16-20, 2014. 2014
+		
+	
+	Bosson, C., M. Xue, S. Zelinski, June 16-20, 2014, "GPU-based Parallelization for Schedule Optimization with Uncertainty", AIAA Aviation and Aeronautics Forum and Exposition 2014, Atlanta, Georgia.
+
+
+
+	
+		Integrated Arrival- and Departure-Schedule Optimization Under Uncertainty
+		
+			MinXue
+		
+		
+			ShannonZelinski
+		
+		10.2514/1.c032957
+	
+	
+		Journal of Aircraft
+		Journal of Aircraft
+		0021-8669
+		1533-3868
+		
+			52
+			5
+			
+			2014
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Submitted
+	Xue, M., S. Zelinski, 2014, "Integrated Arrival and Departure Schedule Optimization Under Uncertainty", Journal of Aircraft, AIAA, Submitted.
+
+
+
+	
+		Design of Center-TRACON Automation System
+		
+			HErzberger
+		
+		
+			TJDavis
+		
+		
+			SMGreen
+		
+	
+	
+		AGARD Meeting on Machine Intelligence in Air Traffic Management
+		Berlin, Germany
+		
+			May 1993
+			
+		
+	
+	Erzberger, H., T. J. Davis, S. M. Green, 11-14 May 1993, "Design of Center-TRACON Automation System", AGARD Meeting on Machine Intelligence in Air Traffic Management, Berlin, Germany.
+
+
+
+	
+		Use of NEXRAD to Meet FAA and Aviation Needs
+		
+			MichaelDEilts
+		
+		
+			JTJohnson
+		
+		10.2514/atcq.2.1.33
+		FAA Order JO 7110.65
+		
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			2
+			1
+			
+			
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	FAA Order JO 7110.65s: Air Traffic Control, http://www.faa.gov/documentlibrary/media/order/7 110.65s.pdf
+
+
+
+	
+		Improvement of Trajectory Synthesizer for Efficient Descent Advisor
+		
+			MinXue
+		
+		
+			HeinzErzberger
+		
+		10.2514/6.2011-7020
+	
+	
+		11th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Virginia Beach, VA
+		
+			American Institute of Aeronautics and Astronautics
+			September 20-22, 2011
+		
+	
+	Xue, M., H. Erzberger, September 20-22, 2011, "Improvement of Trajectory Synthesizer for Efficient Descent Advisor", 11th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Virginia Beach, VA.
+
+
+
+	
+		Predictability of Top of Descent Location for Operational Idle-Thrust Descents
+		
+			LaurelStell
+		
+		10.2514/6.2010-9116
+	
+	
+		10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Berlin, Germany
+		
+			American Institute of Aeronautics and Astronautics
+			June 2011
+		
+		
+			The Ninth USA/Europe Air Traffic Management Research and Development Seminar
+		
+	
+	Stell, L., June 2011, "Prediction of Top of Descent Location for Idle-thrust Descents", The Ninth USA/Europe Air Traffic Management Research and Development Seminar, Berlin, Germany.
+
+
+
+	
+		Characterization of Tactical Departure Scheduling in the National Airspace System
+		
+			RichardCapps
+		
+		
+			ShawnEngelland
+		
+		10.2514/6.2011-6835
+	
+	
+		11th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Virginia Beach, VA
+		
+			American Institute of Aeronautics and Astronautics
+			September 20-22, 2011
+		
+	
+	Capps, A., S. A. Engelland, September 20-22, 2011, "Characterization of Tactical Departure Scheduling in the National Airspace System", AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Virginia Beach, VA.
+
+
+
+	
+		Surface Management System Field Trial Results
+		
+			StephenAtkins
+		
+		
+			YoonJung
+		
+		
+			ChristopherBrinton
+		
+		
+			LStell
+		
+		
+			TCarniol
+		
+		
+			SRogowski
+		
+		10.2514/6.2004-6241
+	
+	
+		AIAA 4th Aviation Technology, Integration and Operations (ATIO) Forum
+		Chicago, IL
+		
+			American Institute of Aeronautics and Astronautics
+			September 20-22, 2004
+		
+	
+	Atkins, S., Y. C. Jung, C. Brinton, L. Stell, S. Rogowski, September 20-22, 2004, "Surface Management System Field Trial Results", AIAA 4 th Aviation Technology, Integration, and Operations (ATIO) Conference, Chicago, IL.
+
+
+
+	
+		Field test results of Collaborative Departure Queue Management
+		
+			ChrisBrinton
+		
+		
+			SteveLent
+		
+		
+			ChrisProvan
+		
+		10.1109/dasc.2010.5655527
+	
+	
+		29th Digital Avionics Systems Conference
+		Salt Lake City, Utah
+		
+			IEEE
+			October 3-7, 2010
+		
+	
+	Brinton, C., S. Lent, C. Provan, October 3-7, 2010, "Field Test Results of Collaborative Departure Queue Management," 29 th Digital Avionics Systems Conference, Salt Lake City, Utah.
+
+
+				
+			
+		
+	

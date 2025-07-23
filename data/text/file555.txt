@@ -1,0 +1,335 @@
+
+	
+	
+		
+I. IntroductionA s the air traffic volume continues to increase, it is vitally important to better utilize the existing airspace and airport resources.When demand for these resources exceeds capacity, traffic flow management actions such as delaying flights on the ground and altering flight time by changing speed or route are used to control demand.One of the key components in traffic flow management is scheduling.Scheduling seeks to assign ground delay and airborne delay to each flight so that the capacity constraints in airports and the airspace are not exceeded while attempting to reduce the cost of delay and equitably distributing delay among flights.The scheduling problem is intrinsically complicated because each schedule has to satisfy multiple constraints along the flight plans that are due to capacity restrictions at the departure airport, in the enroute sectors, and at the arrival airport.This becomes further complicated due to the scale and complexity of the National Airspace System.Several approaches for scheduling have been investigated in the past.Some researchers have utilized optimization routines 1 and commercial constraint solvers. 2 If the cost of delay is given, the optimal solution can be found using an integer programming approach by Bertsimas and Stock-Patterson. 3Rios and Lohn 4 compared the performance of the integer programming model with two other optimization-based approaches.These techniques generally produce the highest quality schedules; however, due to the computational cost, they are not suitable for large scale studies that involve tens of thousands of flights and long look-ahead times.6][7][8] The multi-center scheduler presented by Landry 9 decomposes the scheduling problem into loosely coupled sub-problems to reduce complexity.Meyn 10 developed a concise, closed-form scheduling algorithm that is applicable to scheduling problems with any number of points using constraint algebra.Palopo et al. 11 developed a similar multipoint scheduling algorithm for a study that investigated the integration of dynamic airspace configuration and traffic flow management.In this study, an effort was made to combine the scheduling algorithms of Meyn 10 and Palopo et al. 11 to create a schedule that is scalable and flexible.Both the algorithms are based on the first-come first-served principle.Once the order of flights to be scheduled is fixed, the scheduler computes the required ground and airborne delay for each flight using the airport and airspace utilization information from all the previously scheduled flights.Both the algorithms are designed to handle a general node-link structure where links have finite transit time and transit through nodes occur instantly.Meyn's 10 work can be interpreted as imposing the capacity constraints only on the nodes while allowing the link transit time to vary within a given range.In Palopo et al.'s 11 work, the constraints are imposed on nodes and links but the link transit times cannot be changed.By incorporating these two approaches, it became possible to impose capacity constraints on both nodes and links while allowing transit time variation.This paper is organized as follows: Section II reviews the baseline departure schedulers and presents the new advanced scheduler; Section III describes experimental studies that show the performance of the new scheduler; Section IV provides conclusions.
+II. Departure SchedulerThis section describes the baseline and new algorithms.Inputs are reviewed in Section II-A.In Section II-B, the baseline scheduler is reviewed, and then the new approach that improves the performance is described in Section II-C.
+A. Inputs for Departure SchedulersThe scheduler takes several inputs.One of the inputs is a list of nominal flight schedules for all flights.Each schedule contains departure airport, departure time, destination airport, arrival time, and entry/transit/exit times for all sectors the aircraft flies through.This schedule can be created either by simulating the trajectory or by analyzing actual flight data.For the current study, the times are obtained by a simulation using the Airspace Concept Evaluation System. 12 sample flight schedule is presented in Table 1.Each line in the table has upstream, current, and downstream sectors.The line also contains the entry, exit, and transit times for the current sector.If a line indicates the departure or arrival airport, the current sector represents the airport.Since there is no upstream sector for the departure airport and no downstream sector for the arrival airport, they are set to 'XXXX' which means 'unavailable'.The departure time is obtained from the first line for each flight.The entry time to an airport is used as the departure time for the flight.The last line for the flight is used to determine the arrival time.The exit time in this line is used as the arrival time of the flight.In this table, Flight 23 departs from San Diego International Airport (KSAN), passes through six sectors, and arrives at San Francisco International Airport (KSFO).Its departure time is 24000 and the arrival time is 28585.The unit for time is seconds since the midnight of a day.Another input is a set of airport departure and arrival capacities.The airport capacities are generally represented by the number of flights the airport can support per unit time.ADR is the airport departure rate and AAR is the airport arrival rate.These are time-variant rates, not fixed numbers for a day. Figure 1 shows the ADR and AAR of the Atlanta International Airport for 72 hours.These numbers vary according to the airport's departure/arrival loads, weather conditions, or other related constraints on capacities.The schedulers also require the maximum number of aircraft that a sector can accommodate.For this study, the Monitor Alert Parameter (MAP) values for each sector are used for the maximum capacities.Note that MAP is used as a hard constraint for the algorithm while in real world operation, sometimes the number of aircraft can exceed the MAP value.
+B. Baseline Departure SchedulerAlthough both of the baseline schedulers are based on first-come first-served (FCFS) principle, the one developed by Palopo et al. 11 will be called FCFS scheduler for convenience.The FCFS scheduler sorts all flights in a list of nominal flight schdules according to the original flight plan departure time, and then starts scheduling by allocating the airport and sector resources to the flights.As a flight departs from an airport, a pre-specified time period around the departure time is blocked in order to maintain safe separation from other flights.When individual runways are not modeled in the node/link structure, this time period can be derived from the departure capacities of the airports.The same algorithm is applied to the arrival time.Once a flight is scheduled, the available capacity of each sector which the flight flies through is reduced during the transit time.If the available capacity reaches zero for a certain time period, other subsequent flights are not permitted to fly into this sector during the period, and so delays are expected for subsequent flights originally scheduled to fly in this sector during the period.To find available time intervals for departure and arrival times and sector transit times, the scheduler needs to shift all times in a flight plan forward.This time shift means a delay for the flight.Figure 2 shows how the scheduler works.The grey blocks represent the periods in which sectors are at maximum capacity, which are considered to be constraints on links.The available and unavailable slots for departure and arrival airport can be seen as node constraints.All four skewed straight lines that represent three infeasible plans and one feasible plan have the same slope, which means the transit times cannot be altered from the nominal transit times.Plan 1 does not have any constraint violations in Sector Z2 and the arrival airport; however, it slightly violates the constraint on Sector Z1.Then, Plan 2 is considered.Plan 2 is not feasible due to the blocked period in Sector Z2.Plan 3 cannot be used since it needs to arrive at the airport during the blocked time period.Therefore, Plan 4 is the chosen schedule that satisfies all sector and airport constraints with a minimum delay.The scheduler updates airport and sector resource availabilities with respect to time, and then repeats this procedure until it schedules the last flight.As mentioned earlier, this baseline FCFS scheduler does not allow the slope, which represents the transit speed, to be altered.A new scheduler is constructed by allowing these slopes to vary within a given thresholds, an important aspect from Meyn's 10 scheduler.The next subsection presents in detail how the new scheduler works when the slope change is allowed.
+C. Advanced First-Come First-Served Departure SchedulerAlthough the baseline FCFS departure scheduler creates reasonable flight schedules that satisfy all constraints due to airport and sector capacities, its inability to adjust transit times results in significant underutilization of airspace capacities.In addition, for a small number of flights, unreasonably large delays are assigned because it can be very difficult to find open slots to accommodate the transit times.The advanced FCFS departure scheduler takes all inputs that the baseline FCFS scheduler required.Those inputs are a list of flight plans that include departure and arrival times, sector entry, transit and exit times, departure and arrival capacity information for each airport, and sector capacities.In addition, the advanced FCFS scheduler takes maximum permissible speed-up and slow-down rates as inputs.Note that the term speed-up is used to represent reduction in the transit time.This can be achieved by physically speeding up the flight but also can be achieved by making the route more direct.Similarly, slow-down represents increase in the transit time that can be achieved by speed reduction or path stretching.Following the FCFS principles, the advanced scheduler sorts all flights in a list of flight plans according to their departure time, and then begins to develop a schedule.The algorithm of allocating the airport and sector resources to each flight is the same as that of the baseline scheduler; however, the method to find the available time intervals in each sector is different.Figure 3 shows a sample of scheduling by the advanced FCFS departure scheduler.The sector and airport constraints are same as those in Fig. 2. In the step (a), all available time slots at the departure airport are propagated downstream with maximum permissible speed-up and slow-down rates.The steep slope of the left boundary of green shaded regions indicates the maximum speed-up, and the gradual slope of the right boundary signifies the maximum slow-down.Since these speed-up and slow-down are permissible, the propagated windows are gradually expanding.The propagated downstream slots are wider than the original time slots, and thus the flights can take more opportunity to avoid the sector constraints.In the step (b), after finding available entry slots for the Sector Z1, the algorithm propagates the slots downstream.Then, it continues propagating the available entry time periods for Sector Z2.The algorithm considers not only the capacity constraints on entry times but also the constraints on overall sector transit periods as mentioned earlier.The step (c) shows that the algorithm finds the earliest arrival time after propagating the available slots to the arrival airport.Finally, the algorithm selects the earliest arrival time at the arrival airport.Once the arrival time is found, backtracking is necessary to find the earliest feasible departure time.The back tracking process is basically the same as the forward propagation process except the slopes for slowest speed and fastest speed are reversed.In this example the scheduler was able to find an earliest arrival time without assigning ground delay.After finding the new schedule for a flight, the scheduler updates airport and sector resource availabilities with respect to time and keeps track of airport and sector capacities.It repeats this scheduling process until it schedules the last flight.
+III. Experimental EvaluationTo evaluate the advanced FCFS departure scheduler, flight plans for May 3rd, 2007, a clear-weather day, were used as inputs.This list of nominal flight schedules contained 48,126 flights and spanned slightly more than an entire day of 28 hours.The number of sectors transited by aircraft varies from 1 to 30; however, about 90 % of flights transited 13 or less sectors.The average number of sector transit for the 48,126 flights is 6.22.The scheduler took sector capacity data that were generated to accommodate air traffic for the flight plans, which were used in the Lee et.al's previous study. 13This sector configuration had 335 high altitude (24,000 feet and above) sectors, the MAP values of which were 18.In the data, each center had a single unconstrained low altitude sector.The actual recorded ADRs and AARs were used for the capacities of major 71 airports.For all other airports, a nominal rate of 60 aircraft per hour was used.To evaluate the performance of the scheduler for different combinations of maximum permissible speed-up and slow-down rates, the maximum permissible speed-up rate varied from 0 to 3% with a step size of 0.1%, and the maximum permissible slow-down rate varied from 0 to 15% with a step size of 0.5%.Therefore, both the speed-up rate and the slow-down rate had 31 steps, and the total number of combinations was 961.For each of 961 combinations, the advanced FCFS departure scheduler generated schedules for all flights that satisfied the sector and airport capacities while allowing each flight to change its speed within the given maximum speed-up and slow-down rates.When no speed change was allowed, which was the same setup as the baseline FCFS scheduler, the average delay time was 9.43 minutes.When the maximum permissible speed-up and slow-down rates were set to 3% and 15% respectively, the average departure delay time was 5.48 minutes, a 42% reduction compared to the result of the baseline approach.The average delay decreased almost linearly with increasing maximum allowable rates.Even when the scheduler was only allowed to slow down flights, the average departure delay was reduced by 40%.Figure 4 graphically shows a contour plot of the average delays with respect to the maximum speed-up and slow-down ratesIn real world operation, aircraft speed is almost constant.With a much more benign condition of 1% allowed speed-up and 5% allowed slow-down, the average delay was 6.47 minutes, a reduction of more than 30 % compared to the baseline FCFS scheduler.The number of flights scheduled for on-time departure increased from 15,596 to 20,200.Although the delays were increased for 4,807 flights, the delays for 25,753 flights were reduced.The delays were curtailed by over 30 minutes for 865 flights, and by even more than  Average departure delay of the scheduling simulation results from a single day's flight plan data that contains over 48,000 flights.The maximum permissible speed-up rate varies from 0 to 3% with a step size of 0.1% and the maximum permissible slow-down rate varies from 0 to 15% with a step size of 0.5%.The total number of combinations of maximum permissible speed-up and slow-down rates is 961 (= 31×31).
+Departure Delay Reduction (min)
+Number of Flights
+IV. Concluding RemarksThis paper presents an advanced departure scheduler that can schedule flights to satisfy airport and airspace constraints while allowing the flights to vary sector transit times along their paths within a given threshold.This scheduler may be applied to any problem that can be casted in a node-link structure where transit through nodes are instantaneous and transit through links require finite time.Because of its extremely efficient run time performance, this scheduler can be used for nationwide traffic management studies that require large number of flights, long look-ahead time, and evaluation of many different cases.An example study that investigated the sensitivity of delay to the transit time variation shows that, even with a very small allowed transit time variation of between -1% and +5% of the nominal transit time, the average per flight delay can be reduced by as much as 30%, which indicates much more efficient utilization of airport and airspace resources.Although the new FCFS scheduler generated reasonable full single day's flight departure schedules, within a minute, that comply with the airspace and airport constraints, the results have not been compared to the results from the optimization based approaches.The future research includes investigating the advantages and disadvantages of using the FCFS based scheduler compared to the optimization based scheduler.The directions for future work also include examining sensitivity of the average departure delay to different scenarios and variations in sector capacities.Figure 1 .1Figure 1.The Atlanta International Airport (KATL)'s capacities for departure and arrival flights.Time is the relative time from the midnight of May 3rd, 2007.
+Figure 3 . 8 AmericanFigure 4 .384Figure 3.The schedule that the new scheduling algorithm generates.The gray regions indicate unavailable (blocked) periods.The green shaded regions represent the feasible scheduling windows as the entry times (or departure times) are propagated downstream.The sector and airport constraints are same as those in Fig. 2. (a) All available departure times are propagated downstream with maximum permissible speed-up and slow-down rates.The steep slope of the left boundary of green shaded regions indicates the maximum speed-up, and the gradual slope of the right boundary signifies the maximum slow-down.(b) After finding available entry slots for Sector Z1, the algorithm propagates the entry time periods downstream.Then, it continues propagating the available entry time periods for Sector Z2.(c) Finally, the algorithm finds the earliest arrival time after propagating the available slots to the arrival airport.By speeding up and slowing down the flight, the algorithm generates a flight schedule without a departure delay.6 of 8 American Institute of Aeronautics and Astronautics
+Figure 5 .of 8 American58Figure 5. Departure delay reduction that the advanced FCFS scheduler achieved.For each flight, the delay reduction was calculated by subtracting the advanced FCFS scheduler's departure delay from the baseline scheduler's departure delay.
+Table 1 .1A sample flight schedule.Flight 23 departs from the San Diego International Airport (KSAN), passes through six sectors, and arrives at the San Francisco International Airport (KSFO).The unit for entry, exit, and transit time is seconds since the midnight of a day.Flight ID Entry time Exit time Transit timeUpstream sectorCurrent sector Downstream sector232400024835835XXXXKSANTRACONTKSAN232483525183348TRACONTKSANZLA1LZLA08232518325337154ZLA1LZLA08ZLA09232533725475138ZLA08ZLA09ZLA102325475267071232ZLA09ZLA10ZOA05232670727016309ZLA10ZOA05ZOA1L232701627915899ZOA05ZOA1LTRACONTKSFO232791528585670TRACONTKSFOKSFOXXXX24579068011011XXXXKSDFTRACONTKSDF24680184041603TRACONTKSDFZID1LZKC1L. . .. . .. . .. . .. . .. . .. . .
+American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 17, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5675Feasible delay solution using the baseline FCFS departure scheduler.Gray regions in sectors indicate the time periods in which the maximum capacities of the sectors are reached, and gray regions in airports indicate the time periods when runways are occupied.The diamond shaped symbols point out the time points when sector constraints are not satisfied.The plans 1,2,3 fail due to the constraints in the Sectors Z1, Z2 and the arrival airport, respectively.Plan 4 is the flight schedule that satisfies all sector constraints with a minimum delay.available slotsunavailable slotsPlan 1Plan 2 Plan 3 Plan 4ArrivalAirportOriginal Sector Transit TimeSector Z2 Sector Z1DepartureAirportTravel TimeDelayFigure 2.3 of 8
+			of 8 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 17, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5675
+			of 8 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 17, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5675
+			of 8 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 17, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5675
+			Downloaded by NASA AMES RESEARCH CENTRE on April 17, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5675
+			of 8 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 17, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5675
+		
+		
+
+			
+AcknowledgmentsThe authors would like to thank Dr. Kee Palopo, Dr. Gano B. Chatterji, and Dr. Allen Goldberg for a number of discussions on the first-come first-served departure schedulers.
+			
+
+			
+
+				
+
+
+	
+		Scheduling Aircraft Landings to Closely Spaced Parallel Runways
+		
+			MKupfer
+		
+	
+	
+		th USA/Europe Air Traffic Management Research and Development Seminar (ATM2009)
+		Napa, California
+		
+			June 2009
+		
+	
+	Kupfer, M., "Scheduling Aircraft Landings to Closely Spaced Parallel Runways," 8th USA/Europe Air Traffic Manage- ment Research and Development Seminar (ATM2009), Napa, California, June 2009.
+
+
+
+	
+		Scheduling Aircraft Using Constraint Satisfaction
+		
+			PVan Leeuwen
+		
+		
+			HHHesselink
+		
+		
+			JH TRohling
+		
+		NLR-TP- 2002-299
+		
+			2002
+		
+		
+			Nation Aerospace Laboratory NLR
+		
+	
+	van Leeuwen, P., Hesselink, H. H., and Rohling, J. H. T., "Scheduling Aircraft Using Constraint Satisfaction," NLR-TP- 2002-299, Nation Aerospace Laboratory NLR, 2002.
+
+
+
+	
+		The Air Traffic Flow Management Problem with Enroute Capacities
+		
+			DBertsimas
+		
+		
+			SSPatterson
+		
+	
+	
+		Operations Research
+		
+			46
+			3
+			
+			May-June 1998
+		
+	
+	Bertsimas, D. and Patterson, S. S., "The Air Traffic Flow Management Problem with Enroute Capacities," Operations Research, Vol. 46, No. 3, May-June 1998, pp. 406-422.
+
+
+
+	
+		A Comparison of Optimization Approaches for Nationwide Traffic Flow Management
+		
+			JRios
+		
+		
+			JLohn
+		
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		Chicago, Illinois
+		
+			AIAA
+			August 2009
+		
+	
+	Rios, J. and Lohn, J., "A Comparison of Optimization Approaches for Nationwide Traffic Flow Management," AIAA Guidance, Navigation, and Control Conference, AIAA, Chicago, Illinois, August 2009.
+
+
+
+	
+		Analysis of Sequencing and Scheduling Methods for Arrival Traffic
+		
+			FNeuman
+		
+		
+			HErzberger
+		
+	
+	
+		NASA Technical Memorandom 102795, National Aeronautics and Space Administration
+		
+			1990
+		
+	
+	Neuman, F. and Erzberger, H., "Analysis of Sequencing and Scheduling Methods for Arrival Traffic," NASA Technical Memorandom 102795, National Aeronautics and Space Administration, 1990.
+
+
+
+	
+		Analysis of Delay Reducing and Fuel Saving Sequencing and Spacing Algorithms for Analysis of Delay Reducing and Fuel Saving Sequencing and Spacing Algorithms for Arrival Traffic
+		
+			FNeuman
+		
+		
+			HErzberger
+		
+	
+	
+		NASA Technical Memorandom 103880, National Aeronautics and Space Administration
+		
+			1991
+		
+	
+	Neuman, F. and Erzberger, H., "Analysis of Delay Reducing and Fuel Saving Sequencing and Spacing Algorithms for Analysis of Delay Reducing and Fuel Saving Sequencing and Spacing Algorithms for Arrival Traffic," NASA Technical Memorandom 103880, National Aeronautics and Space Administration, 1991.
+
+
+
+	
+		The Dynamic Planner: The Sequencer, Scheduler, and Runway Allocator for Air Traffic Control Automation
+		
+			GLWong
+		
+	
+	
+		NASA Technical Memorandom 2000-209586, National Aeronautics and Space Administration
+		
+			2000
+		
+	
+	Wong, G. L., "The Dynamic Planner: The Sequencer, Scheduler, and Runway Allocator for Air Traffic Control Automa- tion," NASA Technical Memorandom 2000-209586, National Aeronautics and Space Administration, 2000.
+
+
+
+	
+		Airport Arrival Capacity Benefits Due to Improved Scheduling Accuracy
+		
+			LAMeyn
+		
+		
+			HErzberger
+		
+	
+	
+		Proceedings of the 5th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		the 5th AIAA Aviation Technology, Integration, and Operations (ATIO) ConferenceArlington, Virginia
+		
+			September 2005
+		
+	
+	Meyn, L. A. and Erzberger, H., "Airport Arrival Capacity Benefits Due to Improved Scheduling Accuracy," Proceedings of the 5th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, AIAA, Arlington, Virginia, September 2005.
+
+
+
+	
+		Distributed Scheduling Architecture for Multi-Center Time-Based Metering
+		
+			SLandry
+		
+		
+			TFarley
+		
+		
+			JFoster
+		
+		
+			SGreen
+		
+		
+			THoang
+		
+		
+			GLWong
+		
+	
+	
+		Proceedings of the 3rd AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		the 3rd AIAA Aviation Technology, Integration, and Operations (ATIO) ConferenceDenver, Colorado
+		
+			November 2003
+		
+	
+	Landry, S., Farley, T., Foster, J., Green, S., Hoang, T., and Wong, G. L., "Distributed Scheduling Architecture for Multi-Center Time-Based Metering," Proceedings of the 3rd AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, AIAA, Denver, Colorado, November 2003.
+
+
+
+	
+		A Closed-Form Solution to Multi-Point Scheduling Problems
+		
+			LAMeyn
+		
+	
+	
+		Proceedings of the AIAA Modeling and Simulation Technologies (MST) Conference
+		the AIAA Modeling and Simulation Technologies (MST) ConferenceToronto, Canada
+		
+			August 2010
+		
+	
+	Meyn, L. A., "A Closed-Form Solution to Multi-Point Scheduling Problems," Proceedings of the AIAA Modeling and Simulation Technologies (MST) Conference, AIAA, Toronto, Canada, August 2010.
+
+
+
+	
+		Interaction of Airspace Partitions and Traffic Flow Management Delay
+		
+			KPalopo
+		
+		
+			GBChatterji
+		
+		
+			H.-TLee
+		
+	
+	
+		Proceedings of the 10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		the 10th AIAA Aviation Technology, Integration, and Operations (ATIO) ConferenceFort Worth, Texas
+		
+			September 2010
+		
+	
+	Palopo, K., Chatterji, G. B., and Lee, H.-T., "Interaction of Airspace Partitions and Traffic Flow Management Delay," Proceedings of the 10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, AIAA, Fort Worth, Texas, September 2010.
+
+
+
+	
+		Build 4 of the Airspace Concept Evaluation System
+		
+			LAMeyn
+		
+		
+			RWindhorst
+		
+		
+			KRoth
+		
+		
+			DVDrei
+		
+		
+			GKubat
+		
+		
+			VManikonda
+		
+		
+			SRoney
+		
+		
+			GHunter
+		
+		
+			AHuang
+		
+		
+			GCouluris
+		
+	
+	
+		Proceedings of the AIAA Modeling and Simulation Technologies (MST) Conference and Exhibit
+		the AIAA Modeling and Simulation Technologies (MST) Conference and ExhibitKeystone, Colorado
+		
+			AIAA
+			August 2006
+		
+	
+	Meyn, L. A., Windhorst, R., Roth, K., Drei, D. V., Kubat, G., Manikonda, V., Roney, S., Hunter, G., Huang, A., and Couluris, G., "Build 4 of the Airspace Concept Evaluation System," Proceedings of the AIAA Modeling and Simulation Technologies (MST) Conference and Exhibit, AIAA, Keystone, Colorado, August 2006.
+
+
+
+	
+		Interaction of Airspace Partitions and Traffic Flow Management Delay with Weather
+		
+			H.-TLee
+		
+		
+			GBChatterji
+		
+		
+			KPalopo
+		
+	
+	
+		Proceedings of the 30th Digital Avionics Systems Conference (DASC)
+		the 30th Digital Avionics Systems Conference (DASC)Seattle, Washington
+		
+			IEEE
+			October 2011
+		
+	
+	Lee, H.-T., Chatterji, G. B., and Palopo, K., "Interaction of Airspace Partitions and Traffic Flow Management Delay with Weather," Proceedings of the 30th Digital Avionics Systems Conference (DASC), IEEE, Seattle, Washington, October 2011.
+
+
+				
+			
+		
+	

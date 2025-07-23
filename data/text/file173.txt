@@ -1,0 +1,956 @@
+
+	
+	
+		
+I. IntroductionUnlike aircraft maneuvers on taxiways, ramp area aircraft movements are typically not confined to welldefined trajectories.The shape and timing of the trajectories are subject to uncertainties resulting from pilots decisions as well as other factors involved in ramp area operations, which can impede upon an optimal taxiway schedule plan.Most of the previous research [1][2][3][4][5][6][7][8][9][10][11][12] on taxiway scheduling has modeled the FAA controlled runways and taxiways as a graph, i.e. a connected network, and authors have neglected to account for the planning and execution of aircraft maneuvers within the ramp area.Although the surface operations can be improved by adopting an optimal taxiway schedule, its execution ultimately depends on human controllers who control aircraft maneuvers in both the ramp area and taxiways [13].Ramp area aircraft have been incorporated in [14,15], but the trajectories are considered to be deterministic.The main difficulty in the integration of ramp area operations into an optimal taxiway scheduling solution is in addressing uncertainties of ramp area aircraft trajectories.To address the uncertainty, a stochastic model of aircraft trajectories [16,17] was proposed.The model was used to sample a large number of feasible ramp area aircraft trajectories within the ramp area.A feasible trajectory is any sampled trajectory from the stochastic model that arrives at the target movement area within a predefined range of heading angles.The set of feasible trajectories for each aircraft is sampled in the absence of other aircraft.Therefore, the set of trajectories represent the feasible ways in which the aircraft can push back from their gate and taxi to the target movement area unimpeded by other aircraft.Using the sampled trajectories, we computed conflict distributions among any two aircraft defined by their relative target movement area schedule [16,17].The conflict distributions are defined by a measure of conflict estimated from the ratio of conflicting trajectories to total trajectories for every relative target movement area schedule.The conflict distributions were used to compute conservative conflict separation constraints that were passed to a mixed integer linear program (MILP) [18][19][20] which incorporated the Spot and Runway Departure Advisor (SARDA) [7][8][9][10][21][22][23] design approach.During time periods of heavy traffic, SARDA advises departing aircraft to remain at the gate with engines off, and when cleared, they can proceed straight from the gate to the departure runway queue minimizing slowing down or stopping for other traffic [8] and still meet their target movement area and take-off times.This technique has the effect of significantly reducing fuel burn and engine emissions.A Recent study [24] estimated as much as 18% of fuel consumption during taxi operations was due to stop-and-go activity.The study also concluded that under the assumption of 15 knots or greater speed for all unimpeded aircraft, there is the potential to reduce overall fuel consumption on the surface by at least 21%.For departing aircraft to proceed along the route unimpeded, it is critical the aircraft arrive at the target movement area at the scheduled time.This research proposes a tool to aid ramp area controllers in meeting the scheduled target movement area times by computing the push back time window for each departing aircraft.The push back time window is defined by the range between the earliest feasible push back time and latest feasible push back time.Initiating the push back within these bounds ensures there exists a feasible trajectory that arrives at the target movement area at the required time, which is defined by a higher level optimal taxiway scheduler.The main contribution of the tool is to compute push back time windows that allow for aircraft to taxi unimpeded from the gate to the departure runway queue in the presence of other aircraft and trajectory uncertainties.This allows for ramp controllers to better manage surface traffic, reduce fuel consumption, and execute conflict free ramp area aircraft trajectories.For relative target movement area schedules resulting in conflict free aircraft trajectories, computing the push back time windows are straightforward and can be estimated from the sampled trajectories.To compute the push back time windows we estimate the maximum trajectory duration and minimum trajectory duration for each aircraft, and then subtract from the scheduled target movement area time for the given aircraft.These computed times represent the start and finish of the feasible push back time window for each aircraft, respectively.When the schedule may lead to aircraft trajectory conflicts, an optimization procedure which solves for push back time windows in the presence of aircraft trajectory uncertainties is needed.Previously, we proposed a MILP approach to solve for the optimal combination of push back time windows [25].The optimal combination of push back time windows was defined to maximize the minimum push back time window of a set of all aircraft being scheduled.The solutions were based on conflict points that represent combinations of push back times that result in aircraft trajectory conflicts.We used the idea that no conflict point should be a convex combination [26] of the points in time that define the start and finish of the push back time window.In one-dimension, a convex combination of two points lies in between the two points.The number of constraints that are passed to the MILP is a function of the number of conflict points and for every conflict point, we need five constraints.The distribution and/or the boundary of the conflict points is not known a priori.The MILP that we developed in the previous paper is able to solve for the optimal combination of push back time windows given any distribution of conflict points.We pay for this in terms of the number of constraints and ultimately in the computation time.As the number of aircraft we solve for increases, the number of constraints hinders the solution technique.The resulting algorithm is too slow for real-time decision making and thus we need to develop techniques to reduce the execution time.Here we propose a new MILP approach that uses a significantly smaller number of constraints.Using fewer constraints, the problem can be solved with less computation time and the MILP model can be incorporated in real-time decision making.This paper is organized as follows.In section II we formulate the problem that we are considering.In section III we describe the techniques that we use to reduce the number of constraints that are passed to the MILP.In section IV we formulate the MILP approach we use to solve for the optimal combination of time windows.Next, in section V, we analyze the multi-criterion objective function that defines our solutions.In the last section, we conclude with a discussion of our findings and provide directions for future work.
+II. Problem FormulationIn this section we formulate the problem of computing the optimal ramp area aircraft push back time windows for each departing aircraft.The combination of push back time windows will be constrained to contain zero conflict points.We begin by defining the variables and parameters that we use:Symbol Description iA family of departing trajectories originating from a single gate and characterized by a single left or right push back maneuver pattern
+DThe set of all departing trajectory families available to push back from their gate A A specific family of trajectories available to push back from gate A t iThe scheduled time for family i to arrive at the target movement area t S i The start of the computed push back sub-window for family i t F i The finish of the computed push back sub-window for family i JThe objective function that is being maximizedt S0 iThe start of the feasible push back time window for family i scheduled att i = 0 t F 0 iThe finish of the feasible push back time window for family i scheduled att i = 0 T iThe set of all sampled trajectory duration data for departing trajectory family i P B iThe push back time of a single aircraft trajectory from family i κ A combination of push back times (conflict point) that lead to conflict among family i and j KThe number of discrete clusters of conflict points s(κ)The silhouette value for conflict point κ sThe averaged silhouette value over all conflict points A A vertex used to define quadrilateral that bounds conflict pointsQ A Quadrilateral that bounds a set of conflict points (conflict quadrilateral) V 1An edge that defines the conflict quadrilateral Q z A unit vector orthogonal to the x-y plane N 1A normal vector generated from V 1 × z T κ 1 A vector whose tail originates from vertex A and tip ends at conflict point κ
+CA clustering algorithm used to cluster a set of conflict pointsQ(C)The area of all conflict quadrilaterals using clustering algorithm C M A continuous variable representing the minimum push back time window δ min A parameter representing the minimum acceptable push back time window A parameter in the objective function J which influences the shape of the push back time windows z nE A binary variable that is one if edge E of the time window is selected as a separating axis, zero otherwise z mE A binary variable that is one if edge E of the conflict quadrilateral Q is selected as a separating axis, zero otherwise f mEThe function that defines the line for edge E of the conflict quadrilateral Q A departing aircraft is parked at the gate and scheduled to arrive at the target movement area.In this paper, we assume the target movement area time is provided from a higher level taxiway scheduler.Upon receiving the push back clearance, a tug (operated by ground crew) pushes back the aircraft from the gate.At the end of the push back procedure, the aircraft stops and the tug disengages.This stop period lasts for some time during which the pilot goes through a checklist and then starts the aircraft engine(s).When ready the pilot requests taxi approval, and after the approval, taxies the aircraft until arriving at the target movement area.The target movement area is the point in space where departing aircraft transition from the ramp area into the Federal Aviation Administration (FAA) controlled taxiway and is illustrated in Fig. 1a.During the departure maneuvers the duration of the trajectory, the transitions over the motion phases, and the trajectory path are determined by human operators and are considered to be stochastic in nature.Modeling ramp area aircraft departure maneuvers as stochastic processes, we sample a large number of departing trajectories from the stochastic model [16,17].The sampled trajectories define a family i of feasible trajectories that originate from a single gate and arrive at the target movement area at the scheduled time t i .We sample families of trajectories for each unique push back maneuver pattern i ∈ D where the set of D = {A, BL, BR} denotes a set of all possible push back maneuver patterns illustrated in Fig. 1a.The figure shows a single trajectory from each unique maneuver pattern that is available to push back.As shown in the figure, the aircraft parked at gate B is available to push back with a left (BL) or a right (BR) push back maneuver.Using the family of trajectories i and j, we generate a conflict ratio defined by their relative schedule t j -t i [17].A conflict ratio is estimated by fixing the relative schedule of the two families of trajectories and computing the ratio of conflicting trajectories to the total number of trajectories.A conflict is characterized by individual trajectories from the families i and j coming into close spatial proximity along their route.The conflict distribution is estimated by computing a conflict ratio at every whole second, as shown in Fig 1b .In the figure the y-axis represents the ratio of conflicting trajectories to conflict-free trajectories and the x-axis represents the relative target movement area schedule t j -t i .For departing trajectory family i with scheduled target movement area time t i = 0, the start of the push back time window is defined by t S0 i = -max i (T i ) and the finish of the push back time window is defined by t F 0 i = -min i (T i ) .The variable T i is the set of all trajectory duration data for family i that is sampled from the stochastic model.For any given relative schedule, the earliest and latest feasible push back times define the green edges of the rectangle that are seen in Fig. 1c.The distribution in trajectory duration is estimated from the robot experiment data which is directly influenced by the human operator [16,17].We use data from a scaled down robot experiment of the ramp area because trajectory data are not readily available mainly due to the lack of surveillance equipment in the ramp area.Investments in collecting such data are unlikely unless the usefulness of the data in increasing airport efficiency is illustrated.For the scheduled target movement area time differences that have a non-zero ratio of conflicts, we can store and plot the combination of push back times that lead to conflicts.In Fig. 1c we fix departing trajectory family i = A and family j = BR and the vertical axis represents the push back time of an individual trajectory from family A, P B A , and the horizontal axis represents the push back time of and individual trajectory from family BR, P B BR .In Fig. 1b we color select cross sections of the conflict distribution to demonstrate the relationship between the ratio of conflicts (Fig. 1b) defined by the difference between their scheduled target movement area times and the set of red conflict points (Fig. 1c) defined by the combination of push back times that lead to conflicts for the given schedule.The combinations of push back times that lead to conflicts among individual trajectories from family A and family BR are plotted (see Fig 1c) in 10s increments for the target movement area time differences ranging from t BR -t A = -70 to t BR -t A = 40.Given that we are interested in the relative scheduled difference between the two families, we fix the target movement area time of family A such that t A = 0, and the relative schedule difference is defined by the target movement area time of family BR.Associated with each difference in scheduled target movement area time, e.g., t BR = -70, is a green rectangle that is defined by the earliest and latest feasible push back times for each family such that the target movement area time schedule is satisfied.Thus, in order to satisfy the target movement area time t A = 0, any individual trajectory from family A must push back within the window P B A ∈ [-162, -102] and to satisfy the target movement area time t BR = -70 any individual trajectory from family BR must push back within P B BR ∈ [-217, -180].For -70 there is a set of combination of push back times that lead to conflicts.These combinations are labeled as red conflict points κ = (P B BR , P B A ) within the green rectangle (see Fig. 1c).Consider the distribution of conflict points for the scheduled difference of -60 seen in Fig. 1c.We observe that in the bottom right of the green rectangle there is a large area that does not contain any red conflict points.If we restrict an individual trajectory from family A and family BR to push back within the lower right corner of the green rectangle then we can ensure conflict free trajectories.Two potential solutions are shown where the first solution is shown with a solid black line and the second solution with a dotted black line.Among all possible solutions, we define the optimal combination of push back time windows to be the combination where we maximize the minimum time window.By maximizing the minimum time window we compute solutions that ensure any single aircraft's push back time window is not excessively reduced in size to accommodate other aircraft.The optimization problem for aircraft trajectory families i and j is defined asmax t S i ,t F i ,t S j ,t F j J := min{t F i -t S i , t F j -t S j }(1)subject to:∀ κ = (P B j , P B i ) : P B j ∈ [t S j , t F j ] ∨ P B i ∈ [t S i , t F i ](2)where the objective function J is a function of the four variables t S i , t F i , t S j , t F j which represent the start and finish of the push back sub-window for departing trajectory families i and j, respectively.The four variables together define a combination of push back sub-windows such as the window labeled with the solid (dotted) black line in Fig. 1c.The optimization problem is subject to the constraints that any given conflict point κ = (P B j , P B i ) can not be contained within the optimal combination of push back sub-windows.For any given relative target movement area schedule, at a resolution of 1[s], we consider computing the optimal combination of push back sub-windows that are constrained to contain zero conflict points.
+III. Reducing the Number of Constraints Passed to the MILPFor a real time application we envision a scenario where an optimal taxiway scheduler such as SARDA provides the target movement area time schedule for multiple aircraft.This schedule would be updated once every ten seconds.Our algorithm should return the feasible push back time windows or an infeasible flag at the same rate.The main difficulty in solving for the optimal combination of push back time windows is that the distribution and/or the boundary of the conflict points is not known beforehand.If one were to know the linear boundaries that separate each distinct cluster of conflict points, then a mixed integer linear program could be used in real-time to solve for the optimal combination of push back sub-windows.In general, solving for the number of distinct clusters K contained in a cloud of points and the linear boundaries that define the distinct clusters can be a challenging task.For some relative target movement area time schedules, the red conflict points form a single cluster whereas for other schedules the single cluster breaks apart into separated clusters, as seen in Fig. 1c.The well separated clusters seem to appear for schedules in-between the two modes of the conflict distribution (e.g.-50, -40 and -30 in Fig. 1c) where there is a potential mixing of two distinct sources of conflict.We can reduce the overall number of constraints in two steps described in the subsections below.In the first step we use a clustering algorithm to convert the cloud of points into K distinct clusters.Next, in the second step each cluster is bounded within an optimal polygon.The clustering of conflict points (step 1) and the computing of linear boundaries (step 2) can be done offline and the cluster boundaries stored in memory.A small number of boundaries, i.e., the constraints, allows for computing the optimal time windows in significantly less computation time when compared to our previous method.This enables the MILP we develop in this paper to compute the push back time windows online for real-time decision making.
+A. Clustering of Conflict PointsThe first task is to identify the most natural number of clusters to fit to the data.For our analysis any clustering algorithm is sufficient and we implement the following routines implementing the MATLAB machine learning toolbox: (1) support vector machine (2) naive-bayes estimator (3) k-Means clustering (4) hierarchical clustering and (5) Gaussian mixture model.We also used a clustering algorithm implementing (6) a minimum spanning tree.The minimum spanning tree clustering algorithm is equivalent to the hierarchal clustering algorithm except for the original tree is built utilizing Prim's algorithm [27] while the hierarchal clustering algorithm utilizes Kruskal's algorithm [28] .We first cluster the data into K distinct clusters.In order to interpret and validate the natural fit of the clusters with the data we use the silhouette [29] method.The silhouette method assumes that the data has been clustered via any technique into K ≥ 2 separate clusters.For each data point κ, let a(κ) be the average squared euclidean distance of κ to all other data points within the same cluster.We can interpret a(κ) as how well the point κ is assigned to its own cluster (the smaller the value, the better the assignment).Let b(κ) be the lowest average squared euclidean distance of κ to any other cluster which κ is not a member.The cluster with the lowest average squared euclidean distance is said to be the "neighboring cluster" because it is the next best fit cluster for point κ.We now define the silhouette value s(κ):s(κ) = b(κ) -a(κ) max{a(κ), b(κ)}(3)which can be written as From this definition we know that -1 < s(κ) < 1.For s(κ) to be close to 1 we require a(κ) << b(κ).As a(κ) is a measure of how dissimilar κ is to its own cluster, a small value a(κ) means it is well matched.A large b(κ) implies that κ is badly matched to its neighboring cluster.Thus an s(κ) close to one means that the data point κ is appropriately clustered.If s(κ) is close to negative one, we see that κ would be more appropriate if it was clustered in its neighboring cluster.An s(κ) near zero means that the data is on the border of two natural clusters.s(κ) =      1 -a(κ)/b(κ) if a(κ) < b(κ) 0 if a(κ) = b(κ) b(κ)/a(κ) -1 if a(κ) > b(κ) (4)Figure 2 shows the clusters identified by the support vector machine and the k-Means algorithm.We show these results to illustrate how different the identified clusters can be.The top row shows the results of the different methods applied to one distribution and the bottom row shows the results of the different methods applied to a second distribution.The associated silhouette value for each point κ is plotted below the clusters.As can be seen in the figures, the clusters for the k-Means algorithm seem less natural in comparison to the clusters identified by the support vector machine.This intuition is verified as we see the silhouette values for all points κ are greater than zero for the support vector machine whereas there exist points κ for the the k-Means algorithm that have negative silhouette values.For our application, the worst case scenario is to identify conflict points that have a large gap in space between them to the same cluster because this will cut off otherwise feasible portions of the domain.The average s(κ) over all points κ of a single cluster is a measure of how tightly grouped the data is within the cluster.Define s as the average s(κ) over all data points of the entire dataset as a measure of how appropriately the data has been clustered overall.For algorithms that can fit data to more than two see Fig. 3a.In two dimensions the absolute value of the cross product can be interpreted as twice the area of the quadrilateral defined by vertices A, B, C and D.The four constraints ( 6) -( 9) should be generated for each conflict point κ = (P B j , P B i ).Enforcing constraint (6) ensures that the conflict point κ and the normal vector N 1 are on the same side of vector V 1 , i.e. the conflict point κ is to the right of vector V 1 .Together the four constraints ( 6) -( 9) ensure that the conflict point is to the right of every vector V 1 , V 2 , V 3 and V 4 and therefore inside the quadrilateral.Expanding the objective function we have:J := AC × BD 2 = (x C -x A )(y D -y B ) -(x D -x B )(y C -y A ) 2Similarly expanding the constraints we get:N 1 • T κ 1 =(y B -y A )(P B j -x A ) -(x B -A )(P B i -y A ) =P B j y B -x A y B -P B j y A + x A y A -x B P B i + x B y A + x A P B i -x A y A = x B y A -x A y B + x A P B i -P B j y A -x B P B i + P B j y B = x B y A -x A y B + P B i (x A -x B ) + P B j (y B -y A ) N 2 • T κ 2 = x C y B -x B y C + P B i (x B -x C ) + P B j (y C -y B ) N 3 • T κ 3 = x D y C -x C y D + P B i (x C -x D ) + P B j (y D -y C ) N 4 • T κ 4 = x A y D -x D y A + P B i (x D -x A ) + P B j (y A -y D )The minimum perimeter quadrilateral is formulated as a quadratically constrained quadratic program [32,33] minA,B,C,D J := (x B -x A ) 2 + (y B -y A ) 2 + (x C -x B ) 2 + (y C -y B ) 2 + (10) (x D -x C ) 2 + (y D -y C ) 2 + (x A -x D ) 2 + (y A -y D ) 2subject to:N 1 • T κ 1 ≥ 0 (11) N 2 • T κ 2 ≥ 0 (12) N 3 • T κ 3 ≥ 0 (13) N 4 • T κ 4 ≥ 0 (14)where expression (10) is the objective function to minimize the perimeter of the quadrilateral defined by vertices A, B, C and D. The four constraints ( 11) -( 14) should be generated for each conflict point κ, and together they ensure that the conflict point is contained within the optimal bounding quadrilateral Q. Figure 3b illustrates the solution of the minimum area quadrilateral with a red dashed line, the minimum perimeter quadrilateral with a blue line and the convex hull with a black line for a random distribution of conflict points.Let us define the optimal clustering algorithm as the algorithm that minimizes the summation of quadrilateral area (perimeter) over all possible schedules Opt Algorithm = minC Σ k Q(C k ) (15)where Q(C k ) is the area of all optimal bounding quadrilaterals Q using cluster algorithm C for the relative schedule defined by t j -t i = k.We apply this definition to compute the total area Q of the optimal bounding quadrilaterals for each algorithm for each relative schedule.Then for each algorithm the total area is summed over all possible relative schedules.Figure 4 illustrates the performance of the clustering algorithms from best to worst: support vector machine, hierarchical / minimum spanning tree, naive bayes, k-Means and lastly Gaussian mixture model.
+IV. MILP for Real-Time Computing the Optimal Time WindowsAfter identifying the linear boundaries of each cluster, we use the boundaries to solve for the optimal combination of push back sub-windows.To ensure that our time windows do not intersect our conflict quadrilaterals we apply the separating axis theorem.The theorem states that in two dimensions, two convex polygons do not intersect if and only if one of the axis of one of the polygons is a separating axis [34].This implies that if we are given a convex n-gon and a convex m-gon, we can build a MILP that requires n+m+1 constraints to ensure the polygons do not intersect.There will be m+n linear inequality constraints; satisfying any one of these particular constraints ensures that the unique edge of the polygon associated with that constraint is a separating axis.The extra constraint will ensure that a minimum of one edge of one polygon is indeed a separating axis.Here we formulate the MILP that will be used to separate the optimal push back sub-windows from the conflict quadrilaterals.Given two departing aircraft trajectory families i, j ∈ D, the objective function is defined asmax t S i ,t F i ,t S j ,t F j J := M + (t F i -t S i + t F j -t S j )(16)where the continous value M is equivalent to the minimum time window among both aircraft i and j and is a scalar valued parameter.For departing aircraft trajectory families i, j ∈ D we introduce the two constraintst F i -t S i -M ≥ 0 (17) t F j -t S j -M ≥ 0(18)that ensure the push back time window for family i and the push back time window for family j are both greater than the minimum time window M .We note that the value M is not a fixed value, but a continuous variable passed to the model that is solved for in the optimization problem.Similarly, for departing aircraft trajectory family i, j ∈ D we introduce the two constraintst F i -t S i -δ min ≥ 0 (19) t F j -t S j -δ min ≥ 0(20)that ensure the push back time windows for family i and j are both larger than a predefined value δ min .The value δ min is the minimum acceptable push back time window.For example, pilots and ramp controllers could find a schedule that requires aircraft to initiate push back within a time window of 5 seconds too restrictive to consistently execute.In this paper we use the value δ min = 25[s] when solving for the optimal sub-windows.The correct value should be determined in conjunction by pilots and ramp controllers.For departing aircraft trajectory family i, j ∈ D we introduce the four constraintst S i -t i -t S0 i ≥ 0(21)t F i -t i -t F 0 i ≤ 0 (22) t S j -t j -t S0 j ≥ 0 (23) t F j -t j -t F 0 j ≤ 0(24)Constraints ( 21) -( 24) ensure that for any given combination of target movement time schedules, given by t i and t j , the start and end of the push back sub-windows defined by t S and t F must be within the bounds defined by the earliest and latest feasible push back times.This implies that there exists a feasible trajectory from family i and j that meets the scheduled target movement area times t i and t j without accounting for conflicts.These four constraints describe that the push back time windows that we solve for, which are illustrated in black solid (dotted) lines in Fig. 1, are proper sub-windows of the original green rectangle.Our problem is defined by a time window with n = 4 edges and a quadrilateral with m = 4 edges, giving us a total of m + n = 8 edges to select from when choosing a separating axis.To separate the optimal time window from a single conflict quadrilateral Q, we introduce the additional nine constraintsz n1 (t S i -max[y Q ]) ≥ 0(25)z n2 (t F i -min[y Q ]) ≤ 0 (26) z n3 (t S j -max[x Q ]) ≥ 0 (27) z n4 (t F j -min[x Q ]) ≤ 0 (28)z m1 (f m1 ) ≤ 0 (29)z m2 (f m2 ) ≤ 0 (30)z m3 (f m3 ) ≤ 0(31)z m4 (f m4 ) ≤ 0(32)z n1 + z n2 + z n3 + z n4 + z m1 + z m2 + z m3 + z m4 = 1(33)The variable z nE is a binary variable that is defined as z nE = 1 if edge E of the optimal time window is selected as the separating axis, else z nE = 0.The variable z mE is a binary variable that is defined as z mE = 1 if edge E of the conflict quadrilateral is selected as the separating axis, else z mE = 0.The numbering of the edges nE, mE ∈ [1, 2, 3, 4] of the time window and the conflict quadrilateral is not important as long as each edge has a unique number.Expression (33) ensures that one edge of the optimal time window or one edge of the conflict quadrilateral must be a separating axis.Expression (25) constrains the bottom edge of the optimal time window to be above the maximum y value of the conflict quadrilateral Q.This provides that the bottom edge of the time window is a separating axis and the quadrilaterals do not intersect.Similarly, Expression (26) constrains the top edge of the optimal time window to be below the minimum y value of the conflict quadrilateral Q.This provides that the top edge of the time window is a separating axis.Expressions (27)(28) apply similar reasoning to ensure that the left and right edge of the time window is selected as a separating axis.Whereas expressions used in (25)(26)(27)(28) do not change depending upon the conflict quadrilateral Q, equations (29)(30)(31)(32) are dependent upon the unique edges that define the conflict quadrilateral.Select any unique edge mE of Q, to generate the function f mE we need to obtain two pieces of information.First, we need to know if we should constrain the optimal time window above or below this edge, and second, we need the equation of the line that defines edge mE, Y = MX + B. The blue line is the MILP defined in our previous paper [25] and the black line is the real-time MILP defined in this paper.Given these two pieces of information we can generate the functions that ensure the edges of the quadrilateral are a separating axis asf mE =          -t S i + Mt F j + B if M ≥ 0 AND above t F i -Mt S j -B if M ≥ 0 AND below -t S i + Mt S j + B if M ≤ 0 AND above t F i -Mt F j -B if M ≤ 0 AND below(34)The program defined by objective (16) and constraints (17)(18)(19)(20)(21)(22)(23)(24)(25)(26)(27)(28)(29)(30)(31)(32)(33) solves for the optimal time window that is constrained to not intersect the conflict quadrilateral Q.For every additional conflict quadrilateral, the nine constraints (25)(26)(27)(28)(29)(30)(31)(32)(33) are required to separate the time window.These non-linear constraints can be linearized [25,35,36] and the resulting MILP can be solved using the Gurobi Optimizer [37] libraries.Figure 5a shows the optimal time window solution of the program given the two conflict quadrilaterals shown in blue and red. Figure 5b shows the execution time for schedules of n = 4, 5, 6 aircraft for the new MILP compared to the MILP that was defined in our previous paper [25].As can be seen in the figure, the improvement in computation time is significant.Whereas the previous MILP took roughly 10 seconds to solve for schedules of five aircraft, the MILP developed in this paper can solve for the optimal time windows of five aircraft in less than 0.5 seconds.
+V. Analysis of Objective FunctionConsider the objective function maxt S i ,t F i ,t S j ,t F j J := M + (t F i -t S i + t F j -t S j )(35)This objective function formulates a multi-criterion optimization problem.If we set the value of to zero, we solve for the combination of push back sub-windows where the minimum time window is maximized.In contrast, if we set the value of sufficiently large, then we solve for the the combination of push back sub-windows where the summation of all push back time windows is maximized.Figure 6a illustrates the solution of the objective function where is set to zero.The red and blue parts of the domain represent the conflict quadrilaterals.In Fig. 6b a solution where is sufficiently large is shown for the same input.Solutions can be quite different depending upon the value of as can be seen in the figure.The number of aircraft that we solve for in combination with the value of can also influence the quality of solution.For example, if we limit ourselves to solutions of two aircraft i and j, the most intuitive solutions are generated with small values of .This can be seen in Fig. 6 where the maximum perimeter solution (Fig. 6b) for the given input seems quite unappealing compared to the maximum minimum edge solution (Fig. 6a).We believe the solutions seen in Fig. 6b are unappealing compared to the solution in Fig. 6a because the maximum perimeter solutions excessively reduce a single aircraft's push back time window to accommodate the other aircraft's large push back time window.The inverse is true, however, for schedules of multiple aircraft.If we are to solve for a schedule of 4 aircraft using an objective defined to maximize the minimum edge, then it is easy to generate unappealing solutions.This occurs because reducing a push back time window for a single aircraft can have a dramatic affect on all aircraft, as seen in the black dashed line solutions of Fig. 7. Maximizing the minimum edge will return a solution where the push back time windows for all the aircraft are equal to the minimum push back time window.If we solve the same schedule of 4 aircraft with the objective defined to maximize the summation of push back time windows (equivalent to the perimeter), then the model will try to find solutions where it maximizes the push back time windows of all aircraft systematically, as seen in the grey dotted line solutions of Fig. 7.When we solve for multiple aircraft together, we find solutions that maximize the minimum edge unappealing because a single aircraft's push back time window can dramatically affect the other push back time windows.In addition to influencing the quality of solution, the value of has an impact on the computation time.We find that smaller values of help Gurobi solve the problem in less time.Consider Fig. 8 which shows the computation time as a function of the number of conflict domains that we solve for.A conflict domain is a single pairwise conflict that is being solved for.When we solve for multiple aircraft the coupled conflict domains must be solved together simultaneously to ensure optimal solutions.In this figure we report the computation time using the linear boundaries defined from the conflict quadrilaterals and also report the computation time using the linear boundaries defined by the convex hull.For both approaches, the figure shows that a smaller value of epsilon reduces computation time.As expected, the MILP based on the linear boundaries of the conflict quadrilateral outperforms the MILP based on the linear boundaries of the convex hull regardless of the value of epsilon.These results show that there is a tradeoff between the quality of the optimal time window solutions and the value of .When solving for multiple aircraft with value of = 0, then the solver simply has to find a feasible solution where the minimum edge is maximized.All other edges can be equivalent to the minimum edge, generating a relatively unappealing solution as seen in the grey dotted line solutions in Fig. 7. Instead we prefer the model to stretch out the feasible time windows to maximize the time window perimeter.This however, is not a straightforward task, as solving the perimeter problem can be computationally expensive and the solutions for two aircraft can generate relatively unappealing combinations of push back time windows such as the ones seen in Fig. 6b.
+VI. Conclusions and Future WorkIn this paper, we formulated a MILP to solve for the optimal combination of push back time sub-windows.The main contribution of the MILP is to compute in real-time the push back time sub-windows that allow for aircraft to taxi unimpeded from their gate to the departure runway queue in the presence of other aircraft and trajectory uncertainties.This allows for ramp controllers to better manage surface traffic, reduce fuel consumption, and execute conflict free ramp area aircraft trajectories.The MILP is designed for real-time decision making so the computational runtime is a critical component of the tool.The MILP formulation is based on a small number of constraints to ensure that its solution can be computed at speeds compatible with the NASA Ames SARDA scheduler.The small number of constraints results from the two-step processing.We first clustered the conflict points and then bounded each cluster of conflict points with linear boundaries.The linear cluster boundaries were used in the MILP where we exploited the separating axis theorem to ensure the push back time sub-windows do not intersect the conflict quadrilaterals.Solutions were provided and the objective function was analyzed to reveal the dependence of the parameter in the quality of solution and the computation time.Now that we understand how to exploit the structure of the conflict point distribution, we can integrate the information of the size of the push back time window into the logic that schedules aircraft at the target movement area.There is a likely tradeoff between the throughput of the schedule and the size of the push back time windows.A MILP approach using a multi-criterion objective function could account for this tradeoff.This can help with the optimal planning and execution of surface operations from the gates all the way to the departure runways.Figure 1 .1Figure 1.a) Layout of DFW ramp area and an illustration of the A, BL and BR aircraft trajectory.An individual aircraft i, j can be selected from the set of possible aircraft parked at the gate i, j ∈ {A, BL, BR} b) DFW conflict distribution with select cross sections colored for aircraft i = A and aircraft j = BR.c) Plot of combinations of push back times (red points) resulting in conflicts between aircraft i = A and j = BR for schedules ranging from t BR -t A = -70 to t BR -t A = 40 at a resolution of 10 [s].The vertical axis and the horizontal axis represent the push back times of aircraft A and BR, respectively.Each red conflict point is defined as κ = (P B BR , P B A ).If we do not account for conflicts the green rectangle represents the feasible push back domain.For the schedule t BR -t A = -60 two feasible push back sub-windows are plotted in black solid and dotted lines.
+Figure 2 .2Figure2.Clusters identified by the support vector machine and k-Means algorithm.The top row is the two methods applied to one distribution of conflict points defined by t j -t i = -20 and the bottom row is the methods applied to a second distribution of conflict points defined by t j -t i = -27.The associated silhouette value for each conflict point κ is plotted below the clusters.
+Figure 4 .4Figure 4. Top: The area of the bounding quadrilaterals for the different clustering algorithms as a function of the relative schedule.Bottom: The summation of total area of all the optimal bounding quadrilaterals.
+Figure 5 .5Figure 5. a) Optimal sub-windows using the two conflict quadrilaterals as constraints.b) The reduction in computation time that is achieved by reducing the number of constraints for schedules of n = 4, 5, 6 aircraft.The blue line is the MILP defined in our previous paper[25] and the black line is the real-time MILP defined in this paper.
+Figure 6 .6Figure 6.a)The optimal time window defined to maximize the minimum edge is illustrated with a dotted black line.b) The optimal time window defined to maximize the perimeter is not unique.There are four time windows with equivalent perimeter illustrated.Two solutions are represented as tall and skinny time windows with dashed black lines and two solutions are illustrated as short and wide time windows with dotted black lines.
+Figure 7 .7Figure 7. Solutions using a value = 0 (minimum time window maximized) are shown with a grey dotted line for a schedule of 4 aircraft.Solutions using a value = 10 (summation of time windows maximized) are shown with a black dashed line for the same input.In each sub-figure the vertical represents the push back time window of aircraft i, P B i , and the horizontal axis represents the push back time window of aircraft j, P B j .
+Figure 8 .8Figure 8. a) Computation time of the MILP with = 0.01.The red line illustrates the computation time using the minimum area quadrilateral linear boundaries and the blue line illustrates the computation time using the convex hull linear boundaries.b) Computation time of the MILP with = 0.001.The red line illustrates the computation time using the minimum area quadrilateral linear boundaries and the blue line illustrates the computation time using the convex hull linear boundaries.
+
+			of 16 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on August 17, 2016 | http://arc.aiaa.org| DOI: 10.2514/6.2016-3751
+			of 16 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on August 17, 2016 | http://arc.aiaa.org| DOI: 10.2514/6.2016-3751
+			of 16 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on August 17, 2016 | http://arc.aiaa.org| DOI: 10.2514/6.2016-3751
+			of 16 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on August 17, 2016 | http://arc.aiaa.org| DOI: 10.2514/6.2016-3751
+			of 16 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on August 17, 2016 | http://arc.aiaa.org| DOI: 10.2514/6.2016-3751
+			of 16 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on August 17, 2016 | http://arc.aiaa.org| DOI: 10.2514/6.2016-3751
+			of 16 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on August 17, 2016 | http://arc.aiaa.org| DOI: 10.2514/6.2016-3751
+			of 16 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on August 17, 2016 | http://arc.aiaa.org| DOI:
+			10.2514/6.2016-3751
+			Downloaded by NASA AMES RESEARCH CENTER on August 17, 2016 | http://arc.aiaa.org| DOI: 10.2514/6.2016-3751
+			American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on August 17, 2016 | http://arc.aiaa.org| DOI: 10.2514/6.2016-3751
+			of 16 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on August 17, 2016 | http://arc.aiaa.org| DOI: 10.2514/6.2016-3751
+		
+		
+			
+clusters, we fit the data to K = 2, 3, 4 and 5 clusters and select the number of clusters K that provides the maximum silhouette value s.We define the optimal number of clusters as one if the averaged silhouette value s over all the data points is less than 0.8.If the value s is greater than or equal to 0.8 the optimal number of clusters is selected as the number of clusters K that maximized the silhouette value.Using this method, we compute that the optimal number of clusters is two within the interval t j -t i ∈ [-53, -17] for the example in Fig. 1c and one everywhere else.The interval where we find two clusters the most natural fit is consistent with the mixing of distinct conflict sources that are seen in the conflict distribution in Fig. 1b.
+B. Conflict Cluster Linear BoundariesAfter associating the points to K distinct clusters, the next step is to bound each cluster in an optimal bounding polygon.We would like to bound the conflict points with the convex hull of the cluster of points.In two dimensions, the convex hull of a set of points is the minimum area convex polygon that contains the points [30].However, each unique side of our polygon will translate into additional constraints and complexity for the MILP.Therefore we consider constraining the bounding polygon to a quadrilateral instead of the convex hull.The minimum area quadrilateral Q defined by vertices A = (x A , y A ), B = (x B , y B ), C = (x C , y C ) and D = (x D , y D ) labelled in a clockwise fashion is formulated as the non-linear optimization problem [26,31]:subject to:Define V 1 as the vector whose tail originates at vertex A and tip terminates at Vertex B as seen Fig. 3a.Vectors V 2 , V 3 and V 4 are defined in a similar fashion between vertices B, C, and D respectively and N 1 is the normal vector to V 1 generated by V 1 × z.For each conflict point κ we define vector T κ 1 whose tail originates at vertex A and tip terminates at the conflict point κ.Vectors T κ 2 , T κ 3 and T κ 4 are defined in the same way with their tails originating from vertices B, C and D respectively.Expression (5) is the objective function to minimize the square of the scalar value associated with the cross product of the vector AC × BD,			
+			
+
+				
+
+
+	
+		An Optimisation Model for Airport Taxi Scheduling
+		
+			JWSmeltink
+		
+		
+			MJSooner
+		
+		
+			PRDe Waal
+		
+		
+			RDVan Der Mei
+		
+	
+	
+		INFORMS Annual Meeting
+		
+			2004
+		
+	
+	Smeltink, J. W., Sooner, M. J., de Waal, P. R., and van der Mei, R. D., "An Optimisation Model for Airport Taxi Scheduling," INFORMS Annual Meeting, 2004.
+
+
+
+	
+		Methods for Operations Planning in Airport Decision Support Systems
+		
+			Jes�sGarc�aHerrero
+		
+		
+			AntonioBerlanga
+		
+		
+			Jos�MMolina
+		
+		
+			Jos�RCasar
+		
+		10.1007/s10791-005-6618-z
+	
+	
+		Applied Intelligence
+		Appl Intell
+		0924-669X
+		1573-7497
+		
+			22
+			3
+			
+			2005
+			Springer Science and Business Media LLC
+		
+	
+	Herrero, J. G., Berlanda, A., Molina, J. M., and Casar, J. R., "Methods for Operations Planning in Airport Decision Support Systems," Appl Intell, Vol. 22, 2005, pp. 183-206.
+
+
+
+	
+		Airport management: taxi planning
+		
+			AMarín
+		
+		10.1007/s10479-006-7381-2
+	
+	
+		Annals of Operations Research
+		Ann Oper Res
+		0254-5330
+		1572-9338
+		
+			143
+			1
+			
+			2007
+			Springer Science and Business Media LLC
+		
+	
+	Marín, A., "Airport Management: Taxi Planning," Ann Oper Res, Vol. 143, 2007, pp. 191-202.
+
+
+
+	
+		A Framework for Coordinated Surface Operations Planning at Dallas-Fort Worth International Airport
+		
+			HamsaBalakrishnan
+		
+		
+			YoonJung
+		
+		10.2514/6.2007-6553
+	
+	
+		AIAA Guidance, Navigation and Control Conference and Exhibit
+		
+			American Institute of Aeronautics and Astronautics
+			2007
+		
+	
+	Balakrishnan, H. and Jung, Y., "A Framework for Coordinated Surface Operations Planning at DFW International Airport," AIAA Guidance, Navigation, and Control Conference (GNC), 2007.
+
+
+
+	
+		An optimization model for reducing aircraft taxi times at the DFW international airpiort
+		
+			SRathinam
+		
+		
+			JMontoya
+		
+		
+			YJung
+		
+	
+	
+		26th International Conference of the Aeronautical Sciences
+		
+			2008
+		
+	
+	Rathinam, S., Montoya, J., and Jung, Y., "An optimization model for reducing aircraft taxi times at the DFW interna- tional airpiort," 26th International Conference of the Aeronautical Sciences, 2008.
+
+
+
+	
+		Optimal Airport Surface Traffic Planning Using Mixed-Integer Linear Programming
+		
+			PCRoling
+			0000-0001-8223-166X
+		
+		
+			HGVisser
+			0000-0002-5644-0430
+		
+		10.1155/2008/732828
+	
+	
+		International Journal of Aerospace Engineering
+		International Journal of Aerospace Engineering
+		1687-5966
+		1687-5974
+		
+			2008
+			
+			2008. 2008
+			Hindawi Limited
+		
+	
+	Roling, P. C. and Visser, H. G., "Optimal Airport Surface Traffic Planning Using Mixed-integer Linear Programming," Int J Aerospace Eng, Vol. 2008, 2008, pp. 1-12.
+
+
+
+	
+		A Mixed Integer Linear Program for Airport Departure Scheduling
+		
+			GautamGupta
+		
+		
+			WaqarMalik
+		
+		
+			YoonJung
+		
+		10.2514/6.2009-6933
+	
+	
+		9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO)
+		
+			American Institute of Aeronautics and Astronautics
+			2009
+		
+	
+	Gupta, G., Malik, W., and Jung, Y. C., "A Mixed Integer Linear Program for Airport Departure Scheduling," 9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO), 2009.
+
+
+
+	
+		Managing departure aircraft release for efficient airport surface operations
+		
+			WaqarMalik
+		
+		
+			GautamGupta
+		
+		
+			YoonJung
+		
+		10.2514/6.2010-7696
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		
+			American Institute of Aeronautics and Astronautics
+			2010
+		
+	
+	Malik, W., Gupta, G., and Jung, Y. C., "Managing Departure Aircraft Release For Efficient Airport Surface Operations," Proceedings of the AIAA Guidance, Navigation, and Control (GNC) Conference, 2010.
+
+
+
+	
+		Incorporating Active Runway Crossings in Airport Departure Scheduling
+		
+			GautamGupta
+		
+		
+			WaqarMalik
+		
+		
+			YoonJung
+		
+		10.2514/6.2010-7695
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		
+			American Institute of Aeronautics and Astronautics
+			2010
+		
+	
+	Gupta, G., Malik, W., and Jung, Y. C., "Incorporating Active Runway Crossings in Airport Departure Scheduling," AIAA Guidance, Navigation, and Control Conference (GNC), 2010.
+
+
+
+	
+		Spot Release Planner: Efficient Solution for Detailed Airport Surface Traffic Optimization
+		
+			WaqarMalik
+		
+		
+			GautamGupta
+		
+		
+			YoonJung
+		
+		10.2514/6.2012-5498
+	
+	
+		12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference and 14th AIAA/ISSMO Multidisciplinary Analysis and Optimization Conference
+		
+			American Institute of Aeronautics and Astronautics
+			2012. 2011
+			12
+			
+		
+	
+	Optimization of Taxiway Routing and Runway Scheduling
+	Malik, W., Gupta, G., and Jung, Y. C., "Spot Release Planner: Efficient Solution for Detailed Airport Surface Trffic Optimization," 12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, 2012. 11 Clare, G. L. and Richards, A. G., "Optimization of Taxiway Routing and Runway Scheduling," IEEE Transactions on Intelligent Transportation Systems, Vol. 12, No. 4, 2011, pp. 1000-1013.
+
+
+
+	
+		An approach to optimization of airport taxiway scheduling and traversal under uncertainty
+		
+			RossAnderson
+		
+		
+			DejanMilutinović
+		
+		10.1177/0954410011433238
+	
+	
+		Proceedings of the Institution of Mechanical Engineers, Part G: Journal of Aerospace Engineering
+		Proceedings of the Institution of Mechanical Engineers, Part G: Journal of Aerospace Engineering
+		0954-4100
+		2041-3025
+		
+			227
+			2
+			
+			February 2013
+			SAGE Publications
+		
+	
+	Anderson, R. and Milutinović, D., "An Approach to Optimization of Airport Taxiway Scheduling and Traversal Under Uncertainty," Proceedings of the Institution of Mechanical Engineers, Part G: Journal of Aerospace Engineering, Vol. 227, No. 2, February 2013, pp. 273-284.
+
+
+
+	
+		Performance Evaluation of SARDA: An Individual Aircraft-based Advisory Concept for Surface Management
+		
+			YoonJung
+		
+		
+			TyHoang
+		
+		
+			MiwaHayashi
+		
+		
+			WaqarMalik
+		
+		
+			LeonardTobias
+		
+		
+			GautamGupta
+		
+		10.2514/atcq.22.3.195
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			22
+			3
+			
+			2011
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+		
+			USA/Europe Air Traffic Management Research and Development Seminar
+		
+	
+	Jung, Y., Hoang, T., Montoya, J., Gupta, G., Malik, W., L., T., and Wang, H., "Performance Evaluation of a Surface Traffic Management Tool for Dallas/Fort Worth International Airport," 9th USA/Europe Air Traffic Management Research and Development Seminar , 2011, pp. 1-10.
+
+
+
+	
+		Optimization of Airport Taxiway Operations at Detroit Metropolitan Airport (DTW)
+		
+			HanbongLee
+		
+		
+			HamsaBalakrishnan
+		
+		10.2514/6.2010-9151
+	
+	
+		10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		
+			American Institute of Aeronautics and Astronautics
+			2010
+		
+	
+	Lee, H. and Balakrishnan, H., "Optimization of Airport Taxiway Operations at Detroit Metropolitan Airport (DTW)." In AIAA Aviation Technology, Integration, and Operations Conference (ATIO), 2010.
+
+
+
+	
+		A Comparison of Two Optimization Approaches for Airport Taxiway and Runway Scheduling
+		
+			HLee
+		
+		
+			HBalakrishnan
+		
+	
+	
+		Digital Avionics Systems Conference
+		
+			2012
+		
+	
+	Lee, H. and Balakrishnan, H., "A Comparison of Two Optimization Approaches for Airport Taxiway and Runway Scheduling." In Digital Avionics Systems Conference, 2012.
+
+
+
+	
+		Robot Experiment Analysis of Airport Ramp Area Time Constraints
+		
+			WilliamJCoupe
+		
+		
+			DejanMilutinovic
+		
+		
+			WaqarAMalik
+		
+		
+			GautamGupta
+		
+		
+			YoonCJung
+		
+		10.2514/6.2013-4884
+	
+	
+		AIAA Guidance, Navigation, and Control (GNC) Conference
+		
+			American Institute of Aeronautics and Astronautics
+			2013
+		
+	
+	Coupe, W. J., Milutinović, D., Malik, W., Gupta, G., and Jung, Y., "Robot Experiment Analysis of Airport Ramp Area Time Constraints," AIAA Guidance, Navigation, and Control Conference (GNC), 2013.
+
+
+
+	
+		Integration of Uncertain Ramp Area Aircraft Trajectories and Generation of Optimal Taxiway Schedules at Charlotte Douglas (CLT) Airport
+		
+			JeremyCoupe
+		
+		
+			DejanMilutinovic
+		
+		
+			WaqarMalik
+		
+		
+			YoonCJung
+		
+		10.2514/6.2015-2591
+	
+	
+		15th AIAA Aviation Technology, Integration, and Operations Conference
+		
+			American Institute of Aeronautics and Astronautics
+			2015
+		
+	
+	Coupe, W. J., Milutinović, D., Malik, W., and Jung, Y., "Integration of Uncertain Ramp Area Aircraft Trajectories and Generation of Optimal Taxiway Schedules at Charlotte Douglas (CLT) Airport," AIAA Aviation Technology, Integration, and Operations Conference (ATIO), 2015.
+
+
+
+	
+		Integer and Combinatorial Optimization
+		
+			LAWolsey
+		
+		
+			GLNemhauser
+		
+		
+			2014
+			John Wiley & Sons
+		
+	
+	Wolsey, L. A. and Nemhauser, G. L., Integer and Combinatorial Optimization, John Wiley & Sons, 2014.
+
+
+
+	
+		The Age of Optimization: Solving Large-Scale Real-World Problems
+		
+			GeorgeLNemhauser
+		
+		10.1287/opre.42.1.5
+	
+	
+		Operations Research
+		Operations Research
+		0030-364X
+		1526-5463
+		
+			42
+			1
+			
+			1994
+			Institute for Operations Research and the Management Sciences (INFORMS)
+		
+	
+	Nemhauser, G. L., "The Age of Optimization: Solving Large-scale Real-world Problems," Operations Research, Vol. 42, No. 1, 1994, pp. 5-13.
+
+
+
+	
+		Practical guidelines for solving difficult mixed integer linear programs
+		
+			EdKlotz
+		
+		
+			AlexandraMNewman
+		
+		10.1016/j.sorms.2012.12.001
+	
+	
+		Surveys in Operations Research and Management Science
+		Surveys in Operations Research and Management Science
+		1876-7354
+		
+			18
+			1-2
+			
+			2013
+			Elsevier BV
+		
+	
+	Klotz, E. and Newman, A. M., "Practical Guidelines for Solving Difficult Mixed Integer Linear Programs," Surveys in Operations Research and Management Science, Vol. 18, No. 1, 2013, pp. 18-32.
+
+
+
+	
+		A Concept and Implementation of Optimized Operations of Airport Surface Traffic
+		
+			YoonJung
+		
+		
+			TyHoang
+		
+		
+			JustinMontoya
+		
+		
+			GautamGupta
+		
+		
+			WaqarMalik
+		
+		
+			LeonardTobias
+		
+		10.2514/6.2010-9213
+	
+	
+		10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Fort Worth, TX
+		
+			American Institute of Aeronautics and Astronautics
+			2010
+		
+	
+	Jung, Y. C., Hoang, T., Montoya, J., Gupta, G., Malik, W., and Tobias, L., "A Concept and Implementation of Optimized Operations of Airport Surface Traffic," 10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Fort Worth, TX , 2010.
+
+
+
+	
+		An Integrated Collaborative Decision Making and Tactical Advisory Concept for Airport Surface Operations Management
+		
+			GautamGupta
+		
+		
+			WaqarMalik
+		
+		
+			YoonJung
+		
+		10.2514/6.2012-5651
+	
+	
+		12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference and 14th AIAA/ISSMO Multidisciplinary Analysis and Optimization Conference
+		Indianapolis, IN
+		
+			American Institute of Aeronautics and Astronautics
+			2012
+		
+	
+	Gupta, G., Malik, W., and Jung, Y. C., "An Integrated Collaborative Decision Making and Tactical Advisory Concept for Airport Surface Operations Management," 12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Indianapolis, IN , 2012.
+
+
+
+	
+		Performance Evaluation of Individual Aircraft Based Advisory Concept for Surface Management
+		
+			GGupta
+		
+		
+			WMalik
+		
+		
+			LTobias
+		
+		
+			YJung
+		
+		
+			THoang
+		
+		
+			MHayashi
+		
+	
+	
+		Tenth USA/Europe Air Traffic Management Research and Development Seminar (ATM2013)
+		Chicago, Il
+		
+			2013
+		
+	
+	Gupta, G., Malik, W., Tobias, L., Jung, Y., Hoang, T., and Hayashi, M., "Performance Evaluation of Individual Aircraft Based Advisory Concept for Surface Management," Tenth USA/Europe Air Traffic Management Research and Development Seminar (ATM2013), Chicago, Il, 2013.
+
+
+
+	
+		Detailed estimation of fuel consumption and emissions during aircraft taxi operations at Dallas/Fort Worth International Airport
+		
+			TasosNikoleris
+		
+		
+			GautamGupta
+		
+		
+			MatthewKistler
+		
+		10.1016/j.trd.2011.01.007
+	
+	
+		Transportation Research Part D: Transport and Environment
+		Transportation Research Part D: Transport and Environment
+		1361-9209
+		
+			16
+			4
+			
+			June 2011
+			Elsevier BV
+		
+	
+	Nikoleris, T., Gupta, G., and Kistler, M., "Detailed Estimation of Fuel Consumption and Emissions During Aircraft Taxi Operations at Dallas Fort Worth International Airport," Published in the journal Transportation Research Part D: Transport and Environment, Vol. 16D, Issue 4 , June 2011.
+
+
+
+	
+		Optimization of Push Back Time Windows That Ensure Conflict Free Ramp Area Aircraft Trajectories
+		
+			JeremyCoupe
+		
+		
+			DejanMilutinovic
+		
+		
+			WaqarMalik
+		
+		
+			YoonCJung
+		
+		10.2514/6.2015-3028
+	
+	
+		15th AIAA Aviation Technology, Integration, and Operations Conference
+		
+			American Institute of Aeronautics and Astronautics
+			2015
+			26
+		
+	
+	Coupe, W. J., Milutinović, D., Malik, W., and Jung, Y., "Optimization of Push Back Time Windows That Ensure Conflict Free Ramp Area Aircraft Trajectories," AIAA Aviation Technology, Integration, and Operations Conference (ATIO), 2015. 26
+
+
+
+	
+		Nonlinear Programming
+		
+			DPBertsekas
+		
+		10.1038/sj.jors.2600425
+	
+	
+		Journal of the Operational Research Society
+		J Oper Res Soc
+		0160-5682
+		
+			48
+			3
+			
+			1999
+			Springer Science and Business Media LLC
+		
+	
+	Bertsekas, D. P., "Nonlinear Programming," 1999.
+
+
+
+	
+		Shortest Connection Networks And Some Generalizations
+		
+			RCPrim
+		
+		10.1002/j.1538-7305.1957.tb01515.x
+	
+	
+		Bell System Technical Journal
+		0005-8580
+		
+			36
+			6
+			
+			1957
+			Institute of Electrical and Electronics Engineers (IEEE)
+		
+	
+	Prim, R. C., "Shortest Connection Networks and Some Generalizations," Bell system technical journal, Vol. 36, No. 6, 1957, pp. 1389-1401.
+
+
+
+	
+		On the shortest spanning subtree of a graph and the traveling salesman problem
+		
+			JosephBKruskal
+		
+		10.1090/s0002-9939-1956-0078686-7
+	
+	
+		Proceedings of the American Mathematical Society
+		Proc. Amer. Math. Soc.
+		0002-9939
+		1088-6826
+		
+			7
+			1
+			
+			1956
+			American Mathematical Society (AMS)
+		
+	
+	Kruskal, J. B., "On the Shortest Spanning Subtree of a Graph and the Traveling Salesman Problem," Proceedings of the American Mathematical society, Vol. 7, No. 1, 1956, pp. 48-50.
+
+
+
+	
+		Silhouettes: A graphical aid to the interpretation and validation of cluster analysis
+		
+			PeterJRousseeuw
+		
+		10.1016/0377-0427(87)90125-7
+	
+	
+		Journal of Computational and Applied Mathematics
+		Journal of Computational and Applied Mathematics
+		0377-0427
+		
+			20
+			1
+			
+			Nov. 1987
+			Elsevier BV
+		
+	
+	Rousseeuw, P., "Silhouettes: A Graphical Aid to the Interpretation and Validation of Cluster Analysis," J. Comput. Appl. Math., Vol. 20, No. 1, Nov. 1987, pp. 53-65.
+
+
+
+	
+		The quickhull algorithm for convex hulls
+		
+			CBradfordBarber
+		
+		
+			DavidPDobkin
+		
+		
+			HannuHuhdanpaa
+		
+		10.1145/235815.235821
+	
+	
+		ACM Transactions on Mathematical Software
+		ACM Trans. Math. Softw.
+		0098-3500
+		1557-7295
+		
+			22
+			4
+			
+			1996
+			Association for Computing Machinery (ACM)
+		
+	
+	Barber, C. B., Dobkin, D. P., and Huhdanpaa, H., "The Quickhull Algorithm for Convex Hulls," ACM Transactions on Mathematical Software (TOMS), Vol. 22, No. 4, 1996, pp. 469-483.
+
+
+
+	
+		
+			SAVavasis
+		
+		Nonlinear Optimization: Complexity Issues
+		
+			Oxford University Press, Inc
+			1991
+		
+	
+	Vavasis, S. A., Nonlinear Optimization: Complexity Issues, Oxford University Press, Inc., 1991.
+
+
+
+	
+		An algorithm for quadratic programming
+		
+			MargueriteFrank
+		
+		
+			PhilipWolfe
+		
+		10.1002/nav.3800030109
+	
+	
+		Naval Research Logistics Quarterly
+		Naval Research Logistics
+		0028-1441
+		1931-9193
+		
+			3
+			1-2
+			
+			1956
+			Wiley
+		
+	
+	Frank, M. and Wolfe, P., "An Algorithm for Quadratic Programming," Naval research logistics quarterly, Vol. 3, No. 1-2, 1956, pp. 95-110.
+
+
+
+	
+		Quadratic programming with one negative eigenvalue is NP-hard
+		
+			PanosMPardalos
+		
+		
+			StephenAVavasis
+		
+		10.1007/bf00120662
+	
+	
+		Journal of Global Optimization
+		J Glob Optim
+		0925-5001
+		1573-2916
+		
+			1
+			1
+			
+			1991
+			Springer Science and Business Media LLC
+		
+	
+	Pardalos, P. M. and Vavasis, S. A., "Quadratic Programming With One Negative Eigenvalue is NP-hard," Journal of Global Optimization, Vol. 1, No. 1, 1991, pp. 15-22.
+
+
+
+	
+		OBBTree
+		
+			SGottschalk
+		
+		
+			MCLin
+		
+		
+			DManocha
+		
+		10.1145/237170.237244
+	
+	
+		Proceedings of the 23rd annual conference on Computer graphics and interactive techniques
+		the 23rd annual conference on Computer graphics and interactive techniques
+		
+			ACM
+			1996
+			
+		
+	
+	Gottschalk, S., Lin, M. C., and Manocha, D., "OBBTree: A Hierarchical Structure for Rapid Interference Detection," Proceedings of the 23rd annual conference on Computer graphics and interactive techniques, ACM, 1996, pp. 171-180.
+
+
+
+	
+		Improved Linear Integer Programming Formulations of Nonlinear Integer Problems
+		
+			FredGlover
+		
+		10.1287/mnsc.22.4.455
+	
+	
+		Management Science
+		Management Science
+		0025-1909
+		1526-5501
+		
+			22
+			4
+			
+			1975
+			Institute for Operations Research and the Management Sciences (INFORMS)
+		
+	
+	Glover, F., "Improved Linear Integer Programming Formulations of Nonlinear Integer Problems," Management Science, Vol. 22, No. 4, 1975, pp. 455-460.
+
+
+
+	
+		Linear forms of nonlinear expressions: New insights on old ideas
+		
+			WarrenPAdams
+		
+		
+			RichardJForrester
+		
+		10.1016/j.orl.2006.08.008
+	
+	
+		Operations Research Letters
+		Operations Research Letters
+		0167-6377
+		
+			35
+			4
+			
+			2007
+			Elsevier BV
+		
+	
+	Adams, W. P. and Forrester, R. J., "Linear Forms of Nonlinear Expressions," Operations Research Letters, Vol. 35, No. 4, 2007, pp. 510-518.
+
+
+
+	
+		Gurobi announces Gurobi Optimizer 3.0
+		10.1287/orms.2010.03.09
+		
+			2015
+			Institute for Operations Research and the Management Sciences (INFORMS)
+		
+	
+	Gurobi Optimization, Inc., "Gurobi Optimizer Reference Manual," 2015.
+
+
+				
+			
+		
+	

@@ -1,0 +1,509 @@
+
+	
+	
+		
+I. IntroductionDVERSE weather is the leading cause of flight delay in the US National Airspace System, while convective weather cells, or severe thunderstorms, account for 60% of weather related delays 1 .Because of uncertainty in weather forecasts, however, airline dispatchers typically file flight plans that bypass convective weather activity by a conservative distance, increasing delay.Similarly Federal Aviation Administration (FAA) traffic managers implement standard reroutes for groups of flights, e.g., playbook routes and coded departure routes, that also bypass convective weather by a conservative amount.Weather forecasts do not always match current conditions as flights progress along their planned routes, and because airline dispatchers and FAA traffic managers are especially busy during weather events, they may miss workable opportunities for more efficient routings around adverse weather.The Dynamic Weather Routes (DWR) tool is a ground-based trajectory automation system that continuously and automatically analyzes active in-flight aircraft in en route airspace to find simple modifications to flight plan routes that can save significant flying time and be easily communicated to pilots and controllers, while avoiding weather and considering traffic conflicts, airspace sector congestion, special use airspace, and FAA routing restrictions. 2hat reduces delay, instead of attempting to identify the most optimal routing.Other related research includes Ref. 7, which develops a concept to allow multiple flights within a specified proximity or region to receive shorter routings in an operationally efficient manner.Ref. 8 describes a concept for tactical reroutes around convective weather that leverages new technologies to automate the necessary coordination between traffic managers and controllers.The concept assumes the use of the Corridor Integrated Weather System (CIWS) and Convective Weather Avoidance Model (CWAM) for weather detection and reroute generation, and incorporates route acceptability factors described in Ref. 5. Ref. 9 presents the concept of Traffic Aware Strategic Aircrew Requests (TASAR), which combines Automatic Dependent Surveillance-Broadcast (ADS-B) and airborne automation to enable user-optimal in-flight trajectory re-planning and to increase the likelihood of ATC approval for the resulting trajectory change request, incorporating traffic, weather, and airspace information in the optimization process.The main difference between DWR and other automation for weather avoidance is that DWR route advisories are triggered by detected opportunities for more efficient time saving routes around weather.In most other related research, route advisories are triggered when automation determines that a flight, or group of flights, must alter their routes to avoid weather on their current route.The approach described in this paper for extracting and using historical waypoint combination counts is detailed in Section II, followed by an application of the approach to 50 historical DWR advised routes from May 29, 2013 in Section III.The approach is validated by calculating usage metrics for 29 days of historical DWR route advisories from 2014, which is described in Section IV, followed by conclusions and recommendations in Section V.
+II. ApproachData mining and machine learning techniques have been applied to learn trends and correlations from historical data in many fields, and Air Traffic Management is no exception 10,11,12,13,14,15,16 .However, in order for data mining to be useful, it is critical that the correct data is used and that it is used in the correct form, requiring the application to be well understood.The following describes the assumptions for computing DWR route advisories and evaluating historically observed routes, and how they were applied in this analysis.In this paper, to identify historically observed routes that meet DWR route advisory requirements, it is not the historical usage of individual waypoints that is relevant, but the historical usage of the combination of waypoints that make up a routing from the maneuver start point to auxiliary waypoint, and auxiliary waypoint to return capture fix.Furthermore, it is hypothesized that it is not only the historical usage of the full DWR route advisory, from the maneuver start point all the way to the return capture fix, that is relevant, but also the historical usage of key segments of the full routing.In most DWR advised routes, the maneuver start point does not coincide with a named fix or VOR (Very high frequency Omni-directional Range), but instead represents a point on the current trajectory, nominally five minutes downstream of the aircraft's present position from which the DWR maneuver can begin.The maneuver start point enables the user to incorporate the expected time required to coordinate a route change and have this coordination time included in the flight time savings computation and the weather and traffic conflict detection analysis.† † This is in contrast to the return capture fix, which is always a named waypoint on the original flight plan, and the auxiliary waypoints, which are "snapped-to" named waypoints by DWR ‡ ‡ .Consequently, very few, if any, routings will be identified in historical data that specifically include maneuver start points that are used by DWR.For this reason, we identify common historical routings based on the originating sector instead, as shown in Figure 1a.An observed routing in the form of a combination of waypoints in a flight plan or Center route amendment is therefore considered to correlate with a DWR route advisory if the observed routing intersects the sector in which the maneuver start point is located (referred to as the maneuver start sector), and includes waypoints that match, sequentially, any proposed DWR auxiliary waypoints and return capture fix.Another assumption is that routings can be concatenated -an historically observed routing from the maneuver start point to an auxiliary waypoint can be concatenated with another historically observed routing from the sector containing the auxiliary waypoint (the auxiliary waypoint sector) to the return capture fix.This difference is illustrated in Figure 1b.By considering these concatenated routings, the detection of historically observed routes that meet DWR requirements may be improved, while the routing may still have increased operational acceptability over routings not appearing in the data, even if the full routing from the maneuver start point to the return capture fix (Figure 1a) has never been observed historically.More than two combinations of historically observed routings can also be concatenated in this fashion.
+A. Quantification of Historical Route UsageHistorically observed routings were extracted from flight plans and Center route amendments in historical Aircraft Situation Display to Industry (ASDI) data for all sectors in the airspace considered, generating tables of historically observed routings, with counts of historical usage, by maneuver start sector.These are referred to as common routing tables.Routings were only extracted for local times between 05h00 and 00h00 (midnight), to ensure that the routings identified did not represent nighttime operations when unusual routings may be widely allowed because of very low traffic.The tables that are generated can then be filtered by auxiliary waypoint or return capture fix, to show a list of all flown routings from the sector of interest to the fix of interest, with counts of historical usage.These routes can then be further filtered to meet other DWR routing requirements (for avoiding weather, traffic conflicts, airspace sector congestion, special use airspace, and FAA routing restrictions).An example of part of such a common routing table is shown in Table 1, with the listed routings plotted in Figure 2. The table is filtered for routings from ZFW48 (a sector in Fort Worth Center) to the Albuquerque VOR (ABQ), that were observed more than 10 times during the month of April 2015.This month was chosen as an initial training set because it has lower traffic than summer months, reducing computation times, but still captures periods of convective activity in the region studied (ZFW and adjacent centers).Note that routes with waypoints in fixradial-distance (FRD) format or latitude-longitude pairs are discarded, as they do not represent named waypoints.Route start points in FRD format or latitude-longitude pairs are, however, included in the table counts (although route start points are not shown in Table 1).Tables are only generated for high altitude and super high altitude sectors because DWR only operates on en-route airspace.Despite the fact that the current implementation of DWR allows up to only two auxiliary waypoints, waypoint combinations of any number of auxiliary waypoints are extracted.This provides the flexibility for this approach to use more than two auxiliary waypoints if no common routings can be identified with two or fewer auxiliary waypoints.Note that some of the routings include a large number of fixes, some of which may be extracted from the parsing of a jet-route.Many of these routings also represent arrival flows into an airport (in this case Albuquerque International Sunport), so are often not applicable to DWR flights.They are also difficult to communicate to pilots and controllers.Hence, the algorithm described below includes a constraint on route complexity.However, for completeness, these routes are included here.The most common routing observed in April 2015 from sector ZFW48 to ABQ is highlighted in Table 1, and was of the form: PNH.TCC.ACH.CLUMP.ABQ Note that PNH is not in ZFW48.It represents the first fix on the routing after ZFW48 is entered.Note also that not all 526 occurrences of this routing had the same previous fix to PNH.All routings that passed through ZFW48 and then followed the routing described are included in this count.
+B. DWR Usage of Common Routing InformationIn this section an algorithm is described by which the common routing tables may be used to replace a nominal DWR route advisory with a common routing from historical data that is nearby the nominal DWR route and has similar flight time savings and air traffic metrics.The algorithm could be automated in software, but in this analysis the automation approach is tested by generating a DWR route advisory before manually stepping through the algorithm shown in Figure 3, and described in detail below, to identify and evaluate a common nearby routing.As shown in Figure 3, the maneuver start sector is first identified based on the location of the DWR advised maneuver start point.The corresponding common routing table is then filtered such that the final route fix matches the DWR advised return capture fix.If common routings to the return capture fix exist, the most common routing is evaluated for conformance to a set of constraints.This may include the DWR constraints (avoiding weather, traffic conflicts, airspace sector congestion, special use airspace, and FAA routing restrictions), and a series of efficiency constraints (such as a limit on the perpendicular distance of the routing from the original DWR advised route, a limit on how much less delay reduction results from the modified route relative to the original DWR advised route, a limit on the number of waypoints included in the routing, and a lower limit on how often the routing must be observed in the historical data).If the routing complies with these constraints, it is recorded.The next most common routing is then evaluated, until all common routings between the maneuver start sector and return capture fix are evaluated.Note that more than one routing may be recorded.The algorithm then evaluates common routings from the maneuver start sector to the DWR advised auxiliary waypoint, recording any that meet all constraints.Other waypoints within a specified distance of the auxiliary waypoint are also evaluated as a potential alternative to the DWR advised auxiliary waypoint.Again, more than one common routing may be recorded.Common routings are then examined from the sector containing each of the potential auxiliary waypoints to the return capture fix.Any common routings identified that meet all the constraints are recorded.This may include routings that explicitly include the potential auxiliary waypoints, and routings that do not (but do originate in the sector in which the potential auxiliary waypoint is located).In this way, common routings are recorded from the maneuver start sector to the return capture fix, via a potential auxiliary waypoint.All recorded common routings from the maneuver start sector to return capture fix are then evaluated based on resulting delay savings, how often they (or their components) feature in the historical data, and complexity (simple routes with few waypoints are favored to complex routings with a large number of waypoints).One routing is selected for display to the dispatcher for approval.If no routing is identified, other possible return capture fixes on the original flight plan are examined using the same algorithm.If no return capture fix is identified that has a common routing that meets all the constraints, the original DWR advised route is output instead.Note that this approach is less restrictive than finding a complete common routing from the maneuver start sector all the way to the return capture fix (as shown in Figure 1a).This is because the routing from the auxiliary waypoint to the return capture fix need not actually include the auxiliary waypoint -it must only come from the sector in which the auxiliary waypoint is located.
+C. Sample ApplicationOne month of aircraft flight plan data, from April 2015, were analyzed to generate historical routing data.This is considered to be the 'training set.'In future work, more data will be incorporated, such as from a full year, so as to incorporate flight routings during significant summer convective weather events, for example.Flight plans from ASDI data, filtered for periods from 5am to midnight were processed, generating historical routing data for all sectors in ZFW, and its first tier adjacent Centers, i.e., Albuquerque Center (ZAB), Houston Center (ZHU), Memphis Center (ZME), and Kansas City Center (ZKC).An example of the application of the approach is shown in Figure 4, showing the dispatcher display in the DWR Graphical User Interface (GUI).See Ref. 2 for a description of the full DWR GUI.In Figure 4 a flight is filed on an initial routing to Denver International Airport (KDEN) with the following flight plan: KATL./.SJI031045..IAH.J86.JCT..FTI..ALS.LARKS7.KDEN This routing, shown in solid green in Figure 4, routes the flight significantly further to the south than is necessary to avoid the local weather, as shown.Accordingly, DWR identifies a shorter routing, that will save the flight 25 minutes of flight time.This shorter routing, shown in Figure 4 as a dashed white line, is as follows: KATL./.MCB147025..JEN..ALS.LARKS7.KDEN The maneuver start sector, where the FRD waypoint MCB147025 is located, is identified as ZHU65.The common routing table for this sector is identified, and, as described in the flowchart in Figure 3, is filtered for the return capture fix, ALS, as shown in Table A1 in Appendix A. All 29 of these routings are examined against all constraints, and none are found to meet all constraints.Based on the flowchart in Figure 3, routings are now examined from the maneuver start sector to the DWR advised auxiliary waypoint, JEN.The common routings table for ZHU65, filtered for JEN, is shown in Table A2 in Appendix A. The most common routing shown here, LFK..JEN, meets all the DWR and efficiency constraints, and is therefore recorded for further analysis.None of the other 4 routings meet all constraints.
+Figure 4. Example application of Common Routing Tables in DWRAs described in the flowchart in Figure 3, routings are also examined from the maneuver start sector to alternative auxiliary waypoints in the vicinity of JEN, typically high-powered VORs.One such waypoint is ACT.The common routings table for ZHU65 is therefore filtered for ACT, as shown in Table A3 in Appendix A. The most common routing shown here, direct from ZHU65 to ACT, meets all the DWR and efficiency constraints, and is therefore also recorded for further analysis.Other routings also meet the constraints, but are not described here for simplicity.The two recorded routings extend from the maneuver start sector to an auxiliary waypoint, so routings must now be identified from the sectors containing these auxiliary waypoints, to the return capture fix.The original auxiliary waypoint, JEN, is located inside ZFW65, so the common routing table for this sector is identified and filtered for the return capture fix, ALS, as shown Table A4 in Appendix A. The second most commonly observed routing, PNH.ALS, meets all the constraints, so is recorded for further analysis.Similarly, the direct routing from ZFW65 to ALS also meets all constraints, and is recorded for further analysis, as are the routings GTH..PNH..ALS and GTH..ALS.Note that there is no routing from ZFW65 to ALS that actually includes JEN.The alternative auxiliary waypoint identified, ACT, is located inside ZFW46, so the common routing table for this sector is also identified and filtered for the return capture fix, ALS, as shown in Table A5 in Appendix A. The most commonly observed routing, PNH..ALS, meets all the constraints, so is recorded for further analysis.Similarly, the direct routing from ZFW46 to ALS also meets all constraints, and is recorded for further analysis, as are the routings GTH..ALS and GTH..PNH..ALS.Note that there is a routing to ALS that includes ACT: ACT..HICOE..ABI..DUMPS..TURKI..PNH..ALS.This routing does not, however, meet the efficiency constraints, as it takes the flight to the west before routing it north to ALS, and includes too many 'via waypoints' for practical communication.This illustrates the importance of having the flexibility to include routings that may not utilize the original auxiliary waypoint, but do pass through the sector containing the original auxiliary waypoint.Ultimately, an automated system will be implemented that applies the efficiency constraints, but this is left for future work.Given the recorded routings from the maneuver start sector to the auxiliary waypoints, and from the auxiliary waypoints to the return capture fix, the combined routings that must be evaluated are shown in Table 2, with delay savings, number of via waypoints and historical usage.The original DWR advised route is also shown.For historical usage, the historical usage of the full routings is shown (zeros in all cases shown here), and applying the concatenation approach described in Section IIB.In the latter case, the lowest historical usage across all routings segments is quoted, with the historical usage on each segment listed in brackets.These routings are evaluated based on delay savings, how often they appear in the historical data from April 2015, and their complexity.For this paper, the routing MCB147025..ACT..PNH..ALS.LARKS7.KDEN is selected based on its high historical usage and the delay savings.The route includes the most common routing from ZHU65 to ACT (observed 127 times in April 2015), the most common routing from ZFW46 to ALS (observed 762 times in April 2015), and provides a delay savings of 24 minutes, less than a minute smaller than the delay savings of the original DWR advised routing.This routing is shown in Figure 4 as a dotted yellow line.An application of the approach to a larger set of DWR route advisories is presented in Section III below.
+III. ApplicationIn order to evaluate how the approach would perform on real traffic, the algorithm described in Figure 3 was manually applied by the authors to 50 route advisories generated by DWR for a playback of 50 historically observed flights on May 29, 2013, from 22:49 to 23:19 Zulu (a period of 30 minutes).While it is entirely possible to automate the approach, building the functionality into DWR, this was not done for this paper, and is left for future work.The period for which DWR advised routes were generated captures a variety of flights operating in ZFW and its adjacent Centers, including 19 different aircraft types, operating 46 unique routes from 23 different origin airports, and destined for 25 different airports.Of these flights, 14% depart from an airport in ZFW, 84% overfly the Center, while 2% arrive at an airport in ZFW.Of the advised routes generated by DWR for these flights, 38% are direct from the maneuver start point to return capture fix, 54% use a single auxiliary waypoint between the maneuver start point to return capture fix, while the remaining 8% use two auxiliary waypoints.Each DWR generated route advisory was compared to the common routing tables generated from observed flight plans and Center route amendments in April 2015 and modified in an attempt to improve operational acceptability using the approach described in Section IIB.Common routings were considered acceptable only if they included fewer than 5 auxiliary waypoints, had a delay savings relative to the original flight plan of more than 4 minutes, and were observed at least once in April 2015 (i.e., their historical count is 1 or higher).Subject to these constraints, common routings were chosen based on delay savings -so a routing with high delay savings and low historical usage was chosen over a routing with low delay savings and high historical usage, as long as the routing appeared at least once in April 2015.The sensitivity of the results to these criteria is discussed at the end of this section.Statistics describing the original DWR advised routes are shown in Table 3, including average time savings relative to their original flight plans and two historical usage counts indicating how often the routings were observed in the historical data for April 2015 -one based on how often the full DWR advised route was observed in April 2015, and one based on how often the segments that make up the DWR advised route (defined from the maneuver start sector to auxiliary waypoint, and auxiliary waypoint to return capture fix) were observed in April 2015, applying the concatenation approach described in Section II.In the latter case, for each advised route the lowest historical count of all segments is listed § § .The historical count shown in Table 3 represents the average of these lowest counts across all DWR advised routes.For each historical usage count shown in Table 3, the percentage of DWR advised routes appearing in the historical data is also shown.Each full DWR advised route, from maneuver start sector to return capture fix, appeared 24 times, on average, in the historical routing data from April 2015.However, Only 20% of the full DWR advised routes, from maneuver start sector to return capture fix, actually appear in the historical data, with the remaining 80% not observed in April 2015 at all.75% of the routes not observed in the data are DWR advised routes via an auxiliary waypoint.Comparing each segment of the DWR advised route, applying the concatenation approach described in Section II, the average historical count increases to 53, with 44% of the routes appearing in the historical data -still less than half.This suggests that while the average delay savings are good, many of the DWR advised routes have not been observed in the historical data from April 2015, and may therefore have had limited operational acceptability.Not shown in Table 3 is that 64% of the routes not appearing in the historical data are DWR advised routes via an auxiliary waypoint.Of the 50 advised routes generated by DWR, common routings from the historical data for April 2015 were identified for 49 -no solution was found for only one DWR advised route.Seven of the common routings identified were discarded because the resulting timesaving relative to their original flight plans was too low (under 4 minutes).Summary statistics are presented in Table 4 for the remaining 42 flights.Of these flights, full routings from maneuver start sector to return capture fix were identified in the historical data for 24 flights (57%), while concatenated routings were identified for all 42 flights.Not shown in Table 4 is that 75% of the full routes not appearing in the historical data are via an auxiliary waypoint.As shown in Table 4, the average timesaving for the new common routings is 10.5 minutes, on average only 0.8 minutes (47 seconds) less than the original DWR advised route timesaving for the corresponding flights *** .The full common routings, from maneuver start sector to return capture fix, appear on average 46 times in the historical data, on average 18 more times in April 2015 than the corresponding original DWR full routing † † † .If each segment of the routing is compared to the historical data, applying the concatenation approach described in Section II, the average historical count increases to 112, with each common routing appearing on average 49 times more in April 2015 than the corresponding original DWR concatenated routing † † † .Not shown in Table 4 is that only 12 (29%) of the 42 original DWR advised routes for which common routings were identified remain unchanged relative to the original DWR advised routes (i.e., the common routing matches the DWR advised route exactly).Figure 5 shows histograms for the difference in delay savings and historical count (applying the concatenation approach) between the original DWR advised routes and modified DWR advised routes applying common routings.All modified routes show either the same or decreased delay savings relative to the original DWR advised routes, and the same or an increased number of times it was observed in the historical data from April 2015.For the majority of modified routes, the delay savings are within 1 minute of the original DWR advised route delay savings, *** Calculated by averaging the difference between the original and modified routing delay savings, across only the 42 routes for which modified DWR advised routes were identified.† † † Calculating by averaging the difference between the original and modified routing counts, across only the 42 routes for which modified DWR advised routes were identified.although there are some modified routes with delay savings more than 4 minutes less than that of the original DWR advised routes.The modified routes were most commonly observed in the historical data up to 25 times more than the original DWR advised route, although some modified routes were observed over 450 times more than the corresponding original DWR advised route.The results described above suggest that the approach introduced in this paper to improve the operational acceptability of DWR advised routes can be used to identify routes that have greater historical usage than current DWR advised routes, particularly if the concatenation approach is applied, while sacrificing very little timesaving per flight (only 47 seconds, on average, for the application These results are, however, sensitive to the choice of constraints on delay savings and historical count, and to how common routings are chosen -based on highest delay savings or highest historical count.If the required delay savings are reduced to anything greater than zero, the required historical count is increased to greater than 10, and common routings chosen based on historical count, not delay savings, solutions are again identified for 42 flights, but average delay savings per flight reduces to 8.9 minutes, while average historical counts increase to 66 and 160, respectively, comparing full routings and concatenated routings.There is therefore a tradeoff between delay savings and historical usage.While these results are promising, they do not provide an indication of whether these modified DWR route advisories would actually be accepted by dispatchers or ATC.Similarly, they do not provide an indication of how important historical usage is to operational acceptability by dispatchers and ATC.To quantify this, we perform a detailed validation exercise, comparing past DWR route advisories, dispatcher accepted DWR route advisories, and observed Center route amendments to the common routings generated in this research.This validation exercise is described in Section IV.
+IV. ValidationIn order to validate that a route's historical usage is relevant to its operational acceptability by airline dispatchers and ATC, historical DWR data were analyzed for a correlation between historical route usage and dispatcher and ATC acceptance, directly comparing historical dispatcher and ATC accepted and rejected DWR route advisories to the historical routing data generated for April 2015.Historical DWR data were extracted for 29 days from May through September 2014.‡ ‡ ‡ These represent days where total potential savings for American Airlines flights are high (greater than 200 min), and American Airlines' use of DWR is at least moderate (5% or more of DWR advised routes are accepted by dispatchers).For these days, initial DWR route advisories, dispatcher accepted DWR routes, and observed ATC implemented Center route amendments are compared to the historical routing data generated for April 2015.Results are shown in Table 5, Table 6, Figure 6 and Figure 7. Dispatcher accepted routings include all those DWR route advisories for which American Airlines dispatchers rated the route acceptable and therefore an ACARS (Aircraft Communications Addressing and Reporting System) message was sent to the flight crew as a route change proposal.These routings may have been modified relative to the original routing advised by DWR.Dispatcher ‡ ‡ ‡ May 9, 12, 22, 23, and 24; June 1, 9, 10, 12, 19, 22, 23, 24, 25, 27, and 28; July 2, 3, 9, 10, 17, and 23; Aug 29; Sept. 2, 6, 10, 12, 26, and 30.rejected routings include all those DWR route advisories for which American Airlines dispatchers rated the route unacceptable, and any DWR route advisories that were modified by dispatchers before being accepted.No 'cancelled' DWR route advisories are considered in this analysis, because dispatchers may cancel a DWR route advisory for any number of reasons not associated with its viability, such as workload.ATC accepted routings are all those observed Center route amendments that are made within 30 minutes of a DWR route advisory being accepted by a dispatcher.This includes observed Center route amendments that match the accepted DWR route advisory, and observed Center route amendments that are different to the accepted DWR route advisory.These latter Center route amendments are considered to be have been modified relative to the dispatcher accepted DWR route advisory.ATC rejected routings are all those accepted DWR route advisories that either had no observed Center route amendment implemented within 30 minutes of it being accepted by the dispatcher, or were modified by the controller before being implemented.Table 5 shows the number of dispatcher and controller accepted and rejected routings in the validation set (i.e., the 29 days analyzed from 2014), and the average historical usage of these routings identified by comparing them to the historical routing data generated for April 2015.Note, however, that not all dispatcher and controller accepted (or rejected) routes are observed in the historical data from April 2015.Confusion matrices are therefore included in Figure 6 showing the percentages of dispatcher and controller accepted and rejected routings that appear in the historical data.The results are also filtered for those routings with no auxiliary waypoint (direct to the return capture fix) and those routings with one or more auxiliary waypoints in Table 6 and Figure 7.For DWR route advisories or observed Center route amendments with an auxiliary waypoint we compare each segment of the routing to the historical routing data (from maneuver start sector to auxiliary waypoint, and then separately from auxiliary waypoint sector to return capture fix), applying the concatenation approach described in Section II.As in Table 3 andTable 4, for each DWR route advisory or Center route amendment in the validation set we record the lowest historical count of all segments.The average historical count in Table 5 and Table 6 represents the average of these lowest historical counts across all DWR route advisories or Center route amendments in the validation set.Historical counts were also generated comparing full routings, but these are not included in this paper.Note that in Table 5 and Table 6 the sum of dispatcher accepted and rejected DWR route advisories does not necessarily equal the sum of ATC accepted and rejected DWR route advisories.This is because any number of Center route amendments may be implemented in response to a single dispatcher accepted DWR route advisory.As can be seen in Table 5, on comparing DWR route advisories that were accepted and rejected by dispatchers to the historical routing data generated for April 2015 (columns 4 and 5), the dispatcher accepted routings appeared, on average, more often in April 2015 than the dispatcher rejected routings (216 vs. 69).Similarly, in Figure 6a, a higher percentage of dispatcher accepted routings appeared in the historical data than dispatcher rejected routings (73% vs. 42%).However, 27% of dispatcher accepted routings were not observed in the data, which is still a meaningful percentage of accepted DWR route advisories, showing that many routings accepted by dispatchers were not used in April 2015.This may partly be because the validation set spans the summer of 2014, which likely saw different weather (and therefore potentially routings) to April 2015.Comparing the ATC response to accept or reject routings in the form of a Center route amendment to the historical routing data generated for April 2015 shows similar results.The ATC accepted routings appeared, on average, more commonly in April 2015 than the ATC rejected routings (857 vs. 117).Similarly, in Figure 6b a higher percentage of ATC accepted routings appeared in the historical data than ATC rejected routings (96% vs. 66%).In fact, almost all ATC accepted routings in the validation set were commonly used in April 2015, suggesting that historical usage is indeed a consideration when controllers make Center route amendments.Comparing the dispatcher and ATC response, the historical count for ATC accepted routings in Table 5 is particularly high at 857.The historical count for ATC rejected routings is higher than that for dispatcher rejected routings (117 vs. 69), but this is expected because it is only the dispatcher accepted routings that ATC has the opportunity to reject, which have a higher historical count of 216.In Table 5, note that the high number of observed ATC rejected routes in column 3 ( 146) is partly because of the way ATC rejected routes are counted -including both dispatcher accepted routes for which no Center route amendment was implemented, and dispatcher accepted routes that were modified before being implemented in the form of a Center route amendment -but does still indicate that relatively few of the 194 dispatcher accepted routes were implemented by ATC with no change.The high number of observed ATC accepted routes in column 2 (198) is primarily because multiple Center route amendments were implemented in response to each ATC accepted DWR advisory.7 filter the results in Table 5 and Figure 6 for the use of auxiliary waypoints.Direct routings are most common, and appear much more frequently in the historical routing data than routings with auxiliary waypoints.Similarly, in Figure 7a and b, high percentages of direct routings appear in the historical routing data.In contrast only 25% of dispatcher accepted routings via an auxiliary waypoint were observed in April 2015, with an historical count in Table 6 of only 31.This could mean that a route's common use is not a primary consideration when dispatchers choose to accept or reject a routing -particularly one with an auxiliary waypoint.The results are different for the ATC response, however.The historical count of accepted Center route amendments via an auxiliary waypoint in Table 6 is 333, while in Figure 7d almost all ATC accepted routings are observed in the historical data (93%).This suggests that historical usage is indeed a consideration when controllers make Center route amendments.Note that if we compare full DWR advisory routings to the historical data (not shown in Table 5 and Table 6), instead of applying the concatenation approach, only 46% of ATC accepted routings via an auxiliary waypoint are found in the historical data from April 2015 (as opposed to the 93% applying the concatenation approach in Figure 7b).Part of the reason for this is that auxiliary waypoints are primarily used to avoid weather.If there was no weather to avoid, the routing used would typically be direct, with no auxiliary waypoint.Weather is highly variable, and therefore it is highly likely that many of the specific full routings used to avoid different weather cells may be unique.It is therefore expected that the common use of full routings with auxiliary waypoints would be significantly less than direct routings.These results illustrate the value of using the concatenation approach.Furthermore, the high percentage of concatenated ATC accepted routings via an auxiliary waypoint appearing in the data (93%) validates the concatenation approach, as it appears to be applied by air traffic controllers themselves.
+V. Conclusion & RecommendationsIn this paper we analyze the historical usage of different flight routings, and quantify the relevance of their historical usage to their acceptance by dispatchers and ATC.Historical routing data, indicating how often routings from specific sectors to specific fixes were flown historically, are generated from flight plan and Center route amendment data for April 2015.An approach is then described to use these results to improve the operational acceptability of DWR advised routes, by modifying DWR advised routes to include routings that still meet the DWR constraints to avoid weather, traffic conflicts, airspace sector congestion, special use airspace, and FAA routing restrictions, but that have high historical usage as well.Because weather is highly variable, it is difficult to identify full historical routings with high usage that avoid specific weather without significantly reducing the delay savings identified by DWR.An approach is therefore developed that allows routing segments with high historical usage to be concatenated to form routes that meet all DWR constraints, including weather.The approach is applied to a small set of 50 historical flights from a period of 30 minutes on May 29, 2013, for which DWR route advisories are generated.Of the 50 advised routes examined, solutions with sufficient delay savings were identified from the historical routing data for 42.For these, the average delay savings was 10.5 minutes, a reduction of only 47 seconds from the original DWR advised route delay savings of 11.3 minutes.The average historical usage of the advised routes in April 2015, however, increased from 53 times to 112 times (applying the approach to concatenate up to three historically observed segments to form the route advisory).This indicates that the approach that was developed is appropriate for application to real DWR route advisories, producing an increase in historical usage with relatively little reduction in delay savings.Further work is required to integrate this approach into DWR software.In order to identify how important historical route usage is to dispatchers and ATC, initial historical DWR route advisories, dispatcher accepted DWR route advisories, and observed Center route amendments from 29 days from May through September 2014 were compared to the historical routing data generated for April 2015.The results indicate that historical usage is not a clear criteria for dispatcher acceptance of DWR advised routes, with 27% of dispatcher accepted routings not appearing in the historical data analyzed at all (comparing concatenated routes).However, historical usage does appear to be a criterion for implementation by ATC, with 96% of Center route amendments implemented within 30 minutes of DWR route advisories being accepted by dispatchers appearing in the historical data analyzed (comparing concatenated routes).These ATC-implemented Center route amendments appear in the historical data from April 2015 on average 857 times.These results also validate the concatenation approach developed, whereby common route segments from the historical data are concatenated to form DWR route advisories.Future work will increase the size of the dataset from which the common routing tables are generated, including a full Severe Weather Avoidance Plan (SWAP) season, and will automate the approach described in Section II.Dispatchers and controllers likely also consider a number of other criteria than historical usage when proposed DWR routes are reviewed.In future work these other features could also be examined for their importance in a routing being accepted.These could include features already output by DWR, such as the resulting delay savings, sector counts on the modified routing, and the distance of the routing from the weather, as well as other features, such as other traffic management initiatives (TMIs) in place, the location of center boundaries etc.Data mining and machine learning techniques can be used to identify which features are most important, ultimately building a tool that is able to predict the likelihood of a DWR advised route being accepted by dispatchers and air traffic controllers.Figure 1 .1Comparison of (a) full routing approach and (b) concatenation approach to identifying routings in historical data.
+Downloaded by NASA AMES RESEARCH CENTER on August 17, 2016 | http://arc.aiaa.org| DOI: 10.2514/6.2016-3600
+Figure 5 .5Histogram showing (a) the decrease in delay savings of the modified DWR advised route applying common routings relative to the original DWR advised route; and (b) the increase in number of times the modified DWR advised route is observed in the historical data from April 2015 (applying the concatenation approach) relative to the original DWR advised route.
+Figure 6 .6Confusion matrices comparing (a) dispatcher responses, and (b) ATC responses, to DWR concatenated route advisories in the validation set, and whether or not these routes were observed in the historical data from April 2015.
+Figure 7 .7Confusion matrices comparing (a) dispatcher responses to DWR concatenated route advisories direct to the return capture fix, (b) ATC responses to DWR concatenated route advisories direct to the return capture fix, (c) dispatcher responses to DWR concatenated route advisories via at least one auxiliary waypoint, and (d) ATC responses to DWR concatenated route advisories via at least one auxiliary waypoint, and whether or not these routes were observed in the historical data from April 2015.
+
+Full Rou'ng Approach: Fullrou=ng from MSS to AWP to RCF iden=fied in historical dataReturn Capture Fix (RCF)Return(Capture(Fix((RCF)(ZFW65 Maneuver Start Point (MSP) Auxiliary Waypoint (AWP)ZFW65( Maneuver(Start(Point((MSP)( Auxiliary(Waypoint((AWP)(Maneuver Start Sector (MSS)Maneuver(Start(Sector((MSS)(
+Concatena(on)Approach:(Rou=ngs(from(MSS(to(AWP,(and(Downloaded by NASA AMES RESEARCH CENTER on August 17, 2016 | http://arc.aiaa.org| DOI: 10.2514/6.2016-3600from(AWS(to(RCF,(iden=fied(separately(in(historical(data(Auxiliary(Waypoint(Sector((AWS)(
+Table 1 . Common routings (observed more than 10 times in April 2015) originating in ZFW48, filtered for the final route fix ABQ. Routing count generated from ASDI data for April 2015. Dash (-) under 'Via' represents a direct routing from the route start sector to the final route fix. Most common route highlighted. Route Start Sector Via Final Route Fix Hist. Count1ZFW48PNH.TCC.ACH.CLUMP.ABQ526ZFW48SPS.GANJA.TURKI.TXO.MIERA.ABQ373ZFW48UKW.GTH.TXO.MIERA.ABQ157ZFW48TXO.MIERA.ABQ109ZFW48--ABQ101ZFW48TCC.ACH.CLUMP.ABQ74ZFW48PNH.TCC.ACH.ABQ54ZFW48MRMAC.IRW.CRUSR.GOONI.PNH.TCC.ACH.CLUMP.ABQ44ZFW48PNH.ACH.ABQ37ZFW48CRUSR.GOONI.PNH.TCC.ACH.CLUMP.ABQ36ZFW48ACH.ABQ27ZFW48ADM.TXO.MIERA.ABQ26ZFW48GTH.TXO.MIERA.ABQ24ZFW48ADM.PNH.TCC.ACH.CLUMP.ABQ22ZFW48ADM.PNH.TCC.ACH.ABQ22ZFW48ADM.SPS.GANJA.TURKI.TXO.MIERA.ABQ21ZFW48TXO.ABQ17ZFW48KA30Y.ABQ15ZFW48ABI.CME.HONDS.CNX.ABQ14ZFW48IRW.CRUSR.GOONI.PNH.TCC.ACH.CLUMP.ABQ11
+Figure 2. Common Routings from sector ZFW48 to waypoint ABQ (observed more than 10 times in April 2015). Routings are shown from the first fix after ZFW48 is entered to the final route fix, ABQ. Routing combination counts are indicated by the thickness of the lines between fixes. High Power VORs are shown in blue. Center and high altitude sector boundaries are shown in gray.Downloaded by NASA AMES RESEARCH CENTER on August 17, 2016 | http://arc.aiaa.org | DOI: 10.2514/6.2016-3600ABQCLUMP CNX MIERAACH CME FTI HONDS ZDV ZABTCC TXOBGD GOONI GANJA CDS GTH PNH KA30Y TURKIABI SONYA CRUSR SPS SYO ZKCADM ATOKA PLATE ZFW IRW MRMAC UKW ZFW48ZMEZHU
+Figure 3. Flowchart showing potential DWR usage of historical routing data. (MSS: Maneuver Start Sector, RCF: Return Capture Fix, AWP: Auxiliary Waypoint, AWS: Auxiliary Waypoint Sector). Figure 1 is included as an inset for ease of interpretation.Identify Maneuver Start Sector (MSS)Filter corresponding common routing table for RCFSelect most common routing from MSS to RCFrouting Select next most commonroutings More YesNoNoRouting meets constraints? Yesavailable?Select most common routing from MSS to AWPSelect next mostYesRouting meets constraints?common routingroutings MoreNoNoYesavailable?YesAnother nearbyNoAWP available?Filter corresponding common routing table for RCFSelect most common routing from AWS to RCFSelect next mostYesRouting meets constraints?common routingroutings MoreNoNoYesavailable?Record routingfrom AWS to RCFAny RCFs stillFind a new RCFYesavailable? NoAny routings recordedNoYesEvaluate all routings from MSS to RCFRevert to originalDWR trial planSelect routing based on delaysaving, commonality and complexityRecord routing from MSS to RCF Filter table for AWP Record routing from MSS to AWP Find a new nearby AWP Identify AWP Sector (AWS)
+Table 2 . Sample application routings identified for evaluation Routing (Auxiliary waypoint in Bold)2Common RoutingDWR Return Capture FixDWR Aux WaypointManeuver Start Sector Advised Routing Original DWRSearchOriginal• Airspace sector to Fix Filed Route• Fix to Fix
+Table 3 . Summary Statistics for Original DWR Advised Routes, May 29, 2013, 22:49-23:19 Zulu No. Routes in Application (May 29, 2013)3Avg. Delay SavingsAvg. no. of times routing observed in historical data (April 2015)% Appearing in historical data (April 2015)
+Table 4 . Summary Statistics for Modified DWR Advised Routes, applying Common Routings, May 29, 2013, 22:49-23:19 Zulu No. Routes in Application (May 29, 2013) Avg. Delay Savings Avg. no. of times routing observed in historical data (April 2015)4% Appearing inhistorical data(April 2015)
+Table 5 . Approach Validation Results: Concatenated Routings5Number of Observations InAverage number of times routingValidation Setobserved in historical data(29 days, 2014)(April 2015)AcceptedRejectedAcceptedRejectedDispatcher Response: DWR Route Advisories1943321669ATC Response: Center Route Amendments198146857117
+Table 6 . Approach Validation Results, Filtered for Use of Auxiliary: Concatenated Routings6Number of Observations InAverage number of times routingValidation Setobserved in historical data(29 days, 2014)(April 2015)AcceptedRejectedAcceptedRejectedDispatcher Response: DWR Route AdvisoriesDirect to return capture fix15016270130Via auxiliary waypoint44173111ATC Response: Center Route AmendmentsDirect to return capture fix170102944153Via auxiliary waypoint284433331
+Direct to return capture fixRoute ObservedDirect to return capture fixRoute ObservedHistorically (April 2015)Historically (April 2015)TrueFalseTrueFalseDispatcherAccepted87%13%ATC ResponseAccepted97%3%Response to DWRto DWR RouteRoute AdvisoryRejected75%25%AdvisoryRejected83%17%Via auxiliary waypointRoute ObservedVia auxiliary waypointRoute ObservedHistorically (April 2015)Historically (April 2015)TrueFalseTrueFalseDispatcherAccepted25%75%ATC ResponseAccepted93%7%Response to DWRto DWR RouteRoute AdvisoryRejected59%41%AdvisoryRejected25%75%
+Table 6 and6Figure
+Table A3 . Common routings originating in ZHU65, filtered for the final route fix ACT. Routing count generated from data for April 2015.A3VEILS.PEBBY.AEX.CIDOR.TBEND.VELCO.LFK.CRIED.TORNN.ACT 1 ZHU65 VEILS.PEBBY.AEX.CIDOR.TBEND.VELCO.LFK.CRIED.TORNN.ACT 1Route StartViaFinalHist.SectorRoute FixCountZHU65--ACT127ZHU65AEX.CIDOR.TBEND.VELCO.LFK.CRIED.TORNN.ACT110ZHU65MCB.ACT95ZHU65MCB.AEX.CIDOR.TBEND.VELCO.LFK.CRIED.TORNN.ACT81ZHU65LBY.MCB.AEX.CIDOR.TBEND.VELCO.LFK.CRIED.TORNN.ACT63ZHU65AEX.ACT40ZHU65LFK.CRIED.TORNN.ACT24ZHU65LLA.KANNA.MAM.BRO.CRP.ICEMN.SAT.BETTI.CWK.ACT16ZHU65FOSIN.ACT12ZHU65MCB.FOSIN.ACT11ZHU65MCB.AEX.ACT10ZHU65LBY.MCB.AEX.ACT6ZHU65AEX.LFK.ACT5ZHU65MCB.AEX.LFK.ACT3ZHU65HRV.LFK.CRIED.TORNN.ACT3ZHU65MOGAN.LCH.IAH.CUZZZ.PUFER.ACT2ZHU65LFK.ACT1ZHU65LOA.ACT1ZHU65HRV.
+Table A4 . Common routings originating in ZFW65, filtered for the final route fix ACT. Routing count generated from data for April 2015.A4Route StartViaFinalHist.SectorRoute FixCountZFW65ABI.DUMPS.TURKI.PNH.ALS61ZFW65PNH.ALS40ZFW65GTH.PNH.ALS20ZFW65HICOE.ABI.DUMPS.TURKI.PNH.ALS19ZFW65--ALS10ZFW65GTH.ALS2ZFW65ABI.LBB.TXO.ALS2ZFW65CIM.
+Table A5 . Common routings originating in ZFW46, filtered for the final route fix ACT. Routing count generated from data for April 2015.A5Route StartViaFinalHist.SectorRoute FixCountZFW46PNH.ALS762ZFW46FUZ.SPS.CDS.PNH.ALS145ZFW46SPS.CDS.PNH.ALS111ZFW46FUZ.PNH.ALS87ZFW46FUZ.BATIK.SPS.CDS.PNH.ALS78ZFW46BATIK.SPS.CDS.PNH.ALS62ZFW46--ALS35ZFW46DOLEY.PNH.ALS30ZFW46PGLET.MUTEE.HUDAD.PNH.ALS22ZFW46ACT.HICOE.ABI.DUMPS.TURKI.PNH.ALS16ZFW46HICOE.ABI.DUMPS.TURKI.PNH.ALS16ZFW46HUDAD.PNH.ALS15ZFW46GTH.ALS14ZFW46FUZ.SPS.PNH.ALS14ZFW46SPS.PNH.ALS13ZFW46EEORE.HUDAD.PNH.ALS12ZFW46ABI.ALS10ZFW46CDS.PNH.ALS8ZFW46PGLET.HUDAD.PNH.ALS8ZFW46GTH.PNH.ALS7ZFW46EEORE.BGLEE.HUDAD.PNH.ALS6ZFW46FUZ.GTH.ALS6ZFW46SPS.ALS6ZFW46FUZ.UKW.SPS.CDS.PNH.ALS6ZFW46DOLEY.FUZ.SPS.CDS.PNH.ALS6ZFW46UKW.SPS.CDS.PNH.ALS4ZFW46PGLET.MUTEE.HUDAD.ALS3ZFW46FUZ.BATIK.SPS.PNH.ALS3ZFW46RBBIT.HUDAD.PNH.ALS2ZFW46MUTEE.HUDAD.ALS2ZFW46IRW.ALS2ZFW46WSTEX.ALS2ZFW46FUZ.CDS.PNH.ALS2ZFW46HUDAD.GTH.ALS2ZFW46ADM.CRUSR.PNH.ALS2ZFW46BATIK.SPS.PNH.ALS2ZFW46MRMAC.CRUSR.PNH.ALS2ZFW46MUTEE.HUDAD.PNH.ALS2ZFW46KATZZ.PNH.ALS2ZFW46ZEMMA.CRUSR.GOONI.PNH.ALS2ZFW46EEORE.HUDAD.KENTO.ALS2ZFW46POOBR.HRPER.DYREK.TCC.ALS2ZFW46TANBE.FUZ.BATIK.SPS.CDS.PNH.ALS2ZFW46DOLEY.FUZ.PNH.ALS2ZFW46FUZ.ABI.TXO.ALS2ZFW46ABI.TXO.ALS1
+			† † That said, if the computed maneuver start point is near (a parameter nominally set to 10 nmi) a named flight plan fix, the maneuver start point will be replaced by the nearby flight plan fix.‡ ‡ The initial auxiliary waypoint generated by the Autoresolver is not typically a named waypoint.Downloaded by NASA AMES RESEARCH CENTER on August 17, 2016 | http://arc.aiaa.org| DOI: 10.2514/6.2016-3600
+			Downloaded by NASA AMES RESEARCH CENTER on August 17, 2016 | http://arc.aiaa.org| DOI: 10.2514/6.2016-3600
+			§ § For example, if the segment from maneuver start sector to auxiliary waypoint was observed 10 times, while the segment from the auxiliary waypoint sector to the return capture fix was observed 100 times, a count of 10 is quoted for this routing.Downloaded by NASA AMES RESEARCH CENTER on August 17, 2016 | http://arc.aiaa.org| DOI: 10.2514/6.2016-3600
+		
+		
+
+			
+AcknowledgmentsThe authors would like to thank Michael Drew for assistance in extracting flight plan information from ASDI data, and Scott Sahlman for providing the historical DWR data analyzed in Section IV.
+			
+
+			
+			
+			
+
+				
+
+
+	
+		Weather Forecasting Accuracy for FAA Traffic Flow Management
+		10.17226/10637
+	
+	
+		Weather Forecasting Accuracy for FAA Traffic Flow Management, National Research Council Workshop Report
+		Washington DC
+		
+			National Academies Press
+			2003
+		
+	
+	Weather Forecasting Accuracy for FAA Traffic Flow Management, National Research Council Workshop Report, National Academies Press, Washington DC, 2003.
+
+
+
+	
+		Weather Forecasting Accuracy for FAA Traffic Flow Management
+		
+			DMcnally
+		
+		
+			KSheth
+		
+		
+			CGong
+		
+		
+			JLove
+		
+		
+			CLee
+		
+		
+			SSahlman
+		
+		
+			JCheng
+		
+		10.17226/10637
+		
+			2003
+			National Academies Press
+			Washington DC
+		
+		
+			National Research Council Workshop
+		
+	
+	Report
+	McNally, D., Sheth, K., Gong, C., Love, J., Lee, C., Sahlman, S., Cheng, J., "Dynamic Weather Routes: A Weather 1 Weather Forecasting Accuracy for FAA Traffic Flow Management, National Research Council Workshop Report, National Academies Press, Washington DC, 2003.
+
+
+
+	
+		Dynamic Weather Routes: A Weather Avoidance System for Near-Term Trajectory-Based Operations
+		
+			DMcnally
+		
+		
+			KSheth
+		
+		
+			CGong
+		
+		
+			JLove
+		
+		
+			CLee
+		
+		
+			SSahlman
+		
+		
+			JCheng
+		
+	
+	
+		28th International Congress of the Aeronautical Sciences
+		Brisbane Australia
+		
+			September 2012
+		
+	
+	McNally, D., Sheth, K., Gong, C., Love, J., Lee, C., Sahlman, S., Cheng, J., "Dynamic Weather Routes: A Weather Avoidance System for Near-Term Trajectory-Based Operations," 28th International Congress of the Aeronautical Sciences, Brisbane Australia, September 2012.
+
+
+
+	
+		Automated Separation Assurance with Weather and Uncertainty
+		
+			TALauderdale
+		
+		
+			HErzberger
+		
+		10.1007/978-4-431-54475-3_3
+	
+	
+		Lecture Notes in Electrical Engineering
+		Tokyo, Japan
+		
+			Springer Japan
+			2013
+			
+		
+	
+	Lauderdale, T., and Erzberger, H., "Automated Separation Assurance with Weather and Uncertainty," ENRI Int. Workshop on ATM/CNS, Tokyo, Japan, 2013.
+
+
+
+	
+		Dynamic Weather Routes: Two Years of Operational Testing at American Airlines
+		
+			DavidMcnally
+		
+		
+			KapilSheth
+		
+		
+			ChesterGong
+		
+		
+			MikeSterenchuk
+		
+		
+			ScottSahlman
+		
+		
+			SusanHinton
+		
+		
+			ChuHanLee
+		
+		
+			Fu-TaiShih
+		
+		10.2514/atcq.23.1.55
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			23
+			1
+			
+			2015
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	McNally, D., Sheth, K., Gong, C., Sterenchuk, M., Sahlman, S., Hinton, S., Lee, C., Shih, F-T., "Dynamic Weather Routes: Two Years of Operational Testing at American Airlines," Air Traffic Control Quarterly, Vol. 23, No. 1, pp. 55-81, 2015.
+
+
+
+	
+		Dynamically Generating Operationally Acceptable Route Alternatives Using Simulated Annealing
+		
+			ChristineTaylor
+		
+		
+			CraigWanke
+		
+		10.2514/atcq.20.1.97
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			20
+			1
+			
+			2012
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Taylor, C., and Wanke, C., "Dynamically Generating Operationally Acceptable Route Alternatives Using Simulated Annealing," Air Traffic Control Quarterly, Vol. 20, No. 1, pp. 97-121, 2012.
+
+
+
+	
+		Dynamic Generation of Operationally Acceptable Reroutes
+		
+			ChristineTaylor
+		
+		
+			CraigWanke
+		
+		10.2514/6.2009-7091
+	
+	
+		9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO)
+		Hilton Head, SC
+		
+			American Institute of Aeronautics and Astronautics
+			September 2009
+			
+		
+	
+	Taylor, C., Wanke, C., "Dynamic Generation of Operationally Acceptable Reroutes," 9th AIAA Aviation Technology, Integration, and Operations Conference, Hilton Head, SC, 21-23 September 2009.
+
+
+
+	
+		Analysis of Multiple Flight Common Route for Traffic Flow Management
+		
+			KapilSheth
+		
+		
+			AlexisClymer
+		
+		
+			AlexMorando
+		
+		
+			Fu-TaiShih
+		
+		10.2514/6.2016-4207
+	
+	
+		16th AIAA Aviation Technology, Integration, and Operations Conference
+		
+			American Institute of Aeronautics and Astronautics
+			2016. June 13-17, 2016
+		
+	
+	Sheth, K., Clymer, A., Morando, A., and Shih, F., "Analysis of Multi-Flight Common Routes for Traffic Flow Management", AIAA Aviation 2016 , June 13-17, 2016.
+
+
+
+	
+		A Concept for Tactical Reroute Generation, Evaluation and Coordination
+		
+			TimStewart
+		
+		
+			LucyAskey
+		
+		
+			MaryHokit
+		
+		10.2514/6.2012-5586
+	
+	
+		12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference and 14th AIAA/ISSMO Multidisciplinary Analysis and Optimization Conference
+		Indianapolis, IN
+		
+			American Institute of Aeronautics and Astronautics
+			September 2012
+			
+		
+	
+	Stewart, T., Askey, L., and Hokit, M., "A Concept for Tactical Reroute Generation, Evaluation, and Coordination," 12th AIAA Aviation Technology, Integration, and Operations Conference, Indianapolis, IN, 17-19 September 2012.
+
+
+
+	
+		Traffic Aware Strategic Aircrew Requests (TASAR)
+		
+			MarkBallin
+		
+		
+			DavidWing
+		
+		10.2514/6.2012-5623
+	
+	
+		12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference and 14th AIAA/ISSMO Multidisciplinary Analysis and Optimization Conference
+		Indianapolis, IN
+		
+			American Institute of Aeronautics and Astronautics
+			September 2012
+			
+		
+	
+	9 Ballin, M., Wing, D., "Traffic Aware Strategic Aircrew Requests (TASAR)," 12th AIAA Aviation Technology, Integration, and Operations Conference and 14th AIAA/ISSM, Indianapolis, IN, 17-19 September 2012.
+
+
+
+	
+		Decision support tool for predicting aircraft arrival rates from weather forecasts
+		
+			DavidASmith
+		
+		
+			LanceSherry
+		
+		10.1109/icnsurv.2008.4559186
+	
+	
+		2008 Integrated Communications, Navigation and Surveillance Conference
+		Fairfax, VA
+		
+			IEEE
+			February 2008
+		
+	
+	Smith, D.A., and Sherry, L., "Decision support tool for predicting aircraft arrival rates, Ground Delay Programs, and airport delays from weather forecasts," Proc. of International Conference on Research in Air Transportation, Fairfax, VA, February 2008.
+
+
+
+	
+		Identification of Robust Terminal-Area Routes in Convective Weather
+		
+			DianaMichalekPfeil
+		
+		
+			HamsaBalakrishnan
+		
+		10.1287/trsc.1110.0372
+	
+	
+		Transportation Science
+		Transportation Science
+		0041-1655
+		1526-5447
+		
+			46
+			1
+			
+			2011
+			Institute for Operations Research and the Management Sciences (INFORMS)
+		
+	
+	Pfeil, D.M., and Balakrishnan, H., "Identification of robust terminal-area routes in convective weather," Transportation Science, 2011.
+
+
+
+	
+		Generating day-of-operation probabilistic capacity scenarios from weather forecasts
+		
+			GurkaranBuxi
+		
+		
+			MarkHansen
+		
+		10.1016/j.trc.2012.12.006
+	
+	
+		Transportation Research Part C: Emerging Technologies
+		Transportation Research Part C: Emerging Technologies
+		0968-090X
+		
+			33
+			
+			June 2011
+			Elsevier BV
+			Berlin, Germany
+		
+	
+	Buxi, G., and Hansen, M., "Generating probabilistic capacity profiles from weather forecast: A design-of-experiment approach," Proc. of USA/Europe Air Traffic Management Research & Development Seminar, Berlin, Germany, June 2011.
+
+
+
+	
+		Modeling Weather Impact on Ground Delay Programs
+		
+			YaoWang
+		
+		
+			DeepakKulkarni
+		
+		10.4271/2011-01-2680
+	
+	
+		SAE International Journal of Aerospace
+		SAE Int. J. Aerosp.
+		1946-3901
+		
+			4
+			2
+			
+			November 2011
+			SAE International
+		
+	
+	Wang, Y., and Kulkarni, D., "Modeling weather impact on Ground Delay Programs," SAE Journal of Aerospace, 4(2):1207-1215, November 2011.
+
+
+
+	
+		Coordinated tactical air traffic and airspace management
+		
+			MichaelBloem
+		
+		
+			NicholasBambos
+		
+		10.1109/cdc.2011.6160306
+	
+	
+		IEEE Conference on Decision and Control and European Control Conference
+		Berkeley, CA
+		
+			IEEE
+			May 2012. 15
+		
+	
+	Bloem, M., Hattaway, D., and Bambos, N., "Evaluation of algorithms for a miles-in-trail decision support tool," International Conference on Research in Air Transportation, Berkeley, CA, May 2012. 15
+
+
+
+	
+		Clustering Days with Similar Airport Weather Conditions
+		
+			ShonRGrabbe
+		
+		
+			BanavarSridhar
+		
+		
+			AvijitMukherjee
+		
+		10.2514/6.2014-2712
+	
+	
+		14th AIAA Aviation Technology, Integration, and Operations Conference
+		Atlanta, GA
+		
+			American Institute of Aeronautics and Astronautics
+			June 2014
+		
+	
+	Grabbe, S.R.,, Sridhar, B., Mukherjee, A., "Clustering Days with Similar Airport Weather Conditions," 14th AIAA Aviation Technology, Integration, and Operations Conference, Atlanta, GA, June 2014.
+
+
+
+	
+		Analysis of Airport Ground Delay Program Decisions Using Data Mining Techniques
+		
+			DeepakKulkarni
+		
+		
+			YaoWang
+		
+		
+			BanavarSridhar
+		
+		10.2514/6.2014-2025
+	
+	
+		14th AIAA Aviation Technology, Integration, and Operations Conference
+		Atlanta, GA
+		
+			American Institute of Aeronautics and Astronautics
+			June 2014
+		
+	
+	Kulkarni, D., Wang, Y., Sridhar, B., "Analysis of Airport Ground Delay Program Decisions Using Data Mining Techniques," 14th AIAA Aviation Technology, Integration, and Operations Conference, Atlanta, GA, June 2014.
+
+
+				
+			
+		
+	

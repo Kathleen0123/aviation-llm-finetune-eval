@@ -1,0 +1,656 @@
+
+	
+	
+		
+IntroductionIn conjunction with its partners at MITRE and CSC, NASA has developed and tested a new version of its operational air traffic management system -Single-center Traffic Management Advisor (ScTMA).ScTMA utilized modern computing equipment capable of generating accurate fourdimensional trajectories for all aircraft bound for a particular Terminal Radar Approach Control (TRACON).The introduction of time-based metering with ScTMA at nine Air Route Traffic Control Centers (ARTCCs, or "Centers") as part of the FAA's Free Flight Program has reduced (or is expected to reduce) airborne holding, in-trail restrictions, and departure delays while increasing airport arrival rates [1].The new version is called the Multi-center Traffic Management Advisor (McTMA).Initially conceived of as an expansion of ScTMA to handle inter-ARTCC arrival problems, McTMA is built upon a modular, distributed architecture which enables traffic managers to apply time-based metering to any stream of aircraft (inbound or outbound) in any region of their airspace, bound for any destination.Moreover, McTMA can communicate and share information with neighboring McTMA systems to enable traffic managers and controllers at any group of equipped Centers to cooperatively meter traffic streams of interest.The advancements above provide traffic managers with a time-based metering capability that is broadly applicable to any capacity-demand mismatch in their airspace.At the same time, the use of time-based metering can be targeted to affect only those streams desired.The McTMA user interface is expected to become the "desktop" for decisionmaking when contemplating the application of intracenter traffic management initiatives.If any adjacent Centers have McTMA systems, then the McTMA user interface becomes the context for collaborative traffic management planning.In this case, McTMA's distributed infrastructure facilitates cooperative metering between the Centers, as opposed to the imposition of inefficient distance-based restrictions between them.Other potential future uses of the system include metering aircraft due to sector congestion and coordinating multiple independent restrictions for coincident streams of traffic.
+BackgroundTime-based metering of airborne traffic has been shown in theory and practice to be an efficient alternative to distance-based metering and static airport acceptance rates [2].Distance-based methods, such as the application of miles-in-trail (MIT) requirements, are inefficient due to their large granularity and inability to be applied on an aircraftby-aircraft basis [3].They assess capacity and demand in gross terms, typically one-hour increments, and exhibit long time constants for control.By contrast, time-based metering methods dynamically allocate capacity to the inbound traffic streams in proportion to the real-time demand.A system design which marshals sufficient computational resources has been a key to the success of time-based metering.Previous approaches to implement time-based metering in the U.S. National Airspace System (NAS), such as the Arrival Sequence Planner (ASP), suffered under the computational limitations of the NAS infrastructure and were unable to produce reliable results [4].One limitation of ScTMA is that it is not configured to solve any air traffic problems not rooted at a TRACON.It is also not fully scalable to manage regional airspace, and is limited in its ability to share information or be used collaboratively within or between Centers.It is designed to deconflict streams of aircraft inbound for a particular TRACON, without directly accounting for all traffic flow management problems in the ARTCC.European and Canadian efforts, notably MAESTRO, COMPAS, SASS, OSYRIS, and OASIS, are similarly focused on solving runway sequencing and scheduling [5][6][7] [8].More advanced concepts, such as PHARE, Co-Space, and DAG-TM, involve moving some compliance and/or separation authority to the flight deck [9].McTMA, by contrast, does not require a change in the roles of air traffic managers, controllers, or pilots.However, the McTMA advisories could be datalinked to the flight deck for compliance by the flight deck, and a conflict detection and resolution tool, called Direct-To [10], could be incorporated into McTMA to enable advanced air-ground collaborative solutions.
+McTMA ArchitectureThe McTMA system is an extension of the FAA-deployed baseline of ScTMA, and utilizes a network of Unix workstations [11].Its architecture is identical to that of ScTMA, with the following exceptions: each McTMA suite can be networked across a wide-area TMA network using a publishsubscribe protocol; McTMA can meter to points-or windows-in-space that are independent from the adapted TRACON or runways; and McTMA utilizes "distributed scheduling" to extend the metering horizon beyond the effective range of ScTMA [12].
+Basic ScTMA and McTMA features
+Trajectory calculation modulesTwo modules, the Route Analyzer (RA) and Trajectory Synthesizer (TS), form the core of the TMA trajectory prediction system.The algorithms are modeled on those used in modern airliner flight management systems [16].The RA generates a twodimensional path from the aircraft's current position to a "final" point (either the runway or the Center boundary).The TS then combines this path with aircraft state information and current atmospheric data (including winds) to generate a four-dimensional trajectory based on highly accurate aircraft models [17].An estimated time of arrival (ETA) to several points along the trajectory is then computed.
+Dynamic plannerFor points of interest (runway thresholds, meter fixes, and meter points), the Dynamic Planner (DP) uses the ETAs from the RA/TS to create a schedule which conforms to various constraints.ETAs are sorted in order of arrival, and each aircraft is given a Scheduled Time of Arrival (STA) which complies with FAA minimum separation standards, wake vortex spacing, runway occupancy time, and other constraints specified by traffic management.Aircraft are delayed from their nominal ETA if their arrival time is projected to violate any of these constraints.In addition, aircraft may be delayed in anticipation of projected constraints downstream along its route of flight, all the way to the runway threshold.A complete description of the ScTMA DP and McTMA changes to the DP are published separately [12] [18].
+Timeline graphical user interfaceTraffic managers interact with TMA through the use of the Timeline Graphical User Interface (TGUI), which consists of two main components: the timelines and the load graphs.The timelines provide a temporal view of traffic arriving over a particular point or set of points.The information displayed on the timelines is highly configurable, but a typical configuration is shown in Figure 1.Each timeline has the current time at the bottom, with graduated tick marks going up the timeline, labeled each 5 minutes.The left side of each timeline indicates the ETA of each aircraft at that fix.The right side of each timeline indicates the STA (as assigned by the DP) for each aircraft.For a given resource, these displays enable traffic managers to visualize the traffic demand, compare it to both their and the system's estimates of capacity, and examine alternatives on how to manage any problems.
+Meter listThe only interface to sector controllers is a list which can be displayed directly on their radar console display.This list, an example of which is shown in Figure 3, typically shows a sector controller the aircraft that he or she is controlling, the estimated and/or scheduled time of arrival over a fix in the sector, and the number of minutes of delay needed prior to arriving at that fix.In Figure 3, the aircraft shown are scheduled to arrive over the PV fix at the times specified, with the first two aircraft (N150TX and EGF541) needing one minute of delay each.The controller would then be responsible for obtaining this delay, by either vectoring the aircraft, issuing a speed reduction, or having the aircraft descend to a lower altitude.
+McTMA networkingInstances of McTMA can be networked together, with each McTMA predicting trajectories only through its Center's airspace, then sharing relevant information (radar track information, flight plans, Center boundary crossing information, and rate profiles) across the network via a publish-subscribe mechanism.Calculating trajectories only over its own airspace overcomes the need for each Center to know about the airspace for all other Centers, as well as to reduce errors caused by flat-map projections.The publish-subscribe mechanism enables a Center with McTMA to schedule any aircraft that will be in its airspace as soon as its flight plan becomes available in any of the Centers with McTMA.Such scheduling can be done for arrivals to a TRACON within the Center, for departures from the Center, or for aircraft simply overflying the Center.Moreover, overflights can be scheduled such that they comply with flow restrictions from other, downstream Centers equipped with McTMA.
+Meter pointsMcTMA is able to create deconflicted schedules to both runway/meter fix pairs and "meter points."Meter points can be created at any defined point within the Center, and can include an orientation, lateral extent, and vertical extent.Trajectory predictions are made to these "windows" and arrival times are deconflicted to create a schedule.The schedules to these windows can consider the restrictions placed on the streams from downstream meter points or meter fix/runway pairs.These restrictions are not directly tied to the schedules downstream, but rather are loosely coupled through the distributed scheduling system described in the next section.For example, a meter point can be created at merge points in the Center.The schedule at that point would then provide deconfliction information over that point.The schedules over such points are able to (but not required to) conform to downstream constraint information.
+Distributed schedulingThe distributed scheduling system enables meter points and meter fix/runway pairs to communicate flow restrictions to upstream meter points, even between McTMA instances.As mentioned, a more complete description of the distributed scheduling architecture has been published elsewhere [12][18], so only a brief description is proved here.The rate profiles are the mechanism by which restrictions are passed between the runway, meter fixes, and meter points.These rate profiles are published on to the McTMA network and subscribed to by the DPs involved in scheduling the respective points, and can be accessed by any Center on the network.Rate profiles are essentially a reflection of the capacity which is and can be allocated from a particular resource to a particular source of aircraft.For example, the runway generates a rate profile for all upstream meter points, identifying in effect where there is available capacity at the runway for aircraft coming from each of those meter points.The rate profile structure does not explicitly pass delay information, but rather passes capacity information.This allows each point to be scheduled somewhat independently, preserving flexibility which mitigates sequence errors related to inaccuracies in projecting estimates of arrival times over long distances.The overall effect is to allow upstream schedules to be more robust to ETA and sequence fluctuations that occur as the aircraft progresses along its flight path.
+Examples of Current Operations in Boston ARTCCSeveral examples are presented here to frame McTMA's capabilities in real-world terms.These will first examine how certain air traffic problems are currently handled at Boston Center (without McTMA).In the following section, how these problems could be handled with McTMA in Boston Center, and with McTMA installations in neighboring Centers, will be discussed.Three main flows will be examined: arrivals to BOS, overflights and departures to Dulles International Airport (IAD), and overflights and departures to Chicago-O'Hare (ORD).
+BOS arrivalsArrivals into BOS enter the TRACON from one of several fixes near the border with Boston Center.Currently, Boston Center utilizes the ASP program for time-based metering of these flows into BOS.Typically this involves holding each aircraft at the TRACON boundary fixes until ASP provides a slot for when the aircraft can leave holding.The geometry of the arrival flows is seen in Figure 4.The heaviest traffic typically crosses from the south.
+IAD streamsBoston Center typically receives a 30 MIT restriction from New York Center on the stream of aircraft destined for IAD (Figure 5).This stream flies into New York Center through a point called Sparta (SAX).Due to the significant number of international flights overflying Boston Center, traffic managers control the departure times of aircraft from Boston Center airports which are bound for IAD.This process is known as "Approval Request" or APREQ.APREQ times for these aircraft are chosen so that sector controllers will be able to keep 30 MIT between aircraft without excessive vectoring or holding.This can be a difficult and error-prone process.Towers can only be accurate to within one or two minutes.For a 30 MIT restriction, this means that more than a 60 NM gap must exist for a departing aircraft to fit between two airborne aircraft.Traffic managers use a lookup table of flying times from a departure airport to a merge point (SAX in the case of the IAD stream).These tables are historically validated, but do not account for differing wind conditions or aircraft types.Traffic managers use these times to predict the arrival time of the aircraft at the merge point and compare that with their prediction of when airborne aircraft will be at the merge point.
+BOS Boston ARTCCPVDMoreover, the choice of APREQ time is often made tens of minutes in advance, and are made without exact knowledge of the sector controllers' intentions concerning airborne aircraft.Although traffic managers are quite skilled at this task, the uncertainties inherent in these manual assessments can result in aircraft being released at inopportune times.
+ORD streamsBoston Center is bordered on the west by Cleveland Center, and feeds international flights and departures destined for ORD to Cleveland Center over Syracuse (SYR) (Figure 6).
+Example: Replacing ASP and MIT Restrictions with McTMA and Time-Based Metering at Boston Center
+BOS arrivalsMcTMA, which contains all the capabilities of ScTMA, and could replace ASP for BOS metering.McTMA would be a significant improvement over ASP due to significantly improved aircraft modeling, incorporation of weather information, and improved scheduling algorithms.McTMA also has the capability of metering to multiple TRACONs.Other Centers could participate in BOS metering.This participation could be as simple as having a repeater display, enabling them to see an accurate picture of traffic problems at BOS, or as complex as actually metering.With McTMA, other Centers could utilize distributed scheduling to meter departures to BOS (or other Boston Center TRACONs).This would yield more flexible and robust time-based metering operations to BOS.For example, one of the difficulties Boston Center may face in metering to BOS is that the PVD fix lies at the southern edge of its airspace, with only one sector (34) between the fix and the boundary with New York Center.McTMA has the ability to allow New York and Washington Centers to cooperate on metering into Logan by delaying BOSbound aircraft routed over PVD well prior to those aircraft reaching Boston Center airspace.
+IAD streamsA meter point could be established at SAX.This would provide deconfliction and visualization information at that point, and allow traffic managers to utilize the McTMA departure scheduling function.Without additional Centers cooperating, this would essentially replace the manual APREQs currently done for this flow by metering aircraft to the border where the MIT restriction is enforced.Traffic managers would input the proper constraint (such as 30 MIT) over SAX, and then input the departure's requested departure time into McTMA.The scheduler would then provide the traffic manager with the next available departure time which would result in a deconflicted arrival time over SAX.This process is shown in Figure 7a-c.In Figure 7a, the aircraft IDE1126 (highlighted), which has proposed a departure time of 18:52, has called and asked for a departure time of 18:46.IDE1126 would cross SAX at 19:18 if it departs at its proposed time (shown on the timeline labeled SAX_MP).The traffic manager drags the data tag from the left side of the right (departure) timeline and drops it to the right of 18:46 on the same timeline (Figure 7b).The scheduler assigns a departure time of 18:51, a delay of 5 minutes from its requested departure time (right timeline in Figure 7c).The reason for this delay can be seen on the SAX_MP timeline in Figure 7c.The scheduler has put IDE1126 behind AWI777.This forces IDE1126 to take off later than requested.If New York Center and/or Washington Center were equipped and adapted for the IAD flow, their restrictions would also be met by the departure time provided by McTMA to the Boston Center traffic manager.For example, if both New York and Washington were properly equipped and adapted, the departure time would result in a deconflicted arrival time at SAX, at the border of the IAD TRACON, and at the runway.It should be noted that this process could be improved substantially by integrating a ground automation tool.Such a tool, called the Surface Management System (SMS), is being developed by NASA [19].SMS could automatically provide McTMA with considerably more accurate departure times for aircraft, and conversely provide guidance to ground and tower controllers to improve compliance with that departure time [20].
+ORD streamsA meter point could be established at SYR.This would provide the same deconfliction, visualization, and departure scheduling described for the SAX meter point.This scheduling would be done from the same panel, with timelines for the two meter points displayed to aid in visualizing how the departures would merge with overhead traffic.If Cleveland Center and/or Chicago Center were equipped and adapted for the ORD flow, those systems would pass back restrictions to Boston Center's McTMA.This would ensure that the ORD stream would be able to meet those restrictions.For example, if a McTMA system were installed at Cleveland Center, that system could be set up with a meter point over Flint (FNT), the merge point for Canadian, Boston, and internal Cleveland Center traffic bound for ORD.The Cleveland system could be set for 10 MIT over FNT, and the Boston system would meter traffic over SYR such that Cleveland controllers would be able to merge traffic and meet 10 MIT on the stream.Moreover, if Chicago Center were added to the McTMA network, the times at SYR (and FNT) would be metered to conform with traffic conditions at ORD.
+Reducing Ground Stops with Departure Time-Based MeteringFor any TRACON in a McTMA-equipped Center, "ground stops," a traffic management tool whereby aircraft bound for a congested TRACON are held on the ground indefinitely, could be greatly reduced for McTMA-equipped Centers feeding that TRACON.Ground stops are needed when MIT restrictions fail to adequately reduce inbound traffic.This frequently occurs because MIT restrictions are based on experience, rather than on any comprehensive assessment of inbound traffic.When overload situations occur, traffic managers must stop inbound traffic to allow the TRACON to recover.Since McTMA considers all traffic inbound to the destination when generating a proposed departure time, it would not allow aircraft to depart when doing so would overload the TRACON.Of course, sudden unplanned reductions in capacity (such as the loss of the use of a runway or a change in weather) or sudden unplanned increases in uncontrolled traffic (such as close-in departures to the TRACON) could still create overload situations and require a ground stop.However, the use of McTMA should greatly reduce such instances, which are common in many parts of US airspace.
+Further Applications of Time-Based Metering Operations Using McTMAThe discussion so far has focused on extensions of typical ScTMA applications and replacing distance-based restrictions with time-based metering on a broad front.In addition, however, McTMA is capable of both regional applications of metering and "filling in the gaps" by metering to any type of constrained resources.These applications, and those mentioned in the next section concerning future applications, are part of NASA's "Regional Metering" concept [21].
+Cooperative metering between numerous ARTCCsAs mentioned above, a McTMA-equipped Center could meter any flow of aircraft.This flow can either be metered simply to the border of the Center, or could be metered to conform to restrictions passed back from any number of other McTMA equipped Centers.There is no limit on how far these restrictions can be passed back.Currently there are ScTMA installations in nine Centers and McTMA installations in four Centers.This leaves seven Centers in the CONUS with no TMA installation (see Figure 8).Once ScTMA installations are upgraded with McTMA capabilities, making McTMA operational in thirteen Centers, they could cooperate on metering problems.So, for example, aircraft out of Los Angeles International could potentially, depending on routing, be metered all the way to ORD, BOS, or the New York metro airports.This would include a metered departure time and small enroute delays taken over the aircraft's route to accommodate traffic conditions at the destination.Unlike today, where delays are sudden and substantial (and can often include last-minute holding), such delays could be taken earlier (at high altitudes), be planned well in advance, be of much smaller magnitude, and would only very rarely include holding.
+Metering to small airports or for special eventsMeter points can be defined anywhere within a Center, but need not be used at all times.In addition to metering flows inbound to TRACONs or outbound, meter points can be used for any purpose.One example is to meter to a TRACON or airport which does not warrant a full implementation within McTMA (which is a significant undertaking and requires maintenance).For example, the airport at Oshkosh holds a special event each year which creates a significant air traffic problem.Instead of expending a substantial effort to enable McTMA to meter to this airport with great precision, arrivals can be metered by creating a meter point at Oshkosh and controlling the arrival rate or inter-arrival separation to that point.This can be done for any airport or other location which undergoes occasional problems, with only a very modest effort to adapt the system.
+Expansion Capabilities of McTMATwo examples are listed above of new applications of TMA which are currently within the software system's capability.In this section, several applications will be described which are expected to be implemented within the software in the near future.
+Sector congestionCurrently McTMA operates with no knowledge of sector congestion.This knowledge could be gained either through interfacing with the Enhanced Traffic Management System (ETMS), which measures sector congestion using a metric called Monitor Alert Parameter (MAP), or through an independent mechanism.NASA engineers are studying how McTMA could create restrictions based on knowledge of sector congestion.In its first implementation, it would simply use (directly or indirectly) the ETMS MAP value as an indication of sector congestion.Later versions could use more sophisticated measures of sector congestion such as dynamic density [22].McTMA would then suggest delays for aircraft so that sector congestion would be maintained at acceptable levels.If delays were excessive, traffic managers would be able to reroute aircraft, increase ground delays, or keep aircraft out of congested altitudes.
+Metering in the presence of multiple independent restrictionsSome streams contain aircraft with different destinations, often in different Centers.Such streams cannot currently be efficiently metered using McTMA if downstream constraints differ widely for aircraft in the same stream.For example, consider two aircraft being metered in Boston Center which are flying the same route at the same altitude (i.e. in the same stream).One aircraft's destination is IAD, while the other aircraft, which is behind the IAD aircraft, is bound for Miami International Airport (MIA).Suppose also that IAD is highly congested and MIA is not.Currently McTMA would delay the IAD aircraft for the congestion at the airport and consequently delay the MIA aircraft behind it.Ideally, McTMA would consider how to manage the differing restrictions on the two aircraft and allow the MIA aircraft to proceed without taking delay.When one considers how some streams may be made up of aircraft that are vying for a large number of independent constrained resources, it is obvious that this could be a complex problem for a system attempting to apply delays on a regional or national level.Research is being undertaken by NASA engineers to determine how to coordinate such multiple independent restrictions.One possible approach is to consider applying or relaxing constraints before such streams are integrated.
+Improvements to long-range time-based metering capabilitiesSince McTMA was based off of the TRACONbased ScTMA, several vestiges of the TRACONcentric approach remain in McTMA.McTMA currently does not schedule departures automatically since their actual departure time (as compared to their proposed departure time) is highly variable.Instead, TMCs schedule these aircraft once they are ready to depart.Over a long distance, numerous aircraft depart and join a particular stream to a particular airport.Since these aircraft are not initially scheduled, aircraft from departure airports farther out are being scheduled without knowledge of the full traffic picture.In order to formulate an accurate restriction based on a full picture of the traffic demand, some consideration must be given to departures before they are manually scheduled by traffic managers.Initial analysis work has been completed on this problem and how they might be incorporated into McTMA [23].
+Integration with other CTAS toolsThere is a proliferation of automation tools in the traffic management units, and each tool has their own purpose.These systems, for the most part, do not communicate.McTMA already interfaces with ETMS, though in a one-way mode (McTMA can get data from ETMS).Efforts are underway to determine how to integrate a number of tools, including ETMS, the Departure Sequencing Program (which, in part, automates flight plan changes), and other NASA prototype tools such as SMS, which assists in airport configuration management, gate management, and wheels-up time prediction.Such an integration would provide several benefits, including reduced equipment footprint, reduced training costs, reduced input/interfacing requirements, and increased utility through the sharing of common data.
+ConclusionsThe National Airspace System must be transformed if it is to accommodate the large increases in traffic over the next few decades [24].One part of this transformation must be to reduce inefficiencies, increase collaboration, and provide automated assistance to traffic managers and sector controllers.A network of McTMA systems can form the basis for such a transformation in traffic flow management.Its ability to coordinate restrictions over long distances, integrate departure aircraft into overhead streams of aircraft, meter to anywhere for any reason, and connect Centers together for cooperative traffic management is one large step in taking a more regional or national approach to managing air traffic problems.It not only provides critical tools, but also provides an infrastructure on which to continue the transformation needed.Figure 1 .1Figure 1.Timelines.The load graphs present a graphical representation of the demand at any point of interest.In the example shown in Figure 2, BOS is in a one runway configuration (runway 15L), and has a capacity of 28 aircraft per hour (or 7 per 15 minutes), which is indicated by the red line.Along the x-axis is time, with the far left being current time.The yellow line represents the demand if nothing were done (which, in about 45 minutes, will peak at 10 aircraft over the succeeding 15 minutes), and the green line represents the demand if time-based metering were implemented.The white line indicates the average amount of delay incurred by airborne aircraft.
+Figure 2 .2Figure 2. Load graph example.The graph demonstrates that implementing time-based metering keeps demand at or below
+Figure 3 .3Figure 3. Meter list example.
+Figure 4 .Figure 5 .45Figure 4. BOS arrival flows.
+gets these aircraft, they These streams are often restricted by Cleveland Center to 20 (sometimes 30) MIT.The ORD streams present the same types of difficulty for Boston Center traffic managers as the IAD streams discussed above.Once Cleveland Center gets these aircraft, theyare also restricted at their border with Chicago Center, although with a lesser MIT restriction.Cleveland Center merges their departures with the Boston Center flow and any Canadian aircraft prior to handing them off to Chicago Center.
+Figure 6 .6Figure 6.ORD flows.
+Figure 7 .7Figure 7. Departure scheduling to SAX meter point using McTMA
+Figure 8 .8Figure 8. ScTMA and McTMA deployed sites.
+		
+		
+			
+Keywordsair traffic management, time-based metering, traffic management advisor, regional metering, miles-intrail
+BiographiesSteven J.			
+			
+
+				
+
+
+	
+		Energy Approach to Performance Flight Testing
+		
+			DKnorr
+		
+		
+			Free
+		
+		10.2514/5.9781600861840.0143.0152
+		
+	
+	
+		Flight Testing of Fixed-Wing Aircraft
+		
+			American Institute of Aeronautics and Astronautics, Inc.
+			2003
+			
+		
+	
+	Knorr, D. Free Flight Program Performance Metrics Results to Date: December 2003 Report. http://ffp1.faa.gov/approach/media/pdfs/Dec_2003_R eport.pdf .
+
+
+
+	
+		Effects of Metering Precision and Terminal Controllability on Runway Throughput
+		
+			HFVandevenne
+		
+		
+			JWAndrews
+		
+		10.2514/atcq.1.3.277
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			1
+			3
+			
+			1993
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Vandevenne, H. F., & J. W. Andrews, 1993. Effects of Metering Precision and Terminal Controllability on Runway Throughput , Air Traffic Control Quarterly, Vol 1(3), pp 277-297.
+
+
+
+	
+		Initial Analysis of Reduced Vectoring Through Metering at Tokyo International Airport
+		
+			BGSokkappa
+		
+		10.2514/6.2023-3970.vid
+		MITRE MP- 89W000222
+		
+			1989
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Sokkappa, B. G., 1989. "The Impact of Metering Methods on Airport Throughput," MITRE MP- 89W000222.
+
+
+
+	
+		
+		
+			JConroy
+		
+		
+			CCrone
+		
+		
+			MO'reilly
+		
+		
+			MDowd
+		
+		
+			SLee
+		
+		
+			2003
+		
+	
+	Personal communication
+	Conroy, J., C. Crone, M. O'Reilly., M. Dowd, and S. Lee, 2003. Personal communication.
+
+
+
+	
+		Fuzzy Reasoning-Based Sequencing of Arrival Aircraft in the Terminal Area
+		
+			IiiRobinson
+		
+		
+			JE
+		
+		
+			TJDavis
+		
+		
+			DRIsaacson
+		
+	
+	
+		AIAA Guidance, Navigation and Control Conference
+		New Orleans, LA
+		
+			1997
+		
+	
+	Robinson III, J. E., T. J. Davis, and D. R. Isaacson, 1997. Fuzzy Reasoning-Based Sequencing of Arrival Aircraft in the Terminal Area, AIAA Guidance, Navigation and Control Conference, New Orleans, LA.
+
+
+
+	
+		SASS: Sequencing and Scheduling System
+		
+			Navcanada
+		
+		
+		
+			2003. 27 January 2005
+		
+	
+	NavCanada, 2003. SASS: Sequencing and Scheduling System, Retrieved 27 January 2005, from http://www.navcanada.ca/contentdefinitionfiles/Tech nologySolutions/products/StandAlone/sass/SASSen.p df.
+
+
+
+	
+		
+		
+			BarcoOrthogon
+		
+		
+		
+			2003. 27 January 2005
+		
+	
+	Barco Orthogon, 2003. Osyris. Retrieved 27 January 2005, from http://www.barco.com/barcoview/downloads/BVW_ Osyris_new_6p.pdf
+
+
+
+	
+		PRICAI 2010: Trends in Artificial Intelligence
+		
+			MLjungberg
+		
+		
+			ALucas
+		
+		10.1007/978-3-642-15246-7
+	
+	
+		Proceedings of the Second Pacific Rim International Conference on Artificial Intelligence, PRICAI '92
+		the Second Pacific Rim International Conference on Artificial Intelligence, PRICAI '92Seoul, Korea
+		
+			Springer Berlin Heidelberg
+			1992
+		
+	
+	Ljungberg, M., & A. Lucas., 1992. The oasis air- traffic management system. In Proceedings of the Second Pacific Rim International Conference on Artificial Intelligence, PRICAI '92, Seoul, Korea.
+
+
+
+	
+		ATM concept integrating trajectory-orientation and airborne separation assistance in the presence of time-based traffic flow management
+		
+			Prevot
+		
+		
+			Shelden
+		
+		
+			Mercer
+		
+		
+			Parimal Kopardekar
+		
+		
+			Palmer
+		
+		
+			Battiste
+		
+		10.1109/dasc.2003.1245865
+	
+	
+		22nd Digital Avionics Systems Conference Proceedings (Cat No 03CH37449) DASC-03
+		Indianapolis, IN
+		
+			IEEE
+			2003
+		
+	
+	Prevot, T., Shelden, S., Mercer, J., Kopardekar, P., Palmer, E., & Battiste, V., 2003. ATM concept integrating trajectory-orientation and airborne separation assistance in the presence of time-based traffic flow management. In Proceedings of the 22nd Digital Avionics Systems Conference, Indianapolis, IN.
+
+
+
+	
+		Direct-To Tool For En Route Controllers
+		
+			HeinzErzberger
+		
+		
+			DavidMcnally
+		
+		
+			MichelleFoster
+		
+		
+			DannyChiu
+		
+		
+			PhilippeStassart
+		
+		10.1007/978-3-662-04632-6_11
+	
+	
+		New Concepts and Methods in Air Traffic Management
+		Capri, Italy
+		
+			Springer Berlin Heidelberg
+			1999
+			
+		
+	
+	Erzberger, H., B. D. McNally, M. Foster, D. Chiu, & P. Stassart, 1999. Direct-To Tool for En Route Controllers, ATM '99: IEEE Workshop on Advanced Technologies and their Impact on Air Traffic Management in the 21st Century, Capri, Italy.
+
+
+
+	
+		The Multi-Center TMA System Architecture and Its Impact on Inter-Facility Collaboration
+		
+			TyHoang
+		
+		
+			ToddFarley
+		
+		
+			JohnFoster
+		
+		
+			ThomasDavis
+		
+		10.2514/6.2002-5813
+	
+	
+		AIAA's Aircraft Technology, Integration, and Operations (ATIO) 2002 Technical Forum
+		Los Angeles, CA
+		
+			American Institute of Aeronautics and Astronautics
+			2002
+		
+	
+	Hoang, T., T. Farley, J. Foster, & T. Davis, 2002. The Multi-Center TMA System Architecture and Its Impact on Inter-Facility Collaboration, AIAA Aircraft Technology, Integration and Operations (ATIO) Conference, Los Angeles, CA.
+
+
+
+	
+		Distributed Scheduling Architecture for Multi-Center Time-Based Metering
+		
+			StevenLandry
+		
+		
+			ToddFarley
+		
+		
+			JohnFoster
+		
+		
+			StevenGreen
+		
+		
+			TyHoang
+		
+		
+			GregoryWong
+		
+		10.2514/6.2003-6758
+	
+	
+		AIAA's 3rd Annual Aviation Technology, Integration, and Operations (ATIO) Forum
+		Denver, CO
+		
+			American Institute of Aeronautics and Astronautics
+			2003
+		
+	
+	Landry, S., T. Farley, J. Foster, S. Green, T. Hoang, & G. L. Wong, 2003. Distributed Scheduling Architecture for Multi-Center Time-Based Metering, AIAA Aircraft Technology, Integration and Operations (ATIO) Conference, Denver, CO.
+
+
+
+	
+		The Traffic Management Advisor
+		
+			WilliamNedell
+		
+		
+			HeinzErzberger
+		
+		
+			FrankNeuman
+		
+		10.23919/acc.1990.4790788
+	
+	
+		1990 American Control Conference
+		San Diego, CA
+		
+			IEEE
+			1990. 1990
+		
+	
+	Nedell, W., & H. Erzberger, 1990. The Traffic Management Advisor, 1990 American Control Conference, San Diego, CA.
+
+
+
+	
+		Corrosion fatigue crack propagation in metals. (Report)Gangloff, R.P. University of Virginia, NASA Contractor Report No NASA CR-4301 1990 204 pp
+		
+			KHarwood
+		
+		
+			BSanford
+		
+		10.1016/0142-1123(91)90371-5
+		4554
+	
+	
+		International Journal of Fatigue
+		International Journal of Fatigue
+		0142-1123
+		
+			13
+			4
+			
+			1993
+			Elsevier BV
+		
+	
+	NASA Contractor Report
+	Harwood, K., & B. Sanford, 1993. Denver TMA Assessment, NASA Contractor Report 4554.
+
+
+
+	
+		APPENDIX C:
+		
+			RGSynnestvedt
+		
+		
+			HSwenson
+		
+		
+			HErzberger
+		
+		10.2307/j.ctv25c4z16.37
+	
+	
+		Venus
+		
+			University of Arizona Press
+			1995
+			
+		
+	
+	Trail Traffic Management
+	Synnestvedt, R.G., H. Swenson, and H. Erzberger, 1995. Scheduling Logic for Miles-In- Trail Traffic Management, NASA Technical Memorandum 4700.
+
+
+
+	
+		Design and Operational Evaluation of the Traffic Management Advisor at the Fort Worth Air Route Traffic Control Center, 1st USA
+		
+			HNSwenson
+		
+		
+			THoang
+		
+		
+			SEngelland
+		
+		
+			DVincent
+		
+		
+			TSanders
+		
+		
+			BSanford
+		
+		
+			KHeere
+		
+	
+	
+		Europe Air Traffic Management R&D Seminar
+		
+			1997
+			Saclay, France
+		
+	
+	Swenson, H. N., T. Hoang, S. Engelland, D. Vincent, T. Sanders, B. Sanford, & K. Heere, 1997. Design and Operational Evaluation of the Traffic Management Advisor at the Fort Worth Air Route Traffic Control Center, 1st USA/Europe Air Traffic Management R&D Seminar, Saclay, France.
+
+
+
+	
+		Improving and validating CTAS performance models
+		
+			WilliamChan
+		
+		
+			RalphBach
+		
+		
+			JosephWalton
+		
+		10.2514/6.2000-4476
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		Denver, CO
+		
+			American Institute of Aeronautics and Astronautics
+			2000
+		
+	
+	Chan, W., R. Bach, & J. Walton, 2000. Improving and Validating CTAS Performance Models, AIAA Guidance, Navigation, and Control Conference, Denver, CO.
+
+
+
+	
+		The Dynamic Planner: The Sequencer, Scheduler, and Runway Allocator for Air Traffic Control Automation
+		
+			GLWong
+		
+		NASA/TM-2000- 209586
+		
+			2000
+		
+	
+	Wong, G. L., 2000. The Dynamic Planner: The Sequencer, Scheduler, and Runway Allocator for Air Traffic Control Automation, NASA/TM-2000- 209586.
+
+
+
+	
+		Concept Description and Development Plan for the Surface Management System
+		
+			SAtkins
+		
+		
+			CBrinton
+		
+	
+	
+		Journal of Air Traffic Control
+		
+			44
+			1
+			2002
+		
+	
+	Atkins, S., & C. Brinton, 2002. Concept Description and Development Plan for the Surface Management System, Journal of Air Traffic Control, Vol. 44 (1).
+
+
+
+	
+		A case for integrating the CTAS traffic management advisor and the surface management system
+		
+			StephenAtkins
+		
+		
+			WilliamHall
+		
+		10.2514/6.2000-4471
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		Denver, CO
+		
+			American Institute of Aeronautics and Astronautics
+			2000. August
+		
+	
+	Atkins, S. C., & W. D. Hall, 2000. A Case for Integrating the CTAS Traffic Management Advisor and the Surface Management System, AIAA Guidance, Navigation, and Control Conference, Denver, CO, August.
+
+
+
+	
+		The NASA Langley Research Center 8-ft High Temperature Tunnel
+		10.2514/5.9781600866678.0405.0425
+	
+	
+		Advanced Hypersonic Test Facilities
+		Mountain View, CA
+		
+			American Institute of Aeronautics and Astronautics
+			2002
+			
+		
+		
+			Titan Systems Corporation
+		
+	
+	Titan Systems Corporation, 2002. Regional Metering Operational Concept Description, Year 2002 Update, NRA RTO-72 CDRL:#3a.1, Advanced Air Transportation Technology (AATT) Office, NASA Ames Research Center, Mountain View, CA.
+
+
+
+	
+		Dynamic density: measuring and predicting sector complexity [ATC]
+		
+			PKopardekar
+		
+		
+			SMagyarits
+		
+		10.1109/dasc.2002.1067920
+	
+	
+		Proceedings. The 21st Digital Avionics Systems Conference
+		The 21st Digital Avionics Systems Conference
+		
+			IEEE
+			2003
+		
+	
+	5th
+	Kopardekar, P., & S. Magyarits, 2003. Measurement and prediction of dynamic density. 5th
+
+
+
+	
+		
+		
+			/ Faa Atm R&dEurocontrol
+		
+		
+			Seminar
+		
+		
+		
+	
+	Eurocontrol/ FAA ATM R&D Seminar. Available: http://www.tc.faa.gov/acb300/techreports/DD_ATM2 003_7-03.pdf.
+
+
+
+	
+		Effects of the Uncertainty of Departures on Multi-Center Traffic Management Advisor Scheduling
+		
+			JaneThipphavong
+		
+		
+			StevenLandry
+		
+		10.2514/6.2005-7301
+	
+	
+		AIAA 5th ATIO and16th Lighter-Than-Air Sys Tech. and Balloon Systems Conferences
+		Crystal City, VA
+		
+			American Institute of Aeronautics and Astronautics
+			2005
+		
+	
+	To be presented at 5 th AIAA Aircraft Technology
+	Thippavong, J., & S. Landry, 2005. The Effects of the Uncertainty of Internal Departures on Multi- Center TMA Scheduling. To be presented at 5 th AIAA Aircraft Technology, Integration and Operations (ATIO) Conference, Crystal City, VA.
+
+
+
+	
+		Concept for Next Generation Air Traffic Control System
+		
+			HeinzErzberger
+		
+		
+			RussellAPaielli
+		
+		10.2514/atcq.10.4.355
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			10
+			4
+			
+			2004
+			American Institute of Aeronautics and Astronautics (AIAA)
+			Yokohama, Japan
+		
+	
+	24th International Congress of the Aeronautical Sciences (ICAS 2004
+	Erzberger, H., 2004. Transforming the NAS: The Next Generation Air Traffic Control System, 24th International Congress of the Aeronautical Sciences (ICAS 2004), Yokohama, Japan.
+
+
+				
+			
+		
+	

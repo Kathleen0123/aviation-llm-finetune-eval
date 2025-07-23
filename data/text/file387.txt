@@ -1,0 +1,337 @@
+
+	
+	
+		
+INTRODUCTIONFuture air transportation systems are expected to rely upon increased automation for separation assurance and trajectory management to increase airspace capacity.There are many proposed designs to provide this increased level of automation including providing enhanced tools to air-traffic controllers and moving some of the responsibility for separation assurance to the flight deck.One concept for automated ground-based separation assurance is the Advanced Airspace Concept (AAC) [1] made up of the Autoresolver strategic separation algorithm ( [2], [3]) and the Tactical Separation-Assured Flight Environment (TSAFE) [4] for tactical conflict resolution.This paper is a sequel to [5], which describes new developments in the evolution of the Autoresolver.A new algorithm for automated avoidance of complex weather scenarios is presented along with a synopsis of recent research to increase the system's robustness to trajectory prediction errors.A new weather avoidance algorithm was developed and added to the Autoresolver recently.Convective weather cells are modeled by polygons, and the algorithm uses efficient geometric calculations to determine lines of tangency to these weather polygons.It generates weatherconflict-free paths through complex arrangements of such cells.A first implementation of the weather avoidance algorithm was presented for a single cell in [2].This paper presents the more complete design for avoiding multiple cells.Increasing the robustness of the algorithm to errors in predictions of future aircraft states is the other research area discussed here.Accurate trajectory predictions are the foundation of the Autoresolver, but even the highest fidelity trajectory prediction system will not be completely accurate due to unknowable or uncertain information.The algorithm has been shown to be especially sensitive to errors around the top-of-descent point [6], and one method to improve the algorithm in that area will be discussed.Also discussed is a method to improve system performance by including knowledge of past trajectory prediction accuracy.
+AUTORESOLVERThe AAC Autoresolver is designed to automate many of the tasks that an air-traffic controller currently performs.The Autoresolver detects and provides resolutions for potential losses of separation between aircraft.It also provides conflict-free, continuous-descent trajectories for aircraft merging at an arrival-metering fix.The Autoresolver handles predictions and resolutions of weather incursions as well.The resolution trajectories are created in an integrated fashion so that a resolution for one type of problem does not result in a new conflict of a different type.As a strategic trajectory-planning tool, it provides efficient resolutions by minimizing delay, fuel burn, or a combination of both [7].As a result of this integrated approach to airspace problems the Autoresolver can also be used to analyze flight plan change requests from flight crews or airline operation centers to ensure that they do not create new conflicts.Accurate predictions of aircraft trajectories are required to ensure that the Autoresolver generates safe and efficient solutions.The Autoresolver has been designed to separate the resolution process from the trajectory prediction process.Thus the Autoresolver generates simplified route, altitude, and speed change commands and sends them to an independent trajectory prediction system.This process of generating simplified trajectory changes and sending them to an independent system that computes high-fidelity trajectories is called "trial planning."Since these two functionalities have been separated, the Autoresolver can more easily adapt to improvements in trajectory prediction capabilities.Also, separating the trajectory prediction and resolution processes allows the Autoresolver to function with different types of aviation software systems, including fast-time simulations, real-time simulations, and operational airspace automation tools.
+COMPLEX WEATHER AVOIDANCEThe Autoresolver is designed to solve airspace problems on the order of 20 minutes to 2 minutes before the problem occurs.As mentioned previously, one class of problems that must be dealt with in this timeframe is resolutions to avoid severe weather regions.An approach to avoiding such weather conflicts will now be presented.
+Algorithm Inputs and AssumptionsThe primary inputs to the weather avoidance algorithm are polygons representing regions of airspace to avoid.One possible source of these weather avoidance polygons has been provided by researchers at MIT Lincoln Laboratories with their Convective Weather Avoidance Model (CWAM) [8].CWAM provides avoidance polygons that are based on weather observation data such as precipitation intensity and cloud tops.The avoidance polygons are created by studying historical trajectories and historical weather to create a probabilistic prediction of the likelihood that pilots will avoid regions with certain weather characteristics.The weather avoidance polygons can be of arbitrary shape and have arbitrary positions relative to the path of the aircraft (Figure 1).Several techniques have been developed for other applications to create paths through fields of polygons.For example, Dijkstra's algorithm could be used to find the shortest path through a gridded model of the airspace.Instead of using these grid-based methods, which are susceptible to generating multiple doglegged trajectories we solve the problem geometrically where limits on the complexity of maneuvers are built into the solution process.The core of the geometric solution relies on two simple algorithms: the first determines tangent lines from a point to the boundary of a (possibly) non-convex polygon, and the second calculates tangent lines between nonintersecting, non-convex polygons.Algorithms to calculate these lines are freely available.If only a bitmap rather than a polygon model of a weather cell is available, an approximate direction of a tangency line can still be determined by probing for cell penetration through incremental heading changes as illustrated in Figure 2. One key constraint imposed on the resolution path is that route changes generated by the algorithm be limited to at most two additional route waypoints.Such a constraint is necessary in order to limit pilot workload.A third waypoint may be added to resolve aircraft-to-aircraft conflicts that arise from the re-route around the weather.In general, the algorithm attempts to generate up to four possible resolution routes depending on the number of additional waypoints required.There will be one to each side of the weather cell and two between the cells.The final route selected by the algorithm is the one that is predicted to have the least airborne delay.Another important aspect of the procedure is that, like all Autoresolver functions, it relies upon an external trajectory prediction system to determine if a proposed solution actually solves the problem.Simplified geometric calculations are performed by the Autoresolver to determine paths that are theoretically weather-conflict free, but these simplified paths are then passed to the external trajectory prediction system; the external system can generate high-fidelity trajectory predictions and check these trajectories against current and forecast weather as well as for aircraft-to-aircraft conflicts.
+Avoidance ProcedureThe current position of the aircraft is used as the origin of the weather avoidance route, and a suitable downstream waypoint is chosen as the return waypoint.In the example shown in Figure 3, Cell 1 triggered the initial weatherconflict detection.Generally paths on both sides of this weather cell will be found, but, for illustration purposes, the subsequent discussion will focus only on the path to the left.For this path, the tangent from the current position to the left of that weather cell is created.If, as in the figure, the tangent line is not conflict-free to the tangent point of Cell 1, but, instead, happens to intersect another cell (Cell 1a), then that cell replaces Cell 1 as the primary conflict cell and a tangent line to that cell is found.Replacement of weather cells that initially triggered the resolution process but were subsequently replaced by a different cell is a standard procedure used in all the following steps.The intersection of the two tangent lines from the current position and the return waypoint to Cell 1a is used as a new waypoint in the route.If this new trajectory is free of weather conflicts, then this route is a valid candidate for the weather avoidance route.If the route between the primary weather cell and the return waypoint is not conflict free (Figure 4), then the tangent line between the two active cells is determined and two waypoints are used for the resolution.In this case, the first waypoint is located at the intersection of the tangent line from the current position to the primary weather cell and the tangent line between the two cells.Similarly, the second waypoint is located at the intersection of the tangent line from the return waypoint to the second weather cell and the tangent line between the cells.Since more than two additional waypoints are not allowed, and if, as in Figure 5, a conflict is detected on the tangent path, then an iteration process is followed.The position of the first waypoint is varied along its initial tangent line in increments from the point of tangency.For each trial waypoint, the tangent line to the new conflict cell is calculated and the intersection with the return waypoint tangency line is used as the second waypoint.Among these trajectory iterations, the conflict-free trajectory with the minimum delay is used as the weather avoidance route.The entire process discussed above is repeated for the other tangency point of the original conflict polygon, which in this case would result in a turn to the right.Also, whenever two waypoints are needed to solve the problem (Figure 4), interior tangency paths between the two weather polygons are included using the procedure, discussed previously, for exterior tangent lines.Figure 6 shows the four resulting weather avoidance paths.The entire path-finding algorithm can be repeated for different return waypoints, within a reasonable distance, to improve efficiency if desired.Since weather is often moving and changing, it can be important to ensure some additional space around each weather cell.To create this space, a horizontal buffer distance may be used.Any time a waypoint is found in the resolution process, it is moved a prescribed distance away from the weather cell.The line bisecting the angle formed by the two tangent lines defines the direction of motion.If, as shown in Figure 7, this buffer distance causes a new weather cell to be active, then the tangent to that cell is found, and the resolution process continues.After the weather routes are created they are checked for predicted separation violations with other aircraft.If conflicts are found, they are resolved using the core Autoresolver functionality by maneuvering the other aircraft, adding an additional route waypoint, or temporarily changing the cleared altitude of the flight along the weather avoidance route.Also, for aircraft near their arrival fix, weather resolutions are performed and the schedule to the arrival fix is adjusted to reflect that change.Finally, it is important to note that all resolutions for aircraft-to-aircraft conflicts and arrival-metering trajectories are checked to ensure that they are free of weather conflicts.
+Evaluation and Operating ConceptsThis weather avoidance procedure was developed, evaluated, and refined in a fast-time simulation platform, the Airspace Concept Evaluation System [9], using CWAM weather polygons and realistic traffic patterns.Figure 8 shows an example of a one-waypoint resolution around weather from one of these fast-time simulations.For this resolution, the larger cell triggered the resolution, but the smaller cell became important.A buffer was used in this resolution process that placed the waypoint away from the boundary of the smaller cell.A more complex resolution scenario from the same simulation is depicted in Figure 9.In this case, the return waypoint is located behind two weather cells.In constructing the tangent lines, other weather cells closer to the aircraft cause a two-waypoint solution to be required.Again, the additional buffer is evident in the solution in the distance of the final trajectory from the weather cells and in the fact that the resolution did not attempt to pass between the weather cells.The weather resolution process in the Autoresolver is integral to a concept for improving the efficiency of routes through changing weather, known as Dynamic Weather Routes (DWR) [10].In evolving weather situations aircraft routes, often planned up to an hour in advance, can become inefficient as the weather moves and changes in intensity.These routes are usually designed to travel longer distances to circumnavigate areas of weather.In the DWR concept, a system continually (approximately every 12 seconds) evaluates the routes of aircraft in weather by checking for possible shortcuts to downstream waypoints.If one of these shortcuts is free of weather and provides enough flight-time savings, then the airline operations center can uplink the revised route to the aircraft for execution.If the shortcut has a weather conflict the shortcut trajectory can be sent to the Autoresolver to create a conflict-free route.If this new route saves enough time over the current route, then this route can be sent to the aircraft.Results of real-time evaluations of the DWR concept show an average of around 10 minutes of savings for many aircraft in varied weather conditions [10].NASA is currently evaluating the DWR system in the field in collaboration with an airline.In this evaluation the Autoresolver weather-avoidance algorithm is a critical component.
+ROBUSTNESS TO TRAJECTORY UNCERTAINTYThe Autoresolver algorithm relies on accurate predictions of future aircraft states to efficiently maintain safety.Unfortunately, perfect trajectory predictions will never be possible due to unknowable or uncertain information, so the Autoresolver system must be designed to be robust to these errors.The main goal of this area of research is to design the Autoresolver such that it can maintain aircraft separation under various types of trajectory prediction errors in the most efficient way possible.Two recent, related approaches to deal with these uncertainties will be discussed in the following sections.One is to increase vertical separation requirements around the predicted top-of-descent point.The other is to use historical performance characteristics of the trajectory prediction system to improve conflict detection performance and to select more robust resolutions.
+Top-of-Descent Vertical BuffersAn analysis of the Autoresolver algorithm in the presence of different sources of trajectory prediction errors showed that the system was most susceptible to errors in prediction around the aircraft's top-of-descent point [6].In this analysis, aircraft were assumed to be performing Flight Management System based continuous descent approaches where the aircraft would determine the top-of-descent point.Errors in the ground-based system's ability to predict this top-of-descent point can lead directly to losses of separation because aircraft are already flying exactly at their required vertical separation.Conflicts arising from such errors are often detected with only short times to loss of separation and may be difficult resolve.Also, the ground-based top-of-descent predictions generally do not improve as the aircraft approaches its descent point.To improve the system's robustness to these types of errors, a special vertical buffer was added around the predicted top of descent.This buffer is illustrated by the difference between the vertical separation requirement around the top-of-descent points in Figure 10(a) and Figure 10(b).Details of how this buffer was created are presented in [11].The basic idea of this buffer is to provide a measure of safety in case the aircraft descends earlier or later than was predicted. .The effect of the buffer is to clear out the airspace immediately below and in front of the predicted descent point.Since these buffers will clear more airspace than is needed compared to a perfectly known descent point, the sizes of these buffers should be tailored to the accuracy of the trajectory prediction system.These top-of-descent buffers were added to the Autoresolver and simulated in fast time with different levels of trajectory-prediction error [11].The buffers reduced the total number of losses of separation due to top of descent errors by over 80%, but also increased the total number of maneuvers by about 50%.Research is ongoing to tailor the buffers more precisely to the amount of trajectory prediction error.A long-term solution is for aircraft to downlink their top of descent points for use by the ground system, thereby largely eliminating the need for the buffers.
+Probabilistic Conflict DetectionA more general method of dealing with trajectory prediction errors uses the knowledge of past performance of the trajectory prediction system to influence the detection and resolution processes directly.One way to do that is to create a probabilistic conflict detection system where the probability of conflict between two aircraft depends on their predicted trajectories and a characterization of the probable quality of those trajectories.Figure 11 shows two trajectories with ovals representing confidence bounds of select trajectory points.These confidence bounds depend on the trajectory prediction system and the trajectories being predicted.For instance, a specific system may do a better job of modeling one type of aircraft than another, it may predict entirely level trajectories more accurately than trajectories that contain altitude transitions, or it may have increased lateral uncertainty around turns.In [12] a mathematical framework is presented that integrates this type of uncertainty information to provide a probability that any two trajectories will result in a loss of separation.In the paper, doing conflict detection based on this system provided a benefit by reducing both missed alerts and false alerts by over 5% each as compared to the performance of a deterministic conflict detection system.An additional benefit of using probabilistic detection in an automated separation assurance system is that the probability that a proposed conflict resolution maneuver will result in a conflict can also be calculated.This information can be used to select resolutions that are less likely to result in a subsequent conflict.Using a combination of delay and probability of conflict to select among a set of candidate resolutions reduced both the total number of resolutions and the total delay in a simulation [12].
+CONCLUSIONSThis paper presented the advances made in two important areas of research for the AAC ground-based automated separation assurance system.First, a description of a new algorithm to avoid complex weather situations was shown.The algorithm enables selection of efficient routes around arbitrary combinations of weather regions using an algorithm based on geometric calculations.Second, recent efforts to enhance the robustness of the separation assurance system to trajectory prediction errors were presented.Handling these unavoidable errors is necessary to ensure a reliable and efficient automation system.
+6.Figure 1 .1Figure 1.A complex weather scenario.
+Figure 2 .2Figure 2. Tangents can be found using a polygon (a) or a search if the polygon is not known (b).
+Figure 3 .3Figure 3. Route must avoid initial and subsequent polygons.
+Figure 4 .4Figure 4. Tangents between two cells are added if return route is blocked.
+Figure 5 .5Figure 5. Iteration is required for blocked tangent lines.
+Figure 6 .6Figure 6.Four possible weather resolution paths.
+Figure 7 .7Figure 7.Additional buffer added to handle changing weather.
+Figure 8 .8Figure 8. Example one waypoint resolution from simulation.
+Figure 9 .9Figure 9.A more complex resolution involving multiple weather cells and requiring two waypoints.
+Figure 10 .10Figure 10.Top shows standard separation criteria and the bottom shows the tailored vertical buffer around top-of-descent point.
+Figure 11 .11Figure 11.Illustration of trajectory predictions with associated uncertainties.
+		
+		
+			
+COPYRIGHT STATEMENTThe authors confirm that the U.S. Government holds copyright of all original material included in their paper.They also confirm they have obtained permission, from the copyright holder of any third party material included in their paper, to publish it as part of their paper.The authors grant full permission for the publication and distribution of their paper as part of the EIWAC2013 proceedings or as individual off-prints from the proceedings			
+			
+
+				
+
+
+	
+		Automated Conflict Resolution for Air Traffic Control
+		
+			HErzberger
+		
+	
+	
+		25th International Congress of the Aeronautical Sciences
+		Hamburg, Germany
+		
+			Sept. 2006
+			
+		
+	
+	Erzberger, H., "Automated Conflict Resolution for Air Traffic Control," 25th International Congress of the Aeronautical Sciences, Hamburg, Germany, 3-8 Sept. 2006.
+
+
+
+	
+		Automated conflict resolution, arrival management, and weather avoidance for air traffic management
+		
+			HErzberger
+		
+		
+			TALauderdale
+		
+		
+			Y-CChu
+		
+		10.1177/0954410011417347
+	
+	
+		Proceedings of the Institution of Mechanical Engineers, Part G: Journal of Aerospace Engineering
+		Proceedings of the Institution of Mechanical Engineers, Part G: Journal of Aerospace Engineering
+		0954-4100
+		2041-3025
+		
+			226
+			8
+			
+			Sep. 2010
+			SAGE Publications
+			Nice, France
+		
+	
+	Erzberger, H., Lauderdale, T. A., and Chu, Y., "Automated Conflict Resolution, Arrival Management and Weather Avoidance for ATM," 27th International Congress of the Aeronautical Sciences (ICAS), Nice, France, 19-24 Sep. 2010.
+
+
+
+	
+		Automated conflict resolution, arrival management, and weather avoidance for air traffic management
+		
+			HErzberger
+		
+		
+			TALauderdale
+		
+		
+			Y-CChu
+		
+		10.1177/0954410011417347
+	
+	
+		Proceedings of the Institution of Mechanical Engineers, Part G: Journal of Aerospace Engineering
+		Proceedings of the Institution of Mechanical Engineers, Part G: Journal of Aerospace Engineering
+		0954-4100
+		2041-3025
+		
+			226
+			8
+			
+			August 2012
+			SAGE Publications
+		
+	
+	Erzberger, H., Lauderdale, T. A., Chu, Y., "Automated Conflict Resolution, Arrival Management and Weather Avoidance for ATM", Journal of Aerospace Engineering, Volume 226, Issue 8, August 2012, pages 930-949, DOI: 10.1177/0954410011417347.
+
+
+
+	
+		Evaluation of Tactical Conflict Resolution Algorithms for Enroute Airspace
+		
+			RussellAPaielli
+		
+		10.2514/1.c031131
+	
+	
+		Journal of Aircraft
+		Journal of Aircraft
+		0021-8669
+		1533-3868
+		
+			48
+			1
+			
+			Jan-Feb. 2011
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Paielli, R. A., "Evaluation of Tactical Conflict Resolution Algorithms for Enroute Airspace," AIAA Journal of Aircraft, vol. 48, (no. 1), Jan-Feb. 2011.
+
+
+
+	
+		Separation Assurance in the Future Air Traffic System
+		
+			HErzberger
+		
+	
+	
+		ENRI International Workshop on ATM/CNS
+		Tokyo, Japan
+		
+			Mar. 2009
+			
+		
+	
+	Erzberger, H., "Separation Assurance in the Future Air Traffic System," ENRI International Workshop on ATM/CNS, Tokyo, Japan, 5-6 Mar. 2009.
+
+
+
+	
+		Relative Significance of Trajectory Prediction Errors on an Automated Separation Assurance Algorithm
+		
+			TLauderdale
+		
+		
+			ACone
+		
+		
+			ABowe
+		
+	
+	
+		th USA/Europe ATM R&D Seminar (ATM2011)
+		Berlin, Germany
+		
+			June 2011
+			
+		
+	
+	Lauderdale, T., Cone, A., and Bowe, A., "Relative Significance of Trajectory Prediction Errors on an Automated Separation Assurance Algorithm," 9th USA/Europe ATM R&D Seminar (ATM2011), Berlin, Germany, 14-17 June 2011.
+
+
+
+	
+		An Approach for Balancing Delay and Fuel Burn in Separation Assurance Automation
+		
+			AishaBowe
+		
+		
+			ConfesorSantiago
+		
+		10.2514/6.2012-5416
+	
+	
+		12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference and 14th AIAA/ISSMO Multidisciplinary Analysis and Optimization Conference
+		Indianapolis, IN
+		
+			American Institute of Aeronautics and Astronautics
+			19 Sep. 2012
+			17
+		
+	
+	Bowe, A., and Santiago, C., "An Approach for Balancing Delay and Fuel Burn in Separation Assurance Automation," AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Indianapolis, IN, 17-19 Sep. 2012.
+
+
+
+	
+		Modeling Convective Weather Avoidance in Enroute Airspace
+		
+			RDelaura
+		
+		
+			MRobinson
+		
+		
+			MPawlak
+		
+		
+			JEvans
+		
+	
+	
+		13th Conference on Aviation, Range, and Aerospace Meteorology (ARAM)
+		New Orleans, LA
+		
+			Amer. Meteor. Soc
+			2008
+		
+	
+	DeLaura, R., Robinson, M., Pawlak, M., and Evans, J., "Modeling Convective Weather Avoidance in Enroute Airspace," 13th Conference on Aviation, Range, and Aerospace Meteorology (ARAM), New Orleans, LA, Amer. Meteor. Soc., 2008.
+
+
+
+	
+		Build 8 of the Airspace Concept Evaluation System
+		
+			SapaGeorge
+		
+		
+			GoutamSatapathy
+		
+		
+			VikramManikonda
+		
+		
+			KeePalopo
+		
+		
+			LarryMeyn
+		
+		
+			ToddLauderdale
+		
+		
+			MichaelDowns
+		
+		
+			MohamadRefai
+		
+		
+			RichardDupee
+		
+		10.2514/6.2011-6373
+		AIAA-2011-6373
+	
+	
+		AIAA Modeling and Simulation Technologies Conference
+		Portland, OR
+		
+			American Institute of Aeronautics and Astronautics
+			Aug. 8-11 Aug. 2011
+		
+	
+	George, S., Satapathy, G., Manikonda, V., Palopo, K., Meyn, L., Lauderdale, T. A., Downs, M., Refai, M., and Dupee, R., "Build 8 of the Airspace Concept Evaluation System," AIAA Modeling and Simulation Technologies Conference, No. AIAA-2011-6373, Portland, OR, Aug. 8-11 Aug. 2011.
+
+
+
+	
+		Dynamic Weather Routes: A Weather Avoidance System for Near-Term Trajectory-Based Operations
+		
+			DMcnally
+		
+		
+			KSheth
+		
+		
+			CGong
+		
+		
+			JLove
+		
+		
+			CHLee
+		
+		
+			SSahlman
+		
+		
+			JCheng
+		
+	
+	
+		28th International Congress of the Aeronautical Sciences (ICAS)
+		Brisbane, Australia
+		
+			Sep. 2012
+			
+		
+	
+	McNally, D., Sheth, K., Gong, C., Love, J., Lee, C.H., Sahlman, S., and Cheng, J., "Dynamic Weather Routes: A Weather Avoidance System for Near-Term Trajectory-Based Operations," 28th International Congress of the Aeronautical Sciences (ICAS), Brisbane, Australia, 23-28 Sep. 2012.
+
+
+
+	
+		Robust Conflict Detection and Resolution around Top of Descent
+		
+			AndrewCone
+		
+		
+			AishaBowe
+		
+		
+			ToddLauderdale
+		
+		10.2514/6.2012-5644
+	
+	
+		12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference and 14th AIAA/ISSMO Multidisciplinary Analysis and Optimization Conference
+		
+			American Institute of Aeronautics and Astronautics
+			
+		
+	
+	Robust
+	Cone, A., Bowe, A., and Lauderdale, T., "Robust
+
+
+				
+			
+		
+	

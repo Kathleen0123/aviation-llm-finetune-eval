@@ -1,0 +1,991 @@
+
+	
+	
+		
+IntroductionIn the National Airspace System, terminal airspaces are characterized by high traffic volumes in narrow portions of airspace, where flights are scheduled to depart and arrive in short periods of time.In these constrained environments, most aircraft are climbing or descending at various speeds.In current operations, route segments and fixes are spatially segregated in order to reduce interactions between traffic flows and controllers enforce spatial separations between aircraft in the same flow to guarantee flight separation.To manage shared resources in current procedures, controllers assign different routes and independent fixes to arrival and departure flows.Such separation strategies introduce inefficiencies in the airspace usage with longer departure and arrival routes and altitude constraints.To remedy these inefficiencies and support improved operations efficiency, a time-based separation strategy is a potential approach to manage integrated arrivals and departures using shared resources.Over the past decades, many scheduling research efforts have aimed to improve the operations efficiency in the terminal airspace by solving separately arrival scheduling problems [1][2][3][4][5][6], departure scheduling problems [7][8][9] and airport surface management problems [10,11].In more recent work, researchers have been focusing on integrated scheduling problems in which resources such as waypoints, fixes and/or routes are shared between departure and arrival flows [12][13][14][15][16].In recent studies, Capozzi et al. demonstrated that integrated departures and arrivals in metroplex areas have the ability to improve operations efficiency [17,18].Moreover, Xue et al. showed in recent stochastic scheduling analyses focusing on integrated operations in the terminal airspace, that flight time could be saved when arrival and departure procedures share waypoints [13].However, shared waypoint solutions are sensitive to uncertainty.Xue et al. analyzed the impacts of flight time uncertainty on scheduled integrated operations and on controller interventions [14].It was found that the results computed by the stochastic optimization could help identify compromise schedules that reduce both the number of controller interventions and delays.However, considering uncertainty in models can represent a computational challenge with a level of complexity that can prevent real-time applications and further developments.Previous work conducted by the authors focused on minimizing computation time when dealing with uncertainty through the usage of Graphics Processing Units (GPU) [19].The GPU computing technique enabled a fast decision support algorithm to schedule flights evolving in a mixed-environment sharing resources in the presence of uncertainty.Given the similarities to production or manufacturing operations scheduling problems, airport runway scheduling problems can be described in terms of machine job-shop scheduling terminology.A few examples can be found in [5,[20][21].Beasley et al. adapted the machine-scheduling model to solve the aircraft-sequencing problem [5].The processing time of a job on a machine was analogous to the separation requirements between aircraft.Both job-shop and aircraft sequencing problems are time and sequence dependent.A review of the literature shows that many machine-scheduling models developed so far consider sequencedependent setup times and most of them are deterministic [22,23].The stochastic machine jobshop scheduling studies primarily focused on probabilistic processing times [24][25][26].But in the context of arrival and departure operations at airports, uncertainty affects the exact knowledge of operational factors such as pushback times or taxi times to the runway.In machine scheduling terminology this can be referred to probabilistic release times and probabilistic due dates.Stochastic versions of such problems received limited attention and probabilistic release times and due dates were rarely introduced.One of the only models that considers both was developed by Wu and Zhou to solve a single machine-scheduling problem [27].However, the model developed in that study does not include sequence-dependent setup times.The first attempt that considered sequence-dependent setup times, probabilistic release and due dates can be found in a recent work by Sölveling et al, who developed a runway planning optimization model [11].This present paper contributes to stochastic scheduling optimization in the field of air traffic management.This document presents an alternative method to model and solve integrated departures and arrivals in the terminal airspace under uncertainty.A scheduler is built that computes schedules for terminal airspace waypoints that are shared by both arrivals and departures.Inspired from operations research, the scheduler is based on a machine jobshop scheduling problem formulation in which jobs and machines are respectively represented by aircraft and waypoints.For both arrivals and departures, wake vortex separation requirements are enforced at the runway threshold, i.e. sequence-dependent setup times, and speed-varying constraints are derived to represent the temporal control separation strategy adopted.Because flight times are sensitive to perturbations, error sources are added to release flight times and probabilistic runway dates are examined to illustrate the impact of uncertainty on estimated times of arrival and estimated times of departure.Second, a multistage stochastic programming approach is chosen to formulate the problem because of its ability to handle multi-objective optimization and multiple constraints in the presence of uncertainty.The first stage attempts to solve the optimal sequencing problem based on aircraft weight classes and the second stage attempts to solve the routing and scheduling problem while minimizing the impact of flight time uncertainty.The third stage focuses on adjusting the computed schedules to maximize the on-time performance of the flights to the runway.The stochastic programming problem is formulated as the optimization of an expected value cost function and candidate solutions are obtained by solving sample average approximation problems with finite sample size.Third, a proof-of-concept study is accomplished by applying the scheduler to arrival and departure flows in a model of the northern-western flows of the Los Angeles terminal airspace.Several simulations are run and individual flight time savings are computed for both departure and arrival flows.Finally, a more thorough statistical analysis is performed to assess the methodology performance, and evaluate the impact of the number of scenarios considered in the sampled problem on solutions and computation times.The objective of this work is to provide a stochastic optimization formulation that solves a routing and scheduling problem for terminal airspace traffic and produces optimal solutions with minimal runtime.This paper is organized as follows.The problem formulation is presented in Section II and the solution approach is described in Section III.In Section IV, a proof-of-concept is conducted and results are discussed.A statistical analysis is performed in Section V. Finally, a summary of the accomplished work, concluding remarks and next steps are presented in Section IV.A nomenclature is added in Appendix at the end of the paper for notations reference.
+Problem FormulationThis section presents the framework in which the integrated arrival/departure operations problem is approached and modeled.
+Problem Setup
+Aircraft Weight ClassificationDuring all flying phases, aircraft generate wake vortices of different strengths and intensities, which mainly depend on aircraft weight.Therefore this study considers different weight-based aircraft types defined according to the Federal Aviation Administration (FAA) aircraft weight classification [30].The standard defines three aircraft weight categories, small (S), large (L) and heavy (H).In addition, the Boeing 757 is often considered as category.A Boeing 757's weight is in the large class, yet it's wake is the size of a heavy's wake.Recently a fifth category, called "super", was added with the introduction of the A380 in the National Airspace System, but in this paper this aircraft type is not considered [38].Therefore, four categories, denoted , 7, , , are considered in this work.
+Aircraft SeparationTo ensure safe operations in terminal airspaces in current operations, the FAA defines aircraft separation distances that need to be enforced between aircraft at all times [30].Controllers spatially separate aircraft flying on the same traffic flow by imposing these separation requirements.Moreover, controllers also spatially segregate arrival and departure flows by assigning them independent routes to fly.This introduces inefficiencies in the airspace usage with longer flight routes and altitude constraints.To mitigate such constraints and allow some flexibility in future operations, this work integrates arrivals and departures by implementing a temporal control separation strategy that converts separation requirements prescribed in distance to time scale using the aircraft speeds.In the air and between all aircraft pairs, a fixed separation distance of 4 nautical miles (nmi) is imposed according to [18] and converted into time via the speed of the leading aircraft of each pair.On the ground at the runway, the standard wake vortex separations are imposed between all aircraft pairs [30,37].But because the sequence of aircraft weight-class determines wake vortex separation requirements, the requirements are asymmetric at the runway.If a large aircraft leads a small, the separation requirement will be greater than the opposite because large aircraft produce larger wake turbulences than small aircraft.Moreover, separation times are different for arrival and departure flights because arrivals and departures fly at different speeds.
+Airspace and Route ModelA general airspace and route model was defined to facilitate its use for any terminal airspace.Because Standard Terminal Arrival Routes (STARs) and Standard Instrumental Departures (SIDs) procedures need to be flown by aircraft when flying within the terminal airspace, these procedures are used in this model to define the airspace routes as ordered sets of waypoints.
+Uncertainty and Controller Intervention ConsiderationsIn terminal areas, flight schedules are subject to uncertainties that come from many sources such as errors in aircraft dynamics, inaccurate wind predictions or human factors.In this model, in order to better reflect the reality of current air traffic operations, uncertainty is added to the flight times by introducing errors that follow probabilistic distributions.Details about the distributions will be provided in a later section.As a consequence, controllers might be required to intervene and prevent an unexpected loss of separation.
+Machine Job-Shop ModelingIn this paper, a machine job-shop scheduling formulation is derived from operation research and adapted to model the integrated departure/arrival operations in the terminal airspace.Integrating flights using shared resources includes routing, sequencing and scheduling.Therefore, the scheduling model is extended to a scheduling and routing model.Similarities between the present scheduling problem and most of the machine job-shop scheduling problems found in the literature allow describing this problem using job-shop scheduling notations.To emphasize the mapping of the technique to this application, these are mentioned in parenthesis.The present problem consists of a set of aircraft (set of jobs), denoted , to be scheduled for arrival or departure in the terminal airspace considered in a given planning horizon (e.g. from 9:00AM to 9:30AM).Each aircraft belongs to an aircraft category (job category) defined by a specific type .An aircraft type is twofold, it is represented by a weight class  = {, 7, , } (Table 1) and an operation  = {, }, where  stands for arrival and  for departure.For example, a large departing aircraft and a small arriving aircraft have their types respectively denoted by  !" and  !" .The set of all weight-operation combinations form the aircraft type set , i.e.  = { !" ,  ∈ ,  ∈ }.In the terminal airspace, each aircraft  ∈  flies a route defined by a flight plan, i.e. sequence of waypoints (sequence of machines), defined by the SIDs and STARs of the airspace and route model.The entire set of waypoints is denoted by  and each waypoint  ∈  .For modeling simplicity, the runway is considered as the last waypoint of arrival routes and as the first waypoint of departing routes.For arrival procedures, no vectoring to the base turn is modeled.Additionally, each aircraft has a release time  !, processing times  !" at each waypoint  of the route flown, and a deadline  ! also called due date.The aircraft release time corresponds to when the aircraft is expected to enter the airspace considered.Hence, for arrival flights, the release time is when aircraft are expected to fly by the first waypoint of the arrival route, and it is the estimated time of departure (ETD) at the runway threshold for departing flights.An aircraft starting time  !corresponds to the exact time the aircraft enters the airspace.A processing time  !" is defined by the time aircraft  is being processed by waypoint .Each waypoint  can only process one aircraft at a time and each aircraft  can only fly by one waypoint at a time.Therefore in this model, a processing time is defined as a waypoint block time and depends on the separation time requirements between type-based aircraft pairs.To determine the waypoint block time for aircraft  , the model identifies the type of the following aircraft.Then using the types of the aircraft forming the aircraft pair, it computes the separation time requirement.On the ground at the runway, wake vortex separation times define the runway block times.However, in the air, waypoint block times are determined by the conversion of distance separations to temporal separations via the speed of the leading aircraft.In operations, based on the aircraft leader's speed, updated speed clearances are given to the following aircraft to maintain separation.Aircraft due dates are times at which aircraft are expected to exit the considered airspace.In the present case, the due date is defined as the estimated time of arrival (ETA) for an arrival and as the fly by time of the last waypoint of the departure route for a departure.These due dates are estimated time values and in reality aircraft might complete their journey earlier or later than expected.Therefore, an aircraft also has a completion time, which corresponds to the exact time aircraft exit the airspace; it is denoted  ! for aircraft  .Each arrival/departure considered has an ETA/ETD and these times represent expected time values at the time of operation; they are not known with certainty.To integrate impacts of uncertainty, perturbations are added to release dates and due dates of both arrival and departure flights such that probabilistic runway dates ETA/ETD are examined.Finally, denoted by  ! the global exit time of aircraft  computed after uncertainty considerations.To illustrate the different notations introduced, two waypoint timelines are drawn in Figure 2.
+Figure 1. Waypoint timelines with two arrivalsEach row corresponds to a timeline associated with a waypoint and for simplicity only two waypoints, WPT and RWY, are considered.In this simple example, two arrival flights of types  !" and  !" are being scheduled.Both aircraft arrive at waypoint WPT later than their respective release time ( !>  ! and  !>  ! ) because of uncertainty.At the runway RWY, the first aircraft arrives later than its ETA (  !>  ! ) whereas the second aircraft is ontime  !=  ! .For the two timelines, waypoint processing times  !" , where  ∈ 1,2 and  ∈ {, }, are represented by blocks of different lengths.
+Problem StatementThe following problem will be discussed in this paper as a means to examine the proposed solution for schedule integration.Given a set of aircraft  = {1, … , } each departing or arriving in a particular airspace within a 30-minute time period, compute the optimal aircraft schedules and routings such that the impact of flight time uncertainty is minimized subject to the following constraints:• Waypoint Capacity Constraints: waypoints must process one aircraft at a time and aircraft must be separated in the air at each waypoint by a minimum distance (converted to time using speed) from any other aircraft.
+• Flight Plan Waypoint PrecedenceConstraints: when assigned to a route, aircraft have to fly the corresponding flight plan and follow the waypoints in order.• Runway Constraints: each aircraft must be separated by the minimum wake vortex separation (converted to time) at the runway threshold.Moreover, no departing flight can be on the runway before its estimated time of departure.• Speed Constraints: each aircraft speed must stay within a specific speed range delimited by minimum and maximum speeds appropriate for that aircraft type.The minimization objective is threefold.The first goal is to find a feasible aircraft sequence that minimizes the sum of exit times for the  flights considered, i.e. overall minimum flight time delay.The second goal is to process the aircraft as soon as possible after their release times in order to minimize the amount of flight delay at release (i.e.minimize the difference between each aircraft start time and release time).The last goal is to minimize the earliness and tardiness of the computed schedules at exit waypoints.Because of the uncertainty presence in the flight times, potential conflicts, i.e. loss of separation between aircraft might occur.In order to simulate the resolution of such conflicts, the controller behavior is modeled as the number of times aircraft speed must be changed.Using the notations previously defined, the objective function can be written as in Equation 1.The variables denoted by  represent the relative objective weights and each  ∈ [0,1] .For the second and third objective terms in Equation 1, { !,  !} and { !,  !} represents respectively for each aircraft  , the earliness and tardiness costs at release waypoints and the earliness and tardiness costs at exit waypoints.𝑂𝑏𝑗 = 𝜆 ! 𝑓 ! ! !!! + 𝜆 ! 𝛼 ! max 𝑟 ! -𝑡 ! , 0 ! !!! + 𝜆 ! 𝛽 ! max 𝑡 ! -𝑟 ! , 0(1)! !!! + 𝜆 ! (𝛾 ! max {𝑑 ! -𝑐 ! ! !!! , 0}) + 𝜆 ! (𝛿 ! max {𝑐 ! -𝑑 ! ! !!! , 0})To account for uncertainty, it is assumed that release times  ! and flight due dates  ! are not known with certainty.It is assumed that error sources that follow discrete and finite probabilistic distributions are added to the different release times and flight due dates.A scenario  ! is a vector of perturbed flight times𝑟 ! ! if 𝑞 = 𝑟 or 𝑑 ! ! if 𝑞 = 𝑑 (i.e. 𝑟 ! ! = 𝑟 ! + 𝜉 ! ! or 𝑑 ! ! = 𝑑 ! + 𝜉 ! ! ) with a corresponding probability of occurrence. Let 𝜉 ! = {𝜉 ! ! , … , 𝜉 ! ! } be the vector of perturbations 𝜉 ! ! for scenarios of type 𝑞, 𝑞 ∈ {𝑟, 𝑑},where  ! is the number of scenarios of type  .Finally, denote  ! as the set of all scenarios of type ,  ∈ {, }, such that𝛺 ! = {𝜔 ! ! , … , 𝜔 ! ! },where each scenario has a probability of occurrence  !! .The objective function of the stochastic problem is now extended to include the uncertainty  ! on the release times and  ! on the due dates, and formulated as the optimization of an expected value cost function to consider all scenario occurrences.This formulation computes the optimal aircraft sequence, including both arrivals and departures, at the runway threshold.The output of the program defining the optimal aircraft sequence at the runway is a vector  which can be described by the sequence of aircraft positions at the runway, i.e.  = ( !"! , … , 𝑇 !" ! , … , 𝑇 !" ! )where  is the position such that max  =  and  !" is the type of the aircraft having a weight class  and an operation  .Denote  as the set of all possible sequences and  ∈  .The objective function previously detailed in Equation 1 can then be rewritten as following:min !∈! 𝔼[𝑂𝑏𝑗 𝑥, 𝜉 ! , 𝜉 ! ] (2)Equation 2 includes the uncertainty dependency, i.e.  !,  ∈ {, } in the perturbed flight times𝑟 ! ! if 𝑞 = 𝑟 or 𝑑 ! ! if 𝑞 = 𝑑.
+Solution ApproachThe integrated arrival/departure terminal airspace operations problem is modeled as a machine job-shop scheduling and routing problem as described in the previous section.A multistage stochastic programming approach is developed to solve the scheduling and routing of the integrated terminal airspace operations under uncertainty.Information about aircraft and schedules received by air traffic controllers becomes more certain the closer aircraft operations are to execution (arrival and departure).An air traffic controller is more likely to know with high accuracy the aircraft type mix of the aircraft set that will depart or arrived in the next 30-minutes than the exact arrival and departure times of each aircraft.Therefore, decomposition by stage is appropriate for the stochastic scheduling.Given the described structure, the scheduling and routing problem can be modeled as a 3-stage stochastic program.Due to wake vortex separation requirements, the runway capacity directly depends on the aircraft weight sequence.Hence, the first stage seeks to find the optimal aircraft sequence based on the aircraft weight classes and this stage is purely deterministic.Then, once the optimal sequence is computed, the second stage schedules and routes the aircraft.Because release times may be affected by uncertainty, errors that follow normal distributions are introduced in the release times.Several scenarios, each representing a set of perturbed release flight times, are generated and tested.Finally, the third stage adjusts the schedule and route of each flight considered to maximize the on-time performance of the aircraft at its exit.To compute robust schedules, several scenarios corresponding to different sets of due dates are generated and tested in this last stage.Because of uncertainty, there are many parameters that can affect the flight schedules.Aircraft may reach the runway earlier, on time or later than their estimated flight schedules.Depending on how early or late a flight will be, uncertainty induces a variety of potential different scenarios.Naturally, the number of scenarios will increase exponentially if the number of flights is increased.Therefore, sampling techniques are used to generate good solutions for a subset of scenarios.
+Mathematical FormulationGiven the problem statement, each stage is now described on its own and followed by a summary of the overall program.The constraints presented in previous section are enforced in the solution process and are met by all three stages combined.
+Stage 1The first stage problem is a deterministic sequencer.It consists of computing a sequence of aircraft types at the runway threshold such that the sum of global exit times of each flight is minimized subject to several constraints.The first and second constraints ensure that the number of runway slots for each aircraft type is equal to the number of aircraft of each type in the input data and that only one aircraft is assigned per runway slot.The last constraint ensures that the runway separation requirements are met.
+Stage 2Once uncertainty has affected release times, the second stage problem assigns flights to the aircraft runway slots determined by stage 1.A separate stage 2 is completed for each scenario  ! .Stage 2 also computes the optimal scheduling and routing for each flight.The objective is formulated as the minimization of the sum of differences between start time and release time of each aircraft.At that point, the program does not know the due dates and tries to process them as soon as they enter the airspace model.Instead, completion times, i.e.ETAs for arrivals and fly by times at the last waypoint of departure routes for departures, are estimated such that the separation distances are respected.For the assignment, this stage is constrained to only assign one flight with the appropriate type to one aircraft slot on the runway.For the schedule and routing computations, this stage needs to respect the flight plan waypoint precedence constraints, the waypoint capacity constraints and the speed constraints.
+Stage 3Once uncertainty has affected due dates, the third stage optimizes the schedules of each flight by minimizing the sum of differences between due dates and completion times of each aircraft.Therefore, the scheduling and routing computed in stage 2 are reoptimized to minimize the earliness and tardiness of each flight at the exit waypoint.As with stage 2, a separate stage 3 is completed per scenario ω d.The optimization in stage 3 is subject to the same set of constraints as stage 2.During each stage, knowledge is assumed from previous stage and information is carried from one stage to the next.Using the modeling framework, notations and stage descriptions, the problem formulation can be described as an embedded 3-stage stochastic program as illustrated by Equation 3.min !∈! 𝑓 ! 𝑥 + 𝔼 ! ! [min !∈! 𝑓 ! 𝑥, 𝜉 ! + 𝔼 ! ! [min !∈! 𝑓 ! (𝑥, 𝜉 ! )]] (3)where  ! is deterministic and where  !and,  !depend on the realization of perturbations  ! and  ! . !,  ! and  !can be written as follows.𝑓 ! 𝑥 = 𝜆 ! 𝑓 ! ! !!! , 𝜆 ! = [0,1] (4)For each scenario  !,𝑓 ! 𝑥, 𝜉 ! = 𝜆 ! 𝛼 ! max r ! -𝑡 ! , 0 ! !!! + 𝛽 ! max 𝑡 ! -𝑟 ! , 0 , 𝜆 ! = [0,1](5)For each scenario  !,𝑓 ! 𝑥, 𝜉 ! = 𝜆 ! 𝛾 ! max d ! -𝑐 ! , 0 ! !!! + 𝛿 ! max 𝑐 ! -𝑑 ! , 0 , 𝜆 ! = [0,1] (6)The objective function in Equation 3 consists of a weighted sum of three terms.In fact, the second term of Equation 3 can be split into the sum of two expected values when using the linear properties of expected value.The first term is the first stage objective (Eq.4), the second term is the expectation of the second stage objective function value (Eq.5) and the last term is the expectation value of the expectation of the third stage objective function value (Eq.6).To evaluate the solution of this type of formulation and obtain optimal candidate solutions, many scenario problems have to be generated and tested.This would require a significant computational effort.Therefore, a methodology is developed to reduce the size of the scenario set to a manageable size and a sampling method is introduced.
+The Sample Average ApproximationThe solution methodology chosen is the Sample Average Approximation (SAA) method.Assuming that samples  !, … ,  !can be generated from a random vector  , where  is the sample size, the SAA method is a Monte Carlo based technique that approximates a stochastic program by replacing the expectation by its sample average.The stochastic program is thus replaced by a sample average approximation that can be solved by a deterministic optimization algorithm.In this problem, because two random vectors  ! and  ! are considered, denote  ! and  ! as the respective number of replications of the random vectors.Therefore, the SAA problem for the 3-stage stochastic program can be defined as:min !∈! 𝑓 ! 𝑥 + 1 𝑁 ! (𝑓 ! 𝑥, 𝜉 ! + 1 𝑁 ! 𝑓 ! (𝑥, 𝜉 ! )) ! ! !!! ! ! !!!(7)where  !,  ! and  ! are defined respectively by Equations 4, 5 and 6.In this research, because it is assumed that the random vectors  ! and  !follow discrete distributions with finite support of respective size  ! and  !, each element of the respective finite supports{𝜉 ! ! , … , 𝜉 ! ! } and {𝜉 ! ! , … , 𝜉 ! ! } has respective probability 𝑝 ! ! , … , 𝑝 ! ! and 𝑝 ! ! , … , 𝑝 ! ! .The expected value problem can then be replaced by its equivalent using probabilities and the SAA problem for the 3-stage stochastic program can be rewritten as:𝑚𝑖𝑛 !∈! 𝑓 ! 𝑥 + 𝑝 ! ! (𝑓 ! 𝑥, 𝜉 ! + 𝑝 ! ! 𝑓 ! (𝑥, 𝜉 ! )) ! ! !!! ! ! !!! (8)where  !,  ! and  ! are defined respectively by Equations 4, 5 and 6.Denote Equation 8 equivalent to min !∈! ().
+Insummary, the proposed approach approximates the true stochastic problem defined by Equations 3, 4, 5 and 6 by a SAA problem defined in Equation 7. Denote  * and  as respectively the optimal objective function value of the true problem and the optimal objective function value of the SAA problem.Shapiro and Homem-de-Mello showed in [29] that  converges to  * with probability approaching one as the sample size increases (i.e. !→ ∞ and  !→ ∞ in this problem).However increasing the number of random vector realizations introduces large computational times.Therefore, the proposed methodology suggests solving several SAA problems with smaller sample size rather than solving one SAA problem with a large number of random vector realizations.Define  as the number of SAA problem independent replications.As defined previously, recall that  ! and  ! are the respective finite number of realizations (or scenarios) in stage 2 and stage 3.The following steps summarize the proposed solution methodology using the SAA method:A. C. For each of the  solutions, compute the optimality gap and estimated variances.Choose the solution according to specific optimization goals.Because the problem is formulated as a mixedinteger linear program, a global solution will be computed for each repetition.However, the values of parameters  ,  ! and  !affect the robustness of the computed optimal solutions and the computation time.Hence, their adjustments are studied in the statistic analysis section.
+ImplementationThe mathematical model of the mixed-integer linear program is implemented in Python [31] and Gurobi [32] is used as the optimization solver.The branch and bound algorithm is selected to solve step A.(b).i of the proposed methodology.The code is run on a Macintosh platform with 2.5GHz Intel Core i5 and 16 GB RAM.To accelerate the computation time, a multi-threading approach is implemented to compute each repetition individually with one thread.Note that the relative weight s,  ∈ [0,1] are set to 1 in this particular implementation but will be varied in future implementations.
+Proof-of-conceptA proof-of-concept study is conducted on a baseline implementation of a simple problem.The goal of this research phase is to provide first evidence that the solution obtained using the developed methodology is a candidate to save total and individual flight time without increasing drastically the number of controller interventions.Experimentation is performed on a realistic application and different test cases are explored to understand the computed solutions.
+Application to the Los Angeles Terminal Airspace
+DescriptionThe interactions between arrivals and departures in the Los Angeles terminal airspace constitute an interesting case study because of their complex natures and layouts.Figure 1 shows arrival and departure routes based on the published SADDE6 STAR and CASTA2 SID for the Los Angeles International Airport (LAX).The SADDE6 procedure stipulates that arrivals coming from fix FIM should fly toward fix SMO via SYMON, SADDE and GHART fixes.Departure flights to the North need to follow the SID procedure CASTA2.According to CASTA2, departures takeoff from Runway 24L (represented by RWY in this model) and fly toward WPT11 via NAANC and GHART fixes.
+Figure 2. Route interactions between arrivals anddepartures in the LA terminal airspace GHART is the shared resource between SADDE6 and CASTA2 procedures.In this paper, SADDE6 and CASTA2 are denoted indirect routes for simplicity.Moreover, although it is not common practice at LAX, this model assumes that arrivals and departures operate on the same runway 24L (represented by RWY) to make this study more interesting.In current operations, altitude constraints are imposed at waypoint GHART-arrival flights are required to maintain their altitude above 12,000 feet and departure flights below 9,000 feet and this forces flights to fly by WPT1 and WPT2.However, Figure 1 illustrates that if there were no flow interactions, arrivals and departures could fly more direct routes, share resources and save flight times.A direct route for departures would be RWY-WPT2 2 -WPT1 and a direct route for arrivals would be FIM-WPT1-SMO.Timar et al. [36] showed that in current operations of the Los Angeles terminal airspace, 28.1% of LAX arrivals follow SADDE6 and 10.4% of LAX departures follow CASTA2.This can be converted to 220 arrivals and 80 departures in a typical traffic day.The current study focuses on these partial flows and waypoints represented in Figure 1 are used to model the airspace and flight plan route.A representative schedule of 14 flights is extracted from historical data corresponding to the Los Angeles partial flows dated December 4, 2012.It covers a 30-minute traffic time period from 9:00 AM to 9:30 AM including 6 departures to the North from Runway 24L (RWY) and 8 arrivals from fix FIM. 2 WPT2 is a waypoint made-up to simplify the route descriptions.Table 1 presents the reference schedule and details the scheduled initial times of the flights.These times are relative to simulation start time and flights are listed in chronological order.2) is to be scheduled and routed within the 30-minute time period of the reference schedule presented in Table 1.
+Table 2. Aircraft Fleet Mix
+Type
+AircraftWeight OperationsA0 H A A1 L A A2 S A A3 S A A4 L A A5 L A A6 L A A7 L A A8 S D A9 L D A10 H D A11 L D A12 L D A13 L DAlong each route, in particular along every waypoint pair-based route segments, aircraft of all types can fly within a speed range such that  ∈ [ !"# ,  !"# ] .For departures,  ∈ [180,250] and for arrivals  ∈ [280,350].
+ModelingAs mentioned previously, this research uses temporal controls to separate aircraft at all times.To show the benefits of using shared resources in the spatial dimension, this research also investigates spatial-based separation methods in which temporal controls are implemented by default.The spatial separation strategy only uses indirect routes used in current STAR and SID operations to separate aircraft.The hybrid separation strategy additionally allows direct routes to be flown for both STAR and SID procedures.In the formulation of the hybrid separation method, three different types of decision variables are defined for each flight: a timing variable, a routing variable and a speed variable.For each FIM arrival, the timing variable is the release time at fix FIM whereas for each departure to the North, it is the release time at the runway RWY.For both arrival and departure flights, the routing variable is the route option flown: 0 for indirect and 1 for direct and the speed variables are the different aircraft speeds.Longitudinal separation constraints are imposed at all times between all aircraft pairs.In the air, a distance separation requirement of 4 nmi is imposed between all aircraft pairs (according to [18]) and converted into time scale via the speed of the leading aircraft of each pair.At the runway, wake vortex separations are imposed between all aircraft pairs.In this study, altitude restrictions are assumed to be satisfied at all times.A constraint on allowed amount of speed change on flight segments between two waypoints is added to prevent steep speed gradients.No more than 20% speed difference is allowed between two consecutive waypoints.For this application, the objective function is adapted to the model of the Los Angeles terminal airspace defined previously.The objective described by Equation 8is updated for the application and this is shown in the following Equations 9, 10 and 11.𝑓 ! 𝑥 = 𝑓 ! !"#! 𝑖𝑓 𝑗 𝑖𝑠 𝐷 𝑓 ! !"# 𝑖𝑓 𝑗 𝑖𝑠 𝐴 ! !!!(9)For each scenario  !, If j is D:𝑓 ! 𝑥, 𝜉 ! = 𝛼 ! max r ! !"# -𝑡 ! !"# ,0 ! !!! + 𝛽 ! max 𝑡 ! !"# -𝑟 ! !"# , 0 (10𝑎)If j is A:𝑓 ! 𝑥, 𝜉 ! = 𝛼 ! max r ! !"# -𝑡 ! !"# ,0 ! !!! + 𝛽 ! max 𝑡 ! !"# -𝑟 ! !"# , 0 (10𝑏)For each scenario  !, If j is D:𝑓 ! 𝑥, 𝜉 ! = 𝛾 ! max d ! !"#$ -𝑐 ! !"#! ,0 ! !!! + 𝛿 ! max 𝑐 ! !"#! -𝑑 ! !"#! , 0 (11𝑎)If j is A:𝑓 ! 𝑥, 𝜉 ! = 𝛾 ! max d ! !"# -𝑐 ! !"# ,0 ! !!! + 𝛿 ! max 𝑐 ! !"# -𝑑 ! !"# , 0 (11𝑏)The earliness cost parameter  ! is fixed to a large value when  =  to avoid early departures from release, i.e. from runway.For experimental purposes, the earliness cost  ! for arrivals will be varied.Moreover for simplicity and for both arrivals and departures, late release times and early or late completion times are not penalized, i.e. if  =  or  = ,  !=  !=  != 1.However, delaying aircraft in the sky, i.e. creating airborne delay, is more expensive than delaying aircraft on the ground, i.e. creating ground delay.Therefore, the penalty on late arrivals at the runway is set such that the cost of creating airborne delay for arrivals is twice that of creating ground delay for departures, i.e. if  !=  and  = ,  !! = 2 ! .
+Experiment SetupThe experiment setup presents the different test case simulations that are used.
+Experiment OverviewDifferent simulations are designed in this proofof-concept study to compare the spatial and hybrid separation methods with and without the presence of uncertainty.Total and individual flight times are computed as well as delays and number of controller interventions to compare the separation methods.
+Stochastic and Deterministic CharacteristicsThe proposed methodology is stochastic in nature but it is possible to setup and simulate deterministic conditions.In the test case without uncertainty, the number of scenarios of each stage in the multi-stage formulation is set to zero (i.e. !=  != 0) and no errors are added to the flight times.However when sources of uncertainty need to be integrated, the SAA parameters  ,  ! and  !can take a range of different values.In this section, values are given without discussions but in the following section simulations using different numbers of scenarios will be investigated.Table 3 presents the values of the algorithm parameters that are used for the deterministic and stochastic settings.𝑚 ! 0 100 !0 100 In the case of stochastic settings, error sources sampled from probabilistic distributions are added to both arrival and departure flight times.In stage 2, these are added to the release dates, i.e. at fix FIM for arrival flights and to ETDs for departure flights.In stage 3, they are added to the due dates, i.e. at RWY for arrival flights and at WPT1 for departure flights.
+Results
+Comparison of separation methods in the deterministic caseIn this section, spatial and hybrid separation methods are compared under deterministic conditions.As mentioned previously, no early departures are allowed at release, i.e. at the runway, and a penalty is setup for early arrivals at release.In the case of spatial separation where only indirect routes are flown, the total computed flight time for the set of 14 aircraft is equal to 6975.88s with individual flight times of 440.06s for each departure and 525.29 to 587.0s for arrivals.In the case of hybrid separation, the total computed flight time obtained is 5639.9swith flight of 314.64s for each departure and 467.9 to 476.78s for arrivals.In this case, to meet runway separation constraints, arrivals slow down whereas departures are merely ground held.Individual departure flight times show that the optimization clears departures to takeoff only when a route is found to be flown at maximum speed of the speed range authorized.With the hybrid separation, a total flight time reduction of 19.5% is achieved with an individual flight time reduction of 125.42 seconds for departures and individual flight time reductions up to 119.1 seconds for arrivals.It is worth mentioning that in the hybrid case, the optimization assigned all flights to direct routes.
+Comparison of separation methods in the stochastic caseSchedules are sensitive to uncertainty and schedule robustness is required in operations.Therefore stochastic conditions are setup in this section using the algorithm parameter values provided in Table 3. Error sources drawn from normal distributions are added to both arrival and departure flight times.Based on common values used as desired prediction accuracy in previous work conducted on arrival trajectory [33,34], the arrival time error has a mean of 0 seconds and a standard deviation of 30 seconds.For the departure time error, a mean value of 30 seconds and a standard deviation of 90 seconds is setup based on the departure Call For Release, three-minute time compliance window [35].For this experiment, the penalty values are the same as the ones used in the deterministic simulation.The optimization computes global solutions for each repetition.The flight time values provided as results correspond to the largest savings obtained for all repetitions.In the case of spatial separation where indirect routes are flown, the total computed flight time for the set of 14 aircraft is equal to 6842.72s with individual flight times of 440.06s for each departure and 525.29s for arrivals.In the case of hybrid separation, the total computed flight time obtained is 5677.95swith individual flight times of 314.64s for each departure and 467.9 to 489.0s for arrivals.For the hybrid strategy, the flight time difference for arrivals is due to speed change imposed to respect separation requirements between arrivals and departures at waypoints that are shared between flows.With the hybrid separation, a total flight time reduction of 17.0% is achieved with an individual flight time reduction of 125.42 seconds for departures and individual flight time reductions up to 57.39 seconds for arrivals.It is worth mentioning that in the hybrid case, the optimization assigned all flights to direct routes.With the addition of uncertainty, additional delays are imposed to maintain required separation.It was found when comparing the aircraft separation methods that the hybrid separation method introduced a global flight delay amount of 46.9 seconds associated with two controller interventions, i.e. two speed clearances.
+Impact of early arrivalsAllowing early arrivals can increase flexibility and reduce delay.In this section, the impact of early release of arrival flights is investigated by varying the penalty cost  ! of arrival flight  under the previously described stochastic settings.The goal is to understand the effects on delay and controller intervention of allowing early release for arrival flights in the presence of uncertainty.In real world operations, the penalty cost  ! on early release of arrival flight  represents the ability of Center to speed up arrivals and get to FIM earlier than their original estimated unimpeded entry time.To present the results, distributions of delays and numbers of controller interventions are drawn using Box and Whisker plots respectively in Figure 2 and3.The delay is computed as the sum of individual aircraft flight delay for each scenario, where flight delay is computed as the difference between computed flight time (global value) and expected flight time of each scenario when flying at minimum speed.The number of controller interventions is computed as the number of times speed changes occur to avoid separation losses between aircraft for each scenario.In each following set of graphs, resulting distributions of each separation methods, i.e. S for spatial and H for hybrid, are computed for a fixed value of the early release penalty cost for arrival flights.Four different penalties are investigated and they are denoted "None", "Low", "Medium" and "High"."None" refers to the case in which early release of arrivals are allowed (i.e.no penalty) whereas "High" refers to the case in which early release of arrivals are forbidden (i.e.high penalty)."Low" and "Medium" are intermediate penalty cases."Low" reflects the case in which arrival flights can be released early unless delay is induced for departure flights."Medium" illustrates the case in which no arrival flights can be released early unless reduced delay is computed.For all box plots, the box extends from lower to upper quartile value of the delay and controller intervention data with a red line at the median.The bottom and top horizontal lines represent the whiskers and they extend the box to show the range of the data from minimum to maximum From the results it can be observed that when early release of arrival flights are allowed, i.e. "None" case, the spatial separation method introduces more delay and more controller interventions than the hybrid separation method.However results show that as the early release of arrival flights gets more and more penalized, the trend reverses with lower values of delays and lower numbers of controller interventions.For the "Medium" case, both separation methods have similar delay and controller intervention distributions.However, for the "High" case, the hybrid separation method introduces more delays and more controller interventions than the spatial separation method.Therefore, the results suggest that the hybrid separation method surpasses the spatial separation method for all cases except the "High" case by creating fewer delays and less number of controller interventions.In real world operations, the results show that to obtain fewer delays and less number of controller interventions in the terminal airspace when using the hybrid separation method, the Center should not speed up all aircraft before getting to fix FIM but only the ones for which benefits are obtained.
+AnalysisObservations drawn from the results show that when using the hybrid separation method, significant flight time savings (total and individual) could be obtained even in the presence of uncertainty.However, both methods introduce delays associated with uncertainty to respect aircraft separation requirements.Moreover, because of waypoints shared by arrival and departure flows when flying direct routes, the number of controller interventions increases when using the hybrid separation method to make sure aircraft are well separated in particular at these shared waypoints.Future work is required to investigate how the other penalty costs introduced in the optimization formulation would affect the amount of delay and workload added by such flow interactions.Sequencing rules or additional speed constraints could be imposed to aircraft prior to flying by the shared waypoints.A further penalty cost variation analysis could give better insights to obtain lower delays and lower controller workload when using the formulation presented in this paper.For example, if late completion times were penalized, how would the number of controller interventions be affected?
+Assessment of SAA PerformanceThe proof of concept described previously uses fixed parameter values for the implementation of the Sample Average Approximation methodology.This section presents the investigation of different parameter values to understand how they affect the performance and the results of the SAA methodology.Because results show that greater savings could be obtained if aircraft fly direct routes, the hybrid separation method is implemented in this statistical analysis.In the preliminary, the statistical bounds are derived for the problem.Then the computation setup details the values of the parameters tested.Finally, computation tables and analysis of the statistics are provided.The goal is to determine the number of scenarios needed to get robust optimal solutions for a fixed number of repetitions when applying the proposed methodology in reasonable computation time.
+Statistical MetricsTo solve the stochastic program, the SAA methodology prescribes to solve  SAA independent problems with  ! and  !independent samples in each.Denote  * and  as the optimal objective function of the true problem and of the SAA problem, respectively.For each replication ,  ∈ [1, ], the program computes  ! and  ! that respectively refer to the value of the optimal objective function and to the solution of the  th replication.According to Ahmed and Shapiro in [28], an unbiased estimator of [ !] can be described by the following quantity:𝑣 ! = 1 𝑀 𝑣 ! (12) ! !!!Because   !≤  * by definition, Equation 9 is a statistical lower bound to  * .An estimate of the variance of the lower bound estimator can be expressed as:𝑆 𝑣 𝑀 = 1 𝑀(𝑀 -1) 𝑣 𝑚 -𝑣 𝑀 2 𝑀 𝑚=1(13)These formulas are computed in step B. of the SAA methodology.To compute statistical upper bounds of  * , consider a feasible solution  ! of the problem at repetition  .This procedure is applied in step A.(b).i of the SAA methodology.To compute an estimate of the true objective value  ! ! at point  ! for repetition , one can generate independent samples of size  !′ and  !′ and compute the quantity defined in Equation 11.In this work,  !′ and  !′ are numbers of extra-scenarios of type  and  and  !!=  !′.𝑔 ! 𝑥 𝑚 = 𝑓 ! 𝑥 𝑚 + 𝑝 ! ! (𝑓 ! 𝑥 𝑚 , 𝜉 ! 𝑚 𝑟 ′ !!! + 𝑝 ! ! 𝑓 ! (𝑥 𝑚 , 𝜉 ! )) 𝑚 𝑑 ′ !!!(14)An estimate of the variance of the upper bound estimator can be expressed as:𝑆 ! ! (! ! ) = 1 𝑚 ! ′(𝑚 ! ′ -1) 𝑔(𝑥) -𝑔 ! (𝑥 ! ) 2 ! ! ! 𝑚=1(15)Finally, to characterize the differences between upper and lower bounds, the optimality gap is computed for each repetition in step C. of the SAA methodology along with an estimated variance.For each solution  !,  = [1, ] both quantities can be expressed as:𝑔 ! 𝑥 ! -𝑣 ! (16)and𝑆 𝑣 𝑀 ! + 𝑆 ! ! ! ! !(17)
+SetupIn this section, an experiment setup is defined to compute the statistical bounds derived previously in three different cases.The number of repetitions is fixed to 50 and the number of extra-scenarios  !′ and  !′ are fixed to 10000.Each test case explores a different number of scenarios  ! and  !such that  !=  ! .Table 4 summarizes the values of parameters tested.𝑚 ! ! = 𝑚 ! ′ 10000 1000010000The optimization is performed on the Los Angeles terminal airspace proof-of-concept stochastic settings where the hybrid separation is implemented to separate the set of 14 aircraft presented previously.To save computation time, multi-threading is implemented.Because all repetitions are independent from one another, one thread is assigned to one-repetition computations.
+ResultsFor each case, the SAA methodology described in the previous section is applied, statistical bounds are computed at each repetition and respective case computation times are recorded.In order to compare the different test cases and show the effect of increasing the number of scenarios ( !=  ! ) on the results, a Box and Whisker plot is drawn to represent the variance distribution of the results of each test case.The resulting plot is presented in Figure 4.For all box plots, the box extends from lower to upper quartile value of the variance with a line at median.The bottom and top horizontal lines represent the whiskers and they extend the box to show the range of the data from minimum to maximum.
+Figure 5. Variance DistributionsTwo main observations can be drawn from Figure 4. First, the visible data spread between maximum and minimum decreases as the number of scenarios increases.It is 84 when the number of scenarios is set to 10 whereas it is 30 when the number of scenarios is set to 1000.Second, the median decreases from 184 to 174 when the number of scenarios increases from 10 to 1000.Therefore, Figure 4 shows that results are more robust for larger numbers of scenarios.Additionally, Table 5 presents the computation times of the three different test cases.Case 1 with 10 scenarios is the fastest to run (~2.6 min) whereas case 3 with 1000 scenarios is the longest to run (~32min).Although Figure 4 shows that case 3 has the least dispersed results, it takes about 32 minutes to run.From case 2 to case 3, increasing the number of scenarios enables a 4.6% median decrease of the variance.However, this requires a 6x computation time increase.Therefore for this application, case 2 is the best setup and presents a good compromise between variance result and computation time.Case 2 spread is about 50, this tends to cost uncertainty of results from previous section.Table 6 presents detailed statistics computations of test case 2 when applying the SAA methodology.For simplicity and illustration purposes, results corresponding to a few repetitions, i.e. 0 th , 10 th , 20 th , 40 th , and 49 th , are provided.In this table, the first column is the repetition number, the second column is the estimated upper bound of the objective function with estimated variance displayed in column three.Column four is the estimated lower bound of the objective function, column five displays the estimated optimality with column The two last quantities underneath the table correspond to the overall repetition lower bound of the objective and its associated variance.
+AnalysisThe results of the statistical bounds computations show that using large numbers of scenarios produces more robust results but at the expense of large computation times.However, it was found that decent robustness could be found in reasonable computation time for the reference schedule and stochastic settings considered.In particular in the proof of concept study, the number of scenarios was set to 100.According to variance results of this section, results obtained previously can be qualified as a good compromise between robust results and computation time.Future work is required to analyze results for which larger numbers of repetitions are used.
+Summary, Conclusion and Next StepsIn this section, a summary of the work accomplished is provided as well as concluding remarks and next steps for future research.
+SummaryThis work contributes to stochastic scheduling optimization in the field of air traffic management.In the terminal airspace, integrated departures and arrivals have the potential to increase operations efficiency.An alternative method to past research is presented in this paper to solve the integrated arrival departure operations problem under uncertainty.The objective was to provide a stochastic optimization formulation that solves a routing and scheduling problem for terminal airspace traffic and produces optimal solutions with minimal runtime.To accomplish the objective of this work, a scheduler was built to compute schedules for terminal airspace waypoints that are shared by both arrivals and departures.Inspired from manufacturing operations, the scheduler is based on a machine job-shop scheduling problem formulation in which probabilistic release and runway dates were investigated.To separate aircraft, wake vortex separation requirements were enforced at the runway and a temporal control strategy was implemented through the usage of speed varying constraints.A multistage stochastic programming approach was used to solve the problem and solutions were obtained by solving several sample average approximation problems.A proof-of-concept was accomplished by applying the scheduler to arrival and departure flows in the Los Angeles terminal airspace.Scheduling and routing results showed that allowing aircraft to share waypoints and fly more direct routes may allow greater flight time savings.Results also demonstrated that when considering flow interactions between arrival and departures, additional delays requiring controller interventions were needed to maintain safe separation between aircraft.Because approximate solutions were computed, a statistical analysis was conducted to demonstrate that the proposed methodology does not require too many scenarios, i.e. more than 100 scenarios, to produce robust results.A multithreading method was implemented to help save computation time.Moreover it was shown that robust results, i.e. schedules and routings, could be obtained with a reasonable amount of uncertainty in computation times less than 3 minutes.
+Operational ImplicationsThis study showed that the methodology proposed in this paper is promising to improve operation efficiency in the Los Angeles terminal airspace by integrating departures and arrivals.The developed method can be applied in a fast time fashion and determines if benefits exist for different input schedules.Such tool shows promising future to help support decision-making.
+Next StepsIn order to understand further the benefits of the proposed methodology, work will be conducted to compare results of the proposed scheduler with genetic-algorithm based schedulers.Future work is also necessary to evaluate and test the proposed methodology further.In particular, a penaltyvariation analysis is required to understand how the penalties introduced in the problem formulation affect delays and controller interventions.It might also be interesting to integrate schedules from the Center prior to handoff at the meter fix to the TRACON.Furthermore, future research steps will perform a traffic-variation analysis in order to understand the algorithm behavior in particular when scheduling and routing dense traffic scenarios.Additionally, this methodology is being extended to the surface operations.Integrating surface movements to the current model would allow more continuous scheduling and routing and is expected to offer additional system benefits.
+𝐶Figure 3 .Figure 4 .34Figure 3. Delay distributions under uncertainty
+For each repetition  = [1, ]:a. Generate𝑚 !and𝑚 !independently and identicallydistributed scenarios for eachflight.b. For each fixed scenario𝑚 ! = [1, 𝑚 ! ]:i. Solvethe3-stageprogram,storetheoptimal solution for eachscenario, 𝑚 ! = [1, 𝑚 ! ] ,and compute statisticalupper bounds.ii. A list of 𝑚 ! solutions isobtained.Savethesolution (i.e. sequence,schedule and routing)with minimum objectivefunction.c. A list of 𝑚 ! solutions isobtained. Save the solution (i.e.sequence, schedule and routing)withminimumobjectivefunction.B. A list of 𝑀 candidate solutions isobtained. Compute statistical lowerbounds.
+Table 1 . Reference Schedule1OrderFIM (sec)RWY (sec)03968144616527283633110652941332161351475183061613NA71770NAFor testing purposes in this work, a fleet mix of14 aircraft (described in Table
+Table 3 . Experiment Setup3Conditions ParametersDeterministic Stochastic𝑀150
+Table 4 . Experiment Setup4ParametersCase 1Case 2Case 3𝑀505050𝑚 ! = 𝑚 !101001000
+Table 5 . Computation Times Case 1 Case 2 Case 35Computation Time (seconds)159.52315.02 1936.26
+Table 6 . SAA Methodology for Case 36  !𝒎𝑺 𝒈 ! (𝒙 𝒎 ) 𝟐𝒗 𝑵 𝒎GapVar0 19957.5 141.4 19859.9 66.2200.610 19916.5 108.5 19810.4 115.7167.720 19902.7 109.9 19829.6 96.6169.140 19899.5 119.2 19830.4 95.8178.449 19893.4 127.9 19807.9 118.3187.2
+Set of weight class p,  ∈  = {, 7, , }  Set of operations ,  ∈  = {, }  Aircraft type,  !" ,  ∈ ,  ∈   Set of aircraft type,  = { !" ,  ∈ ,  ∈ }  Set of waypoints ,  ∈  Scenario of time type ,  ∈ {, }  !!Perturbation of time type ,  ∈ {, }  !Vector of perturbations of scenario of time type ,  ∈ {, }  !Number of scenarios of time type ,  ∈ {, }  !Set of scenarios time type  ,  ∈ {, },  != { !!, … ,  !!}𝑋Set of all possible aircraft sequence 𝑥,𝑥 ∈ 𝑋𝑆𝐴𝐴Sample Average Approximation𝑀Number of repetitions 𝑚, 𝑚 ∈ 𝑀𝑅𝑊𝑌 Waypoint runway𝑟 !Release time of aircraft 𝑗33rd Digital Avionics Systems ConferenceOctober 5-9, 2014𝑝 !"Processing time at waypoint 𝑖 ofaircraft 𝑗𝑑 !Due date of aircraft 𝑗𝑡 !Starting time of aircraft 𝑗𝑐 !Completion time of aircraft 𝑗𝑓 !Exit time of aircraft 𝑗𝜆Relative objective weight𝛼 !Earliness of aircraft 𝑗 at release𝛽 !Tardiness of aircraft 𝑗 at release𝛾 !Earliness of aircraft 𝑗 at exit𝛿 !Tardiness of aircraft 𝑗 at exit𝑟 ! !Perturbed release time of aircraft 𝑗𝑑 ! !Perturbed due date of aircraft 𝑗𝜔 !
+			WPT1 is a waypoint made-up to simplify the route descriptions.
+		
+		
+			
+Appendix I
+Nomenclature
+𝐴𝐶Set of aircraft ,  ∈ 			
+			
+
+				
+
+
+	
+		The dynamic scheduling of aircraft in the near terminal area
+		
+			RGDear
+		
+		10.1016/0041-1647(78)90133-8
+	
+	
+		Transportation Research
+		Transportation Research
+		0041-1647
+		
+			12
+			3
+			
+			1976
+			Elsevier BV
+			Cambridge, Mass
+		
+		
+			Flight Transportation Laboratory, Massachusetts Institute of Technology
+		
+	
+	Dear, R.G., 1976, The Dynamic Scheduling of Aircraft in the Near Terminal Area, Cambridge, Mass.: Flight Transportation Laboratory, Massachusetts Institute of Technology.
+
+
+
+	
+		An algorithm for computer assisted sequencing and scheduling of terminal area operations
+		
+			RogerGDear
+		
+		
+			YosefSSherif
+		
+		10.1016/0191-2607(91)90132-a
+	
+	
+		Transportation Research Part A: General
+		Transportation Research Part A: General
+		0191-2607
+		
+			25
+			2-3
+			
+			1991
+			Elsevier BV
+		
+	
+	Dear, R.G., Sherif, Y.S., 1991, An algorithm for Computer Assisted Sequencing and Scheduling of Terminal Area Operations, Transportation Research Part A: General, Vol. 25, No. 2, pp. 129-139.
+
+
+
+	
+		Analysis of Delay Reducing and Fuel Saving Sequencing and Spacing Algorithms for Arrival Traffic, National Aeronautics and Space Administration
+		
+			FNeuman
+		
+		
+			HErzberger
+		
+		
+			1991
+			Ames Research Center
+		
+	
+	Neuman, F., Erzberger, H., 1991, Analysis of Delay Reducing and Fuel Saving Sequencing and Spacing Algorithms for Arrival Traffic, National Aeronautics and Space Administration, Ames Research Center.
+
+
+
+	
+		Scheduling Aircraft Landings Under Constrained Position Shifting
+		
+			HamsaBalakrishnan
+		
+		
+			BalaChandran
+		
+		10.2514/6.2006-6320
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		Keystone, CO
+		
+			American Institute of Aeronautics and Astronautics
+			2006
+		
+	
+	Balakrishnan, H., Chandran, B., 2006, Scheduling Aircraft Landings Under Constrained Position Shifting, Keystone, CO, AIAA Guidance, Navigation and Control Conference.
+
+
+
+	
+		Scheduling Aircraft Landings—The Static Case
+		
+			JEBeasley
+		
+		
+			MKrishnamoorthy
+		
+		
+			YMSharaiha
+		
+		
+			DAbramson
+		
+		10.1287/trsc.34.2.180.12302
+	
+	
+		Transportation Science
+		Transportation Science
+		0041-1655
+		1526-5447
+		
+			34
+			2
+			
+			2000
+			Institute for Operations Research and the Management Sciences (INFORMS)
+		
+	
+	Beasley, J.E., Krishnamoorthy, M., Sharaiha, Y.M., Abramson, D., 2000, Scheduling Aircraft Landings The Static Case, Transportation Science, Vol. 34, No. 2, pp. 180-197.
+
+
+
+	
+		
+			MKupfer
+		
+		Scheduling Aircraft Landings to Closely Spaced Parallel Runways
+		Napa, CA
+		
+			2009
+		
+		
+			Eighth USA/Europe Air Traffic Management Research and Development Seminar
+		
+	
+	Kupfer, M., 2009, Scheduling Aircraft Landings to Closely Spaced Parallel Runways, Napa, CA, Eighth USA/Europe Air Traffic Management Research and Development Seminar.
+
+
+
+	
+		A Mixed Integer Linear Program for Airport Departure Scheduling
+		
+			GautamGupta
+		
+		
+			WaqarMalik
+		
+		
+			YoonJung
+		
+		10.2514/6.2009-6933
+	
+	
+		9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO)
+		
+			American Institute of Aeronautics and Astronautics
+			2009
+		
+	
+	Gupta, G., Malik, W., Jung, Y.C., 2009, A Mixed Integer Linear Program for Airport Departure Scheduling, Hilton Head, SC, 9 th AIAA Aviation Technology, Integration, and Operations Conference.
+
+
+
+	
+		A Metaheuristic Approach to Aircraft Departure Scheduling at London Heathrow Airport
+		
+			JasonA DAtkin
+		
+		
+			EdmundKBurke
+		
+		
+			JohnSGreenwood
+		
+		
+			DaleReeson
+		
+		10.1007/978-3-540-73312-6_12
+	
+	
+		Lecture Notes in Economics and Mathematical Systems
+		Berlin Heidelberg
+		
+			Springer Berlin Heidelberg
+			2008
+			
+		
+	
+	Atkin, J.A.D., Burke, E.K., Greenwood, J.S., Reeson, D., 2008, A Metaheuristic Approach to Aircraft Departure Scheduling at London Heathrow Airport, Computer-aided Systems in Public Transport, Springer Berlin Heidelberg, pp. 235-252.
+
+
+
+	
+		A Generalized Dynamic Programming Approach for a Departure Scheduling Problem
+		
+			SivakumarRathinam
+		
+		
+			ZacharyWood
+		
+		
+			BanavarSridhar
+		
+		
+			YoonJung
+		
+		10.2514/6.2009-6250
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		Chicago, IL
+		
+			American Institute of Aeronautics and Astronautics
+			2009
+		
+	
+	Rathinam, S., Wood, Z., Sridhar, B. Jung, Y.C., 2009, A Generalized Dynamic Programming Approach For A Departure Scheduling Problem, Chicago, IL, AIAA Guidance, Navigation and Control Conference.
+
+
+
+	
+		A Dynamic Programming Algorithm for Robust Runway Scheduling
+		
+			BalaChandran
+		
+		
+			HamsaBalakrishnan
+		
+		10.1109/acc.2007.4282922
+	
+	
+		2007 American Control Conference
+		New York, NY
+		
+			IEEE
+			2007
+			
+		
+	
+	Chandran, B., Balakrishnan, H., 2007, A Dynamic Programming Algorithm For Robust Runway Scheduling, New York, NY, American Control Conference, pp. 1161-1166.
+
+
+
+	
+		Scheduling of airport runway operations using stochastic branch and bound methods
+		
+			GustafSölveling
+		
+		
+			John-PaulClarke
+		
+		10.1016/j.trc.2014.02.021
+	
+	
+		Transportation Research Part C: Emerging Technologies
+		Transportation Research Part C: Emerging Technologies
+		0968-090X
+		
+			45
+			
+			2012. 2012
+			Elsevier BV
+		
+		
+			Georgia Institute of Technology
+		
+	
+	Sölveling, G., 2012, Stochastic Programming Methods For Scheduling Of Airport Runway Operations Under Uncertainty, 2012, Thesis, Georgia Institute of Technology.
+
+
+
+	
+		Optimal Integration of Departures and Arrivals in Terminal Airspace
+		
+			MinXue
+		
+		
+			ShannonZelinski
+		
+		10.2514/6.2012-4977
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		Minneapolis, MN
+		
+			American Institute of Aeronautics and Astronautics
+			2012
+		
+	
+	Xue, M., Zelinski, S., 2012, Optimal Integration of Departures and Arrivals in Terminal Airspace, Minneapolis, MN, AIAA Guidance, Navigation and Control Conference.
+
+
+
+	
+		Optimization of Integrated Departures and Arrivals Under Uncertainty
+		
+			MinXue
+		
+		
+			ShannonZelinski
+		
+		10.2514/6.2013-4322
+	
+	
+		2013 Aviation Technology, Integration, and Operations Conference
+		Los Angeles, CA
+		
+			American Institute of Aeronautics and Astronautics
+			2013
+			
+		
+	
+	Optimization of Integrated Departures and Arrivals Under Uncertainty
+	Xue, M., Zelinski, S., 2013, Optimization of Integrated Departures and Arrivals Under Uncertainty, Los Angeles, CA, 13 th AIAA Aviation Technology, Integration, and Operations Conference, pp. 1-9.
+
+
+
+	
+		Uncertainty Analysis of Integrated Departures and Arrivals: A Los Angeles Case Study
+		
+			MinXue
+		
+		
+			ShannonZelinski
+		
+		
+			DanielGMulfinger
+		
+		10.2514/6.2013-4347
+	
+	
+		2013 Aviation Technology, Integration, and Operations Conference
+		Los Angeles, CA
+		
+			American Institute of Aeronautics and Astronautics
+			2013
+			
+		
+	
+	Xue, M., Zelinski, S., Mulfinger, D., 2013, Uncertainty Study of Integrated Departures and Arrivals: A Los Angeles Case Study, Los Angeles, CA, 13 th AIAA Aviation Technology, Integration, and Operations Conference, pp. 1-10.
+
+
+
+	
+		Multiple-Point Integrated Scheduling of Terminal Area Traffic
+		
+			HemingChen
+		
+		
+			YiyuanJZhao
+		
+		
+			ChrisProvan
+		
+		10.2514/1.c031332
+	
+	
+		Journal of Aircraft
+		Journal of Aircraft
+		0021-8669
+		1533-3868
+		
+			48
+			5
+			
+			2011
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Chen, H., Zhao, Y.J., Provan, C., 2011, Multiple-Point Integrated Scheduling of Terminal Area Traffic, Journal of Aircraft, Vol. 48, No. 5, pp. 1646-1657.
+
+
+
+	
+		Dynamic Real-time Scheduling of Terminal Traffic
+		
+			HemingChen
+		
+		
+			YiyuanZhao
+		
+		
+			ChrisProvan
+		
+		10.2514/6.2011-6364
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		Portland, OR
+		
+			American Institute of Aeronautics and Astronautics
+			2011
+		
+	
+	Chen, H., Zhao, Y.J., Provan, C., 2011, Dynamic Real-Time Scheduling of Terminal Traffic, Portland, OR, AIAA Guidance, Navigation and Control Conference.
+
+
+
+	
+		A Hybrid Optimization Approach to Air Traffic Management for Metroplex Operations
+		
+			BrianCapozzi
+		
+		
+			StephenAtkins
+		
+		10.2514/6.2010-9062
+	
+	
+		10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		
+			American Institute of Aeronautics and Astronautics
+			2010
+		
+	
+	Capozzi, B., Atkins, S., 2010, A Hybrid Optimization Approach to Air Traffic Management for Metroplex Operations, Forth Worth, TX, 10 th AIAA Aviation Technology, Integration, and Operations Conference.
+
+
+
+	
+		Towards Optimal Routing and Scheduling of Metroplex Operations
+		
+			BrianCapozzi
+		
+		
+			StephenAtkins
+		
+		
+			SeongimChoi
+		
+		10.2514/6.2009-7037
+	
+	
+		9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO)
+		
+			American Institute of Aeronautics and Astronautics
+			2009
+		
+	
+	Capozzi, B., Atkins, S., Choi, S., 2009, Towards Optimal Routing and Scheduling of Metroplex Operations, Hilton Head, SC, 9 th AIAA Aviation Technology, Integration, and Operations Conference.
+
+
+
+	
+		GPU-based Parallelization for Schedule Optimization with Uncertainty
+		
+			ChristabelleBosson
+		
+		
+			MinXue
+		
+		
+			ShannonZelinski
+		
+		10.2514/6.2014-2024
+	
+	
+		14th AIAA Aviation Technology, Integration, and Operations Conference
+		Atlanta, GA
+		
+			American Institute of Aeronautics and Astronautics
+			2014
+		
+	
+	Bosson, C., Xue, M., Zelinski, S., 2014, GPU- based Parallelization for Schedule Optimization with Uncertainty, Atlanta, GA, 14 th AIAA Aviation Technology, Integration, and Operations Conference.
+
+
+
+	
+		A Combinatorial Optimization Approach to Aircraft Sequencing Problem
+		
+			LBianco
+		
+		
+			GRinaldi
+		
+		
+			ASassano
+		
+		10.1007/978-3-642-86726-2_20
+	
+	
+		Flow Control of Congested Networks
+		Berlin Heidelberg
+		
+			Springer Berlin Heidelberg
+			1987
+			
+		
+	
+	Bianco, L., Rinaldi, G., Sassano, A., 1987, A Combinatorial Optimization Approach to Aircraft Sequencing Problem, Flow Control of Congested Networks, Springer Berlin Heidelberg, pp. 323- 339.
+
+
+
+	
+		Scheduling Models and Algorithms for TMA Traffic Management
+		
+			LucioBianco
+		
+		
+			PaoloDell’olmo
+		
+		
+			StefanoGiordani
+		
+		10.1007/978-3-642-60836-0_7
+	
+	
+		Modelling and Simulation in Air Traffic Management
+		Berlin Heidelberg
+		
+			Springer Berlin Heidelberg
+			1997
+			
+		
+	
+	Bianco, L., Dell'Olmo, P., Giordani, S., 1997, Scheduling Models and Algorithms for TMA Traffic Management, Modeling and Simulation in Air Traffic Management, Springer Berlin Heidelberg, pp. 139-167.
+
+
+
+	
+		Deterministic job-shop scheduling: Past, present and future
+		
+			ASJain
+		
+		
+			SMeeran
+		
+		10.1016/s0377-2217(98)00113-1
+	
+	
+		European Journal of Operational Research
+		European Journal of Operational Research
+		0377-2217
+		
+			113
+			2
+			
+			1999
+			Elsevier BV
+		
+	
+	Jain, A.S., Meeran, S., 1999, Deterministic Job-shop Scheduling: Past, Present and Future, European Journal of Operation Research, Vol. 113, No. 2, pp. 390-434.
+
+
+
+	
+		Algorithms for single machine total tardiness scheduling with sequence dependent setups
+		
+			SkylabRGupta
+		
+		
+			JeffreySSmith
+		
+		10.1016/j.ejor.2005.05.018
+	
+	
+		European Journal of Operational Research
+		European Journal of Operational Research
+		0377-2217
+		
+			175
+			2
+			
+			2006
+			Elsevier BV
+		
+	
+	Gupta, S.R., Smith, J.S., 2006, Algorithms For Single Machine Total Tardiness Scheduling With Sequence Dependent Setups, European Journal of Operation Research, Vol. 175, No. 2, pp. 722-739.
+
+
+
+	
+		Minimizing the weighted number of early and tardy jobs in a stochastic single machine scheduling problem
+		
+			HMSoroush
+		
+		10.1016/j.ejor.2006.05.036
+	
+	
+		European Journal of Operational Research
+		European Journal of Operational Research
+		0377-2217
+		
+			181
+			1
+			
+			2007
+			Elsevier BV
+		
+	
+	Soroush, H.M., 2007, Minimizing The Weighted Number of Early and Tardy Jobs in a Stochastic Single Machine Scheduling Problem, European Journal of Operation Research, Vol. 181, No. 1, pp. 266-287.
+
+
+
+	
+		Dynamic scheduling of stochastic jobs on a single machine
+		
+			WooseungJang
+		
+		10.1016/s0377-2217(01)00174-6
+	
+	
+		European Journal of Operational Research
+		European Journal of Operational Research
+		0377-2217
+		
+			138
+			3
+			
+			2002
+			Elsevier BV
+		
+	
+	Jang, W., 2002, Dynamic Scheduling of Stochastic Jobs on a Single Machine, European Journal of Operation Research, Vol. 138, No. 3, pp. 518-530.
+
+
+
+	
+		Single machine stochastic scheduling to minimize the expected number of tardy jobs using mathematical programming models
+		
+			DongKSeo
+		
+		
+			CerryMKlein
+		
+		
+			WooseungJang
+		
+		10.1016/j.cie.2005.01.002
+	
+	
+		Computers & Industrial Engineering
+		Computers & Industrial Engineering
+		0360-8352
+		
+			48
+			2
+			
+			2005
+			Elsevier BV
+		
+	
+	Seo, D.K., Klein, C.M., Jang, W., 2005, Single Machine Stochastic Scheduling to Minimize the Expected Number of Tardy Jobs Using Mathematical Programming, Computers & Industrial Engineering, Vol. 48, No .2, pp. 153-161.
+
+
+
+	
+		Stochastic scheduling to minimize expected maximum lateness
+		
+			XianyiWu
+		
+		
+			XianZhou
+		
+		10.1016/j.ejor.2007.06.015
+	
+	
+		European Journal of Operational Research
+		European Journal of Operational Research
+		0377-2217
+		
+			190
+			1
+			
+			2008
+			Elsevier BV
+		
+	
+	Wu, X., Zhou, X., 2008, Stochastic Scheduling to Minimize Expected Maximum Lateness, European Journal of Operation Research, Vol. 190, No. 1, pp. 103-115.
+
+
+
+	
+		The Sample Average Approximation Method for Stochastic Programs with Integer Recourse
+		
+			SAhmed
+		
+		
+			AShapiro
+		
+		
+			2002
+		
+	
+	Ahmed, S., Shapiro, A., 2002, The Sample Average Approximation Method for Stochastic Programs with Integer Recourse.
+
+
+
+	
+		On the Rate of Convergence of Optimal Solutions of Monte Carlo Approximations of Stochastic Programs
+		
+			AlexanderShapiro
+		
+		
+			TitoHomem-De-Mello
+		
+		10.1137/s1052623498349541
+	
+	
+		SIAM Journal on Optimization
+		SIAM J. Optim.
+		1052-6234
+		1095-7189
+		
+			11
+			1
+			
+			2001
+			Society for Industrial & Applied Mathematics (SIAM)
+		
+	
+	Shapiro, A., Homem-de-Mello, T., 2001, On Rate of Convergence of Monte Carlo Approximations of Stochastic Programs, SIAM Journal of Optimization, Vol. 11, No.1, pp.70-86.
+
+
+
+	
+		Introducing Python
+		
+			WolframDonat
+		
+		10.1007/978-1-4302-6425-5_3
+		
+	
+	
+		Learn Raspberry Pi Programming with Python
+		
+			Apress
+			2014
+			
+		
+	
+	Federal Aviation Administration, 2014, Order JO 7110.65V Air Traffic Control. [31] Python Programming Language, www.python.org.
+
+
+
+	
+		Gurobi announces Gurobi Optimizer 3.0
+		10.1287/orms.2010.03.09
+		
+		
+			2014
+			Institute for Operations Research and the Management Sciences (INFORMS)
+		
+	
+	Gurobi Optimization, Inc., 2014, Gurobi Optimizer Reference Manual, www.gurobi.com.
+
+
+
+	
+		Improvement of Trajectory Synthesizer for Efficient Descent Advisor
+		
+			MinXue
+		
+		
+			HeinzErzberger
+		
+		10.2514/6.2011-7020
+	
+	
+		11th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Virginia Beach, VA
+		
+			American Institute of Aeronautics and Astronautics
+			2011
+		
+	
+	Xue, M., Erzberger, H., 2011, Improvement of Trajectory Synthesizer for Efficient Descent Advisor, Virginia Beach, VA, 11 th AIAA Aviation Technology, Integration, and Operations Conference.
+
+
+
+	
+		Predictability of Top of Descent Location for Operational Idle-Thrust Descents
+		
+			LaurelStell
+		
+		10.2514/6.2010-9116
+	
+	
+		10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Berlin, Germany
+		
+			American Institute of Aeronautics and Astronautics
+			2011
+		
+		
+			USA/Europe Air Traffic Management Research and Development Seminar
+		
+	
+	Stell, L., 2011, Prediction of Top of Descent Location for Idle-thrust Descents, Berlin, Germany, Ninth USA/Europe Air Traffic Management Research and Development Seminar.
+
+
+
+	
+		Trajectory-Based Takeoff Time Predictions Applied to Tactical Departure Scheduling: Concept Description, System Design, and Initial Observations
+		
+			ShawnEngelland
+		
+		
+			RichardCapps
+		
+		10.2514/6.2011-6875
+	
+	
+		11th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Virginia Beach, VA
+		
+			American Institute of Aeronautics and Astronautics
+			2011
+		
+	
+	Engelland, S.A., Capps, A., 2011, Trajectory- Based Takeoff Time Predictions Applied to Tactical Departure Scheduling: Concept Description, System Design, and Initial Observations, Virginia Beach, VA, 11 th AIAA Aviation Technology, Integration, and Operations Conference.
+
+
+
+	
+		Super Density Operations Airspace Modeling for the Southern California Metroplex
+		
+			SebastianTimar
+		
+		
+			GauravNagle
+		
+		
+			AdityaSaraf
+		
+		
+			PeterYu
+		
+		
+			PeterHunt
+		
+		
+			AndrewTrapani
+		
+		
+			NickJohnson
+		
+		10.2514/6.2011-6535
+	
+	
+		AIAA Modeling and Simulation Technologies Conference
+		
+			American Institute of Aeronautics and Astronautics
+			2011
+		
+	
+	Timar, S.D., Nagle, G., Saraf, AD, Yu, P., 2011, Super Density Operations Airspace Modeling for the Southern California Metroplex, Portland, OR, AIAA Modeling and Simulation Technology Conference.
+
+
+
+	
+		Validation of Simulations of Airport Surface Traffic with the Surface Operations Simulator and Scheduler
+		
+			RobertDWindhorst
+		
+		
+			JustinVMontoya
+		
+		
+			ZhifanZhu
+		
+		
+			SergeiGridnev
+		
+		
+			KatyGriffin
+		
+		
+			AdityaSaraf
+		
+		
+			SteveStroiney
+		
+		10.2514/6.2013-4207
+	
+	
+		2013 Aviation Technology, Integration, and Operations Conference
+		Los Angeles, CA
+		
+			American Institute of Aeronautics and Astronautics
+			2013
+		
+	
+	Windhorst, R.D., Montoya, J.V., Zhu, Z., Gridnev, S., Griffin, K.J., Saraf, A., Stroiney, S. 2013, Validation of Simulations of Airport Surface Traffic with the Surface Operations Simulator and Scheduler, Los Angeles, CA, 13 th AIAA Aviation Technology, Integration, and Operations Conference.
+
+
+
+	
+		Validation of the Federal Aviation Administration Air Traffic Control Specialist Pre-Training Screen
+		
+			DanaBroach
+		
+		
+			JanBrecht-Clark
+		
+		10.2514/atcq.1.2.115
+		
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			1
+			2
+			
+			2014
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Federal Aviation Administration, 2014, Order JO 7110.659A Air Traffic Control. Email Addresses cbosson@purdue.edu Min.xue@nasa.gov Shannon.j.zelinski@nasa.gov
+
+
+				
+			
+		
+	

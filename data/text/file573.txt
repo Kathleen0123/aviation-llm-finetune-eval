@@ -1,0 +1,658 @@
+
+	
+	
+		
+The ability to keep flights away from weather hazards while maintaining aircraft-toaircraft separation is critically important.The Advanced Airspace Concept is an automation concept that implements a ground-based strategic conflict resolution algorithm for management of aircraft separation.The impact of dynamic and uncertain weather avoidance on this concept is investigated.A strategic weather rerouting system is integrated with the Advanced Airspace Concept, which also provides a tactical weather avoidance algorithm, in a fast time simulation of the Air Transportation System.Strategic weather rerouting is used to plan routes around weather in the 20 minute to two-hour time horizon.To address forecast uncertainty, flight routes are revised at 15 minute intervals.Tactical weather avoidance is used for short term trajectory adjustments (30 minute planning horizon) that are updated every minute to address any weather conflicts (instances where aircraft are predicted to pass through weather cells) that are left unresolved by strategic weather rerouting.The fast time simulation is used to assess the impact of tactical weather avoidance on the performance of automated conflict resolution as well as the impact of strategic weather rerouting on both conflict resolution and tactical weather avoidance.The results demonstrate that both tactical weather avoidance and strategic weather rerouting increase the algorithm complexity required to find aircraft conflict resolutions.Results also demonstrate that tactical weather avoidance is prone to higher airborne delay than strategic weather rerouting.Adding strategic weather rerouting to tactical weather avoidance reduces total airborne delays for the reported scenario by 18% and reduces the number of remaining weather violations by 13%.Finally, two features are identified that have proven important for strategic weather rerouting to realize these benefits; namely, the ability to revise reroutes and the use of maneuvers that start far ahead of encountering a weather cell when rerouting around weather.
+Nomenclature
+I. IntroductionN the period spanning 1994 to 2003, weather related accidents accounted for 30% of aircraft accidents.‡, 1 Weather also continues to be the main cause of delay in today's airspace reportedly accounting for roughly 70% of all delays. 2,3Weather thus has a demonstrable impact that must be addressed by current day as well as future operations.Decision support tools and automation systems need to incorporate weather management principles in their algorithms.The Advanced Airspace Concept 4,5,6 is a ground-based automation concept that uses conflict detection and resolution to maintain aircraft separation.If done independently, aircraft conflict resolution may navigate aircraft into regions of weather hazard; similarly, weather avoidance can result in aircraft conflicts.Weather hazard must therefore be resolved along with aircraft conflicts in an integral fashion.Furthermore, conflict detection and resolution typically uses short look-ahead planning (up to 12 minutes or so) for its decision making in order to minimize the impact of uncertainty and provide robust resolutions.This small time horizon is not well suited for weather avoidance because weather cells can be quite large.To address this, strategic rerouting (up to 2 hours or more) can be used to plan around weather early, potentially reducing the adjustments required at the tactical level.Given the difference in distance and time scales between aircraft conflict and weather conflict resolutions (conflict resolution delays are on the order of ½ a minute 5 whereas weather reroutes can be an order of magnitude higher or more 7 ), it is important to assess the impact that weather avoidance has on the performance of the conflict resolution algorithms.Understanding this impact can provide guidance, for example, as to when it is more appropriate to delay aircraft than to navigate them through weather constrained regions without leading to (unresolved) aircraft separation violations.The Advanced Airspace Concept has been augmented to support tactical weather avoidance (short look-ahead times) and arrival management. 6While its aircraft separation component has undergone careful analysis 8,9,10,11,12 and human-in-the-loop simulations, 13,14,15,16,17,18 less has been done to assess the Advanced Airspace Concept's performance in the presence of dynamic and uncertain weather.Love 19 modeled weather conflicts as aircraft-toaircraft head-on conflicts to provide an integrated weather avoidance capability and investigated the efficiency of this weather avoidance (for Indianapolis center) but in that study some secondary conflicts § are not resolved and count as failures of the resolution algorithm thus the impact on conflict resolution performance is not fully assessed.Note also that the method used in Ref. 19 can potentially lead to suboptimal avoidance maneuvers (and higher rates of failure) because it uses resolution algorithms designed for aircraft separation standards not large weather cells.In Ref. 20, Grabbe proposed (as part of a three-tier Traffic Flow Management system) the use of strategic weather rerouting to address weather uncertainty and the use of short-term airborne delay as a last line of defense to ensure aircraft stay clear of weather.Grabbe went on to show that increasing rerouting frequency and look-ahead time generally reduces total airborne delays; in that study aircraft separation was not used.To provide a platform for assessing the performance of the Advanced Airspace Concept with management of dynamic and uncertain weather, its separation assurance and tactical weather avoidance algorithms were integrated along with the strategic weather rerouting algorithm described in Ref. 7 into a fast-time simulation of the Air Transportation System called the Airspace Concept Evaluation System. 21,22The Convective Weather Avoidance Model 23,24 was used to provide dynamic and uncertain forecasts of weather hazards.The fast-time simulation was used to assess the (system-wide) impact of integrated tactical weather avoidance on the performance of conflict resolution (including resolution of secondary conflicts).The strategic weather rerouting algorithm was used to provide early planning around weather (with longer look-ahead time) and its impact on the performance of conflict resolution and tactical weather avoidance was assessed in terms of delay and degree of effort required to resolve separation issues.A comparative assessment of the impact of tactical weather avoidance and strategic weather rerouting was performed.Finally, consideration was given to the question of what properties the strategic rerouting algorithm should exhibit in order to be beneficial to tactical avoidance.In the following, Section II describes the simulation environment, architecture, and the models used.Section III summarizes the experiments performed and Section IV outlines the metrics evaluated.Section V follows with simulation results and discusses the salient characteristics.Section VI concludes with summary remarks.Finally, the Appendix provides supplementary material including three case studies.‡ For FAR 121 (Air Carrier) and FAR 135 (Commuter and On Demand) operations combined.§ Secondary conflicts are conflicts that arise from an attempt to resolve another aircraft or weather conflict.
+I
+II. ApproachThis section outlines the methodology, models, and simulation architecture used.It discusses the division of responsibility in managing weather and aircraft separation and the relevant time domains.
+A. Strategic vs. Tactical ControlThe sizes of strategic and tactical time horizons differ depending on the function they are being applied to.Aircraft to aircraft Conflict Detection and Resolution (CDR) considers tactical decisions to occur within one to three minutes of current position and strategic planning to occur beyond that to 20 minutes or so.Weather avoidance on the other hand deals with hazards of larger spatial extent and higher uncertainty; furthermore the risk from violating a weather hazard is less than that of violating another aircraft's protected zone.For these reasons weather avoidance is better served with longer time horizons.In this study we define tactical decisions to occur within 20-30 minutes with strategic planning extending to two hours (or longer).
+Conflict Detection and Resolution (CDR)CDR detects conflicts up to 12 minutes ahead of aircraft position ('Detect' in Figure 1) and resolves them when within 8 minutes ('Start Resolve') ensuring that resolutions are conflict free to 12 minutes ('Clear To').Conflicts detected within 1 minute of current position ('Stop Resolve') are delegated to tactical algorithms.Finally, CDR treats conflicts that occur within 4 minutes of current position as critical and their resolution takes priority over other considerations (such as weather avoidance).
+Tactical Weather AvoidanceTactical weather avoidance detects out to 30 minutes and resolves at 20 minutes or less ensuring resolutions are clear of weather for 30 minutes.
+Strategic Weather AvoidanceStrategic weather avoidance detects, resolves, and clears between 20 minutes and 2 hours (Figure 2).The upper limit is selected because weather forecasts were not available beyond two hours.Strategic reroutes do not impact the flight within the tactical 20 minute domain, unless weather is detected at or close to 20 minutes, and never impact CDR's critical time domain of 4 minutes.
+B. Conflict Detection and ResolutionConflict detection is accomplished by comparing aircraft predicted positions at discrete intervals (5 seconds).Two aircraft are in conflict if their predicted positions approach within 5 nmi laterally and 1000 feet vertically (practically, 960 feet is used to allow resolutions to 1000 feet to be used, without being re-detected as conflicts).The conflict resolution algorithm 6 is an iterative search algorithm, which uses a set of 6 predefined maneuver types (namely, direct to destination, altitude, exact turn, path offset, path stretch, and speed maneuvers) to resolve detected conflicts (see Refs. 25, 26, and 27).The algorithm will incrementally modify each maneuver's parameters until it resolves the conflict (or fails) before trying the next maneuver type.The algorithm tries all maneuver types and typically chooses the resolution with the lowest delay.The resolver relies on the system to provide services for conflict detection and for trajectory prediction.See Ref. 6 for more information.In addition to the planning horizon parameters described above, the resolution algorithm allows the selection of the types of maneuvers to use in resolving conflicts; in this study, altitude maneuvers were not used.Conflict resolution ensures aircraft are separated by more than 5 nmi laterally and at least 1000 feet vertically.
+C. Tactical Weather AvoidanceThe weather avoidance algorithm is a single polygon geometric algorithm that uses one and two-waypoint path stretch maneuvers to navigate around weather cells.Two- Figure 4 depicts a schematic of the algorithm and how it manages multiple weather cell conflicts.In Figure 4a, a weather conflict is detected along the flight path.The algorithm tries a one-waypoint resolution to the left of the weather cell but a new weather conflict is detected along the new path as well (Figure 4b).The algorithm now wraps a convex hull around the old and new weather cells (blue outline in Figure 4c) and subsequently tries a new resolution around this hull.In this case, the algorithm uses a two-waypoint maneuver instead.Since the new maneuver is successful the algorithm now tries to resolve on the other side of the weather cell.The resulting onewaypoint maneuver has the lowest delay so it is selected as the preferred resolution (Figure 4d).
+D. Integrated Aircraft Conflict Resolution and Tactical Weather AvoidanceThe Advanced Airspace Concept 6 (AAC) integrates both conflict resolution and tactical weather avoidance into a tightly coupled control loop so that one system does not generate unresolved conflicts in the other.In cases were both types of conflicts are detected, it will resolve both if possible.In general, weather conflicts are resolved first followed by aircraft conflict resolution, however if an aircraft conflict occurs within the critical 4 minute time horizon, it is given priority and resolved first (the weather conflict is postponed if necessary).Note that the control loop does not exit until it has addressed all conflicts including conflicts generated while resolving others (referred to herein as 'secondary' conflicts).See Ref. 6 for more information.
+E. Strategic Weather AvoidanceStrategic weather avoidance is a multi-polygon geometric avoidance algorithm previously described in Ref. 7. To summarize, the algorithm resolves the nearest conflict, redetects, and repeats as needed.Reroutes are thus composites of several deviations (one per iteration).Figure 5 depicts the maneuver used to resolve each weather cell.The maneuver is set to start at a predefined time prior to the conflict (the 'Deviation Time') and is set to recapture the route at a predefined time after exiting the weather cell (the 'Recapture Time').These times can be manipulated to manage the delay generated by the reroute (this study uses 20 minutes).One or more waypoints are used to navigate around the weather cell.Weather forecast uncertainty can lead to conservative reroutes, for example, given a reroute, weather can move away from the flight path resulting in a route that avoids the weather by a wide margin.To mitigate this effect, the algorithm allows reroute revision.Only previously rerouted aircraft are revised.Figure 6 depicts a schematic of these revisions.In Figure 6a, a weather conflict is detected and the aircraft is rerouted.On the next evaluation cycle (Figure 6b), no conflicts are detected but the weather forecast has moved such that the previous reroute is now too conservative and has higher delay than is required to clear the weather.For this reason, the route is re-evaluated resulting in a new lower delay route.In this fashion the algorithm ameliorates the disadvantage associated with early decision making.ACES provides a plugin mechanism that is used to implement various system controls and services and provides a rich set of maneuvers that can be used to request flight amendments.Weather, conflict resolution (aircraft and tactical weather), and strategic weather rerouting are examples of these plugins.See Refs.21 and 22 for more details on ACES.
+G. System DesignIn this study, strategic control is used to manage weather conflicts early while tactical control resolves aircraft conflicts and any weather conflicts that remain unresolved.Figure 7 depicts a schematic of the system.The National Airspace System simulation takes the flight schedules as input and provides aircraft states and updated flight plans as outputs.A weather agent supplies the weather forecasts, which are updated at 5 minute intervals (see Section III.B).A tactical control loop responsible for conflict resolution and tactical weather avoidance runs periodically at 1 minute intervals.It takes flight data as inputs, predicts trajectories, detects aircraft and weather conflicts, and subsequently designs a set of maneuvers that resolve detected conflicts.These maneuvers are then implemented on individual flights.A strategic control loop responsible for strategic weather rerouting runs periodically at 15 minute intervals.It takes flight data as inputs, predicts trajectories, detects weather conflicts, and designs a set of reroutes that resolve the weather conflicts.These reroutes are subsequently implemented on individual flights.
+III. ScenariosThis section briefly outlines the salient features of the experiment (namely, traffic and weather).
+A. Traffic
+B. WeatherA heavy weather day (July 27, 2006) was selected to provide challenging weather conditions for the avoidance algorithms.The Convective Weather Avoidance Model 23 (CWAM) is used to generate maps of the deviation probability (regions that pilots are likely to deviate around).These maps are then interpreted as regions of hazard.In this study, 60% deviation probability and above represent hazardous conditions, which flights must avoid.CWAM provides forecasts up to two hours in 5 minute increments at altitudes ranging from 25,000-45,000 feet in 1,000 foot increments.These two hour forecasts are updated at 5 minute intervals.Figure 9 depicts the hourly progression of the weather front (north-eastern United States at 30,000 feet).In the figure, the blue and purple represent 60% and 80% probability of deviation respectively.Geographical boundaries are depicted in light green.Center boundaries are shown in faded purple.The simulation is configured such that the storm system depicted in Figure 9b overlaps the peak enroute demand period shown in Figure 8. Finally, note that wind corrections were not used in these scenarios.
+IV. MetricsThis section briefly describes the metrics used and, where appropriate, the motivation behind their use.Safety metrics include loss of separation violations and weather violations.Efficieny metrics include total airborne delay, delay contribution of each algorithm, and average delay contribution per flight.Finally, metrics that can provide insight into scalability (with demand) include average number of iterations per conflict resolution and total number of conflicts detected.
+A. Loss of Separation Violations (LoS)An actual loss of separation violation occurs when a pair of aircraft enter each other's protected zones (5 nmi laterally and 1000 feet vertically) and remains in effect until they exit.Note that the actual vertical separation used to detect violations is 960 feet to allow for altitude fluctuations.When counting loss of separation violations, those that occur within 3 minutes of the start of the enroute flight phase are omitted.This is done because, in the absence of departure scheduling and/or departure fix spacing, some aircraft start their flights already in loss of separation or encounter conflicts within 3 minutes; consequently, conflict resolution has little time to implement a resolution.
+B. Weather Violations (WxV)An actual weather violation occurs when an aircraft enters a weather cell and remains in effect until the aircraft exits it.If multiple weather cells are involved then contiguous violations are counted as a single violation.
+C. DelaysDelay is defined as the difference between actual and scheduled en route flight times.Total delay, total delay contributions (of each algorithm), and average delay contributions per flight are considered.These delay metrics help assess the efficiency of tactical and strategic weather avoidance and the impact they have on conflict resolution ** This is based on 1x traffic (by 2006 standards) but with international traffic removed.(compared to the case with no weather avoidance).Average delay contributions per flight provide a better basis for comparing the magnitude of delays resulting from tactical and strategic weather avoidance operations.Note that for average delays, conflict resolution counts only those flights that are resolved for aircraft conflicts, tactical weather avoidance counts those maneuvered around weather tactically, and strategic weather rerouting counts those rerouted strategically.
+D. Average Number of Iterations per Conflict ResolutionThe conflict resolution algorithm is, as previously mentioned, an iterative search algorithm.The more an aircraft interacts with surrounding traffic, the longer the algorithm will have to search for a solution.The average number of conflict resolution iterations per detected conflict † † therefore acts as an indicator of the degree of difficulty in resolving a conflict or alternatively the 'complexity' of the search space.While there are several factors that can influence it (conflict geometry for example), the main motivation for using this metric is to understand the impact of secondary effects ‡ ‡ .The Results section below elaborates on this.
+E. Primary and Secondary Conflict CountsThe number of primary conflicts is of interest because it reflects the expected impact on the number of airspace operations (for example, how often controllers will need to review a flight plan amendment-see Ref. 28 for a macroscopic model of en route workload that accounts for conflicts).The number of secondary conflicts on the other hand is of interest as an indicator of algorithm complexity (more secondary conflicts means it is harder to find resolutions).The Results section below elaborates on these and the relationship with local traffic density changes.
+V. ResultsIn the discussion below, the scenarios are identified as follows: Baseline (no controls), CR (conflict resolution), CR+TWx (conflict resolution with tactical weather avoidance), CR+TWx+SWx (conflict resolution with tactical weather avoidance and strategic weather rerouting), CR+SWx (conflict resolution with strategic weather rerouting), and SWx (strategic weather rerouting only).Figure 10 depicts the number of weather violations encountered for each of the scenarios on a logarithmic scale.Observe from the two middle bars that the addition of strategic weather rerouting reduces the violation count by 13% over tactical weather avoidance (with a 94% resolution rate).This improvement is attributed to two closely related factors, the first being that strategic weather rerouting resolves a fraction of the violations early (see the two bars on the far right) so that tactical weather avoidance is unnecessary (see also Figure 18, which shows reduction in tactical weather conflicts).The second reason is that, with strategic rerouting, tactical avoidance need only address conflicts arising due to uncertainty over 35 minutes (see discussion for Figure 11 and Figure 12).Appendix B presents case studies that demonstrate these ideas.One can conclude from Figure 10 that strategic weather avoidance plays a beneficial role in keeping flights away from weather hazard.To explain why tactical and strategic weather avoidance do not completely eliminate weather violations, Figure 11 shows a breakdown by cause of violations for the CR+TWx+SWx scenario (4 th bar in Figure 10).Note in Figure 11 that the majority of the violations (110 of 135) result from weather uncertainty (leftmost bar).This is further elaborated into two types of uncertainty, namely, new weather cells that 'pop up' too close for an aircraft to resolve and at a location not in close proximity to other weather cells (purple in the figure) and forecast errors in predicting the evolution of existing cells (blue).It can be † † Here we mean primary conflicts (in other words, those not generated while resolving other conflicts).‡ ‡ Secondary effects are local changes in the system state that arise from resolving weather and aircraft conflicts.argued that the 'pop-up' cases can only be mitigated by improving the forecast accuracy, whereas the other forecast errors can be mitigated algorithmically using robust detection and resolution.An example of 'robust detection' is detection on regions obtained by geometrically enlarging weather cells; such an approach allows weather avoidance to plan a flight's route so it does not approach weather cells too closely.The other causes shown in the figure account for the remaining 25 violations: 10 failures to detect and resolve a conflict (second bar in the figure), 4 imminent secondary conflicts (third bar) created as a direct result of another operation (such as conflict resolution), and 11 cases where the aircraft starts its en route phase already in weather (rightmost bar).These can be addressed with future algorithm enhancements.The two leftmost bars in Figure 10 depict the weather violations in the absence of tactical and strategic weather, while the two rightmost bars include strategic weather rerouting.These demonstrate that conflict resolution has a small adverse impact, a fact that is attributed to the small amount of delay introduced by conflict resolution (see delay results below).The two rightmost bars in Figure 10 show that strategic weather rerouting resolves only a fraction of the violations; this is due to the fact that strategic planning starts at 20 minutes (the near horizon) and repeats at 15 minute intervals (the planning interval).Since no planning prior to departure fix is used, a significant portion of these violations occurs in the 20 minutes following the first planning interval of each flight (blue in Figure 12).The majority (72%) of the remaining violations (purple in the figure) are due to uncertainty over 35 minute intervals (near horizon + planning interval).The remaining 28% are due to algorithm anomalies that will be addressed in future enhancements.Finally, note from Figure 10 that conflict resolution, whose impact occurs mostly within 20 minutes, has a more pronounced impact on weather violations when strategic weather rerouting is present (67 additional violations-see rightmost two bars) compared to its impact on the baseline scenario (9 additional violations-see leftmost two bars).This is attributed to the fact that conflict resolutions, in the absence of tactical weather avoidance, favor the weather regions, which have lower traffic density because of strategic rerouting (see discussion on traffic density below).Figure 13 depicts the total delay contributions in minutes (blue for conflict resolution, purple for tactical weather avoidance, and green for strategic weather rerouting).Tactical weather avoidance is seen to have a significant adverse impact on total delay (not surprising given that weather is the major cause of air traffic delays), which is mitigated by the addition of strategic weather rerouting.Strategic weather rerouting is seen to have roughly the same order of magnitude delay as conflict resolution, whereas tactical weather avoidance delays are four to five times higher than conflict resolution.Addition of strategic weather rerouting to tactical weather avoidance is seen to reduce the total delay by 18% while alleviating 37% of tactical weather avoidance delays (compare the second and third bars in Figure 13).A surprising feature in the figure is that strategic weather rerouting delays are also reduced when tactical weather avoidance is used.This results from the fact that strategic weather rerouting has more opportunities to improve the route and reduce the flight time because of high delay tactical avoidance maneuvers (see Appendix B, Figure 23 for an example).While total delay demonstrates the aggregate impact, the relative impact is best demonstrated using the average delay per impacted flight for conflict resolution, tactical weather avoidance, and strategic weather rerouting respectively.Figure 14 depicts these average delays, which it should be noted, are not additive because the number of impacted flights is different for conflict resolution, tactical, or strategic weather avoidance.Observe that conflict resolution generally has the least impact, followed by strategic weather rerouting, with tactical weather avoidance coming in nearly an order of magnitude higher.Note in the figure that strategic weather rerouting exhibits the same order of magnitude delay as conflict resolution despite the larger distance scales involved in weather avoidance.This is due to the fact that strategic rerouting uses maneuvers with long decision times, reroute revisions, and as mentioned previously, routes that reduce flight time (via shortcuts) where possible.In the absence of conflict resolution and tactical weather avoidance, strategic rerouting delays increase to 50 seconds per flight.Figure 13 and Figure 14 depict another interesting trend, namely the impact of tactical and strategic weather avoidance on conflict resolution delay.The figures show that tactical weather avoidance has a sizeable negative impact while the addition of weather rerouting exhibits less of an impact.To gain insight into this trend, consider Figure 15, which depicts the total conflict delays (blue) alongside the total number of primary and secondary conflict counts combined (purple).These exhibit a good degree of correlation (R = 0.95) suggesting they might arise from the same root cause.It can be shown that changes in the total number of conflicts depend on traffic density changes (linear if small but quadratic in general-see Appendix A).This suggests that the observed trend in conflict resolution delay can be explained by the impact that weather avoidance has on the local density of traffic in the neighborhood of weather.As demand (or the severity and extent of weather) increases, one can expect the trend to become more pronounced with weather avoidance generating higher secondary counts and conflict resolution delays.To help manage this impact, the weather avoidance algorithms can be augmented with logic to 'spread out' the traffic (or avoid regions of dense traffic).Also see Ref. 29 wherein the delay is shown to correlate with the density measured as the number of aircraft within a neighboring region of space (e.g. 10 nmi horizontally and 2000 feet vertically).Figure 16 depicts the average number of iterations per conflict (blue bars) and the number of primary and secondary conflicts combined (purple bars).Observe that tactical weather avoidance increases the number of trials per conflict and that strategic weather rerouting has a smaller impact.To interpret the trends in this figure, we look once more at the total number of conflicts generated during resolution.It can be seen that there is a good correlation between the trial counts and the number of secondary conflicts generated (R = 0.97).Following the same reasoning as above, this trend might be explained by the impact that weather avoidance has on the local density of traffic in the neighborhood of weather.As to why strategic weather rerouting reduces the number of iterations (rightmost bar in Figure 16), recall that the strategic planning horizon in Figure 2 does not overlap the conflict resolution horizon, which means it does not impact local traffic density during conflict resolution.While primary conflicts can still be expected to increase, secondary conflicts can be expected to lessen because conflict resolution, being unaware of weather, will now favor the weather impacted zones (with lower delay maneuvers) thus reducing the average local density during resolution.While the total number of conflicts was shown to be of value in interpreting the trends in delay and degree of difficulty in resolving aircraft conflicts, the relative importance of secondary conflicts is also of interest.Figure 17 depicts the primary (blue) and secondary (purple) conflict counts for each scenario.Note that the number of secondary conflicts is on the same order of magnitude as the primary conflicts.One other point worthy of note is the fact that the CR+WxR scenario (rightmost bar) has the least secondary conflict impact and is in fact an improvement over conflict resolution alone.The observed increase in primary conflicts and decrease in secondary conflicts confirms the observations in regards to Figure 16.Figure 18 depicts the total conflict counts for each algorithm.Of note in the figure is the fact that strategic weather rerouting reduces the total detected tactical weather conflicts but that the overall number of conflicts is increased in the system.The reduction in tactical conflicts detected is significant in that these typically require timely resolution (whereas strategic reroutes can be more readily postponed if workload is high).
+A. Properties of Strategic Weather ReroutingThe Introduction argued (and this section demonstrated) that using strategic weather avoidance can help address the inefficiencies that arise from purely tactical weather avoidance (in terms of delay).This however is not a foregone conclusion.For example, weather uncertainty can lead to overly conservative routes if implemented too early (recall section II.E, Figure 6).Naturally, the question arises as to the properties that strategic rerouting should possess in order to realize a beneficial impact on tactical avoidance (in terms of delay).To answer this, consider the following: first, early decision making can help avoid aggressive turns (which may result if decisions are delayed too long); second, the longer planning horizons allow smoother long-term routes to be designed that address multiple potential conflicts.Finally, early decisions can subsequently be reevaluated and revised if deemed too conservative.The strategic reroute algorithm was originally designed for minimum deviation from the scheduled route and as such it allowed maneuver decision times (in other words, the deviation and recapture times described in section II.E, Figure 5) to be varied.To realize (some of) the benefits from the first two points above, the algorithm's decision times were increased from 10 to 20 minutes § § .This reduced strategic reroute delays by 35%.Practically speaking, the majority of the reduction in strategic delay arose from the shallower turns used, however the resulting routes were also better behaved in that they reduced the number of tactical weather conflicts detected.The algorithm was also enhanced to support reroute revisions for previously rerouted aircraft (see section II.E, Figure 6).This reduced the algorithm delays by an additional 15%.The combined benefit of these two features allowed strategic weather rerouting to realize the benefits reported above.
+VI. ConclusionA two-tier (tactical and strategic) weather management system was used to assess the impact that weather avoidance operations have on conflict resolution.The results demonstrated that both tactical weather avoidance and strategic weather rerouting increase the algorithmic complexity of finding aircraft conflict resolutions.Results also demonstrated that tactical weather avoidance is prone to higher delay than strategic weather rerouting and that adding strategic weather rerouting to tactical weather avoidance reduces total delays by 18% and reduces the number of remaining weather violations by 13%.Two features were identified that proved important for strategic weather rerouting to realize its improvements to performance; namely, the ability to revise reroutes and the use of maneuvers that start far ahead of encountering a weather cell when rerouting around weather.Finally, the importance of secondary effects in the system was highlighted and it was argued that consideration needs to be given to these effects as traffic density and weather conditions worsen.The likelihood of an aircraft having a conflict is proportional to the number of aircraft in its neighborhood (assuming random conflict geometries), which is in turn proportional to the traffic density in that neighborhood.In other words, € P α N α ρ (1)   where P is the probability of conflict, N is the number or aircraft in the vicinity, and ρ is the traffic density.The total number of conflicts can now be obtained by multiplying the probability of conflict with the number of aircraft, which leads to the following quadratic:€ n = N × P α N 2 α ρ 2 (2)where n is the total number of conflicts.This can be written in terms of differences as follows,€ n 0 + Δn α ρ 0 + 2ρ 0 Δρ + Δρ 2 (3)where n 0 and ρ 0 are nominal values (e.g.those corresponding to the CR scenario described in section V).For small changes in density and ignoring constant terms, Eq. (3) can be simplified to the linear relationship € Δn α Δρ (4)It is important to stress that Eq. ( 4) is parametric, meaning that it describes the differences arising from a change to an experimental parameter (such as adding tactical weather avoidance).Note that as Δρ increases relative to ρ, the contribution of the quadratic term in Eq. (3) becomes increasingly prominent.It now remains to properly interpret the 'total number of conflicts'.At any instance of time, the difference in primary conflicts is proportional to the difference in traffic density prior to conflict resolution, whereas the difference in secondary conflicts is proportional to the density difference arising from resolutions.In the aggregate sense, where density differences are not decomposed in this way, the total number of conflicts should be interpreted as the sum of primary and secondary conflicts.
+B. Weather Avoidance Case StudiesFigure 19 and Figure 20 depict a sample case study that compares tactical and strategic decisions for the same flight.Figure 19 depicts tactical weather avoidance events (operations) for the flight in the CR+TWx scenario.Figure 20 depicts tactical and strategic weather avoidance events for the same flight in the CR+TWx+SWx scenario.In the figures, center boundaries are shown in faded purple, nowcast weather in magenta, forecast weather in purple, new aircraft trajectory (which resolves detected weather) in dashed blue, old aircraft trajectory in dash-dot lighter shade of blue, and detected aircraft conflicts are depicted in yellow.Tags are shown in the color of the elements they describe.An overlay grid is depicted in faded grey at a resolution of 1° 45' of arc (the size of each grid cell).In the figures, the captions identify the type of operation (tactical or strategic) and the simulation time at which the decision was made.Figure 20a-c also depict forecast aircraft position and weather, the forecast time for which is also identified in the captions.First, note that purely tactical decision-making requires 8 operations to resolve this case (Figure 19, frames a-h).Addition of strategic decision-making reduces the total number of tactical operations required to three (Figure 20,  frames d-f) at the cost of three early strategic decisions (Figure 20a-c).In Figure 19, the lowest delay tactical maneuver at 4:19 sets the aircraft on a trajectory that shoots the gap between the weather cells.This is modified slightly at 4:21 (with an intervening weather update at 4:20) but is followed with a more drastic maneuver at 4:35 (Figure 19c).While this latest maneuver might appear to intersect weather, note that this occurs beyond the end of the planning horizon (30 minutes).At 4:40, another maneuver further delays the aircraft also encountering weather beyond the planning horizon.The remaining maneuvers further exacerbate the delay.The cumulative delay encountered by the flight in this scenario is 28 minutes.One can see in this figure how an early tactical decision resulted in a causal chain of events each further delaying the flight.Note that the aircraft conflict detected at 4:50 is also resolved by the weather avoidance maneuver shown.In contrast, Figure 20 shows that early strategic decisions can allow the tactical algorithm to select an avoidance route that exhibits lower delay (5 minutes as opposed to 28 minutes in the purely tactical case).In frames a-c of this figure, the actual aircraft position is outside the frame so the forecast position at 4:19 is shown instead.At 3:45, a strategic reroute is implemented that takes the flight through the weather.This is modified at 4:00 adding a slight delay in the process.At 4:15 however, the previous reroute is determined to be too conservative and is therefore revised.Note now that the trajectory in frame c has one fewer waypoint than that depicted in Figure 19a.At 4:20 a weather conflict is detected and resolved tactically but in this case the tactical algorithm finds that shooting the weather gap is not viable *** and opts for a two-waypoint maneuver instead.This is subsequently modified twice at 4:41 and 4:45.The overall effect is that the strategic reroute reduces the delay by 23 minutes.Figure 21 and Figure 22 depict another case study, which illustrates the tendency of strategic rerouting to produce smoother routes that in turn tend to reduce or eliminate tactical avoidance maneuvers.Figure 21 shows the events that transpire on a flight in the CR+TWx scenario while Figure 22 shows those for the CR+TWx+SWx scenario.In the absence of strategic weather rerouting, five weather avoidance maneuvers and two aircraft conflict resolutions are required to keep the flight conflict free.The final frame shows the actual path flown (the aircraft tracks).*** The tactical algorithm is designed to recapture to route waypoints and does not attempt to 'zig-zag' between weather cells.Since the recapture waypoint has moved farther downstream due to the preceding weather reroutes, maneuvers within the gap end up intersecting one or more weather forecasts.The use of strategic weather rerouting (Figure 22) eliminates all tactical weather maneuvers using five early reroutes.Note that frame e depicts two weather forecasts in addition to the nowcast.The lighter purple represents the weather forecast at the predicted altitude of the aircraft prior to rerouting, whereas the darker purple corresponds to that on the rerouted path.Two subsequent aircraft conflict resolutions are also depicted in frames f and g (the 'intruder' aircraft is depicted in magenta).The final frame shows the actual path flown.AAC = Advanced AirspaceConcept CDR = Aircraft-to-aircraft conflict detection and resolution CR = Aircraft-to-aircraft conflict resolution NAS = National Airspace System RUC = The Rapid Update Cycle, a numerical weather forecast TWx = Tactical weather avoidance SWx = Strategic weather avoidance
+Figure 1 .Figure 2 .12Figure 1.CDR planning horizon
+Figure 5 .5Figure 4. Tactical Weather Avoidance
+Figure 8 Figure 8 .88Figure 6.Reroute revisions
+a) 7 Figure 9 .79Figure 9. CWAM weather over a two hour period (at 30,000 feet)
+Figure 10 .Figure 11 .1011Figure 10.Weather violation counts
+Figure 13 .Figure 14 .Figure 12 .131412Figure 13.Total Delay: conflict resoution (blue), tactical (purple), and strategic weather (green)
+Figure 16 .Figure 15 .Figure 17 .161517Figure 16.Number of trials per conflict vs. total conflict counts (primary + secondary)
+Figure 19 . Case study 1 .191Figure 19.Case study 1.Tactical weather (scheduled enroute time = 134 minutes; total delay = 28 minutes)
+Figure 20 . Case study 1 .201Figure 20.Case study 1.Tactical and strategic weather (scheduled enroute time = 134 minutes; total delay = 5 minutes)
+Figure 21 .Figure 22 .2122Figure 21.Case study 2. Tactial weather avoidance (scheduled enroute time = 172 minutes; total delay = 21 minutes)
+		
+		
+
+			
+AcknowledgmentsThe authors would like to thank Dr. Todd Lauderdale and the AAC team at NASA Ames Research Center for their valuable advice and tireless efforts in developing AAC.Acknowledgement is also due to Rich Pawlowicz, author of m_map, http://www.eos.ubc.ca/~rich/map.html.He created a map projection package for Matlab, which the authors used to render Figure 9.
+			
+
+			
+Appendix
+A. Correlation Between Detected Conflicts and Traffic DensityThis appendix provides a heuristic argument that explains the sensitivity of the total number of primary and secondary conflicts detected relative to changes in traffic density.§ § Note that short decision times mean that reroutes are more often than not composed of disjoint local maneuvers (one local maneuver per conflict); in such cases, it is best to wait till each conflict enters the tactical planning horizon before resolving it (as opposed to resolving early with a single reroute).			
+			
+
+				
+
+
+	
+		NASDAC Review of NTSB Weather-Related Accidents
+		
+		
+			Jan 21, 2011
+		
+	
+	Federal Aviation Administration
+	Federal Aviation Administration, "NASDAC Review of NTSB Weather-Related Accidents," URL: http://www.asias.faa.gov/aviation_studies/weather_study/studyindex.html [cited Jan 21, 2011].
+
+
+
+	
+		Aviation Capacity Enhancement Plan
+		
+			2 Federal Aviation Administration
+		
+		
+	
+	
+		Fact Sheet -NextGen
+		
+			20
+			2003. December 2003. February 2007
+		
+	
+	Federal Aviation Administration. cited August 26, 2011
+	2 Federal Aviation Administration, "2003 Aviation Capacity Enhancement Plan," FAA Office of System Capacity, December 2003, pp. 20, URL: http://www.faa.gov/about/office_org/headquarters_offices/ato/publications/bench. 3 Federal Aviation Administration, "Fact Sheet - NextGen," February 2007, URL: http://www.faa.gov/news/fact_sheets/news_story.cfm?newsid=8145 [cited August 26, 2011].
+
+
+
+	
+		Transforming the NAS: The Next Generation Air Traffic Control System
+		
+			HErzberger
+		
+	
+	
+		Proceedings of the 24 th International Council of the Aeronautical Sciences (ICAS)
+		the 24 th International Council of the Aeronautical Sciences (ICAS)Congress, Yokohama, Japan
+		
+			2004
+		
+	
+	4 Erzberger, H., "Transforming the NAS: The Next Generation Air Traffic Control System," Proceedings of the 24 th International Council of the Aeronautical Sciences (ICAS) Congress, Yokohama, Japan, 2004.
+
+
+
+	
+		Automated conflict resolution for air traffic control
+		
+			HErzberger
+		
+	
+	
+		Proceedings of the 25 th International Council of the Aeronautical Sciences (ICAS) Congress
+		the 25 th International Council of the Aeronautical Sciences (ICAS) CongressHamburg, Germany
+		
+			2006
+		
+	
+	Erzberger, H., "Automated conflict resolution for air traffic control," Proceedings of the 25 th International Council of the Aeronautical Sciences (ICAS) Congress, Hamburg, Germany, 2006.
+
+
+
+	
+		Automated Conflict Resolution, Arrival Management and Weather Avoidance for ATM
+		
+			HErzberger
+		
+		
+			TALauderdale
+		
+		
+			YChu
+		
+	
+	
+		Proceedings of the 27 th International Council of the Aeronautical Sciences
+		the 27 th International Council of the Aeronautical SciencesNice, France
+		
+			ICAS) Congress
+			2010
+		
+	
+	Erzberger, H., Lauderdale, T.A., and Chu, Y., "Automated Conflict Resolution, Arrival Management and Weather Avoidance for ATM," Proceedings of the 27 th International Council of the Aeronautical Sciences (ICAS) Congress, Nice, France, 2010.
+
+
+
+	
+		Convective Weather Avoidance with Uncertain Weather Forecasts
+		
+			RWindhorst
+		
+		
+			MRefai
+		
+		
+			SKarahan
+		
+	
+	
+		28 th Digital Avionics Systems Conference (DASC)
+		Orlando, Florida
+		
+			2009
+		
+	
+	Windhorst, R., Refai, M., and Karahan, S., "Convective Weather Avoidance with Uncertain Weather Forecasts," 28 th Digital Avionics Systems Conference (DASC), Orlando, Florida, 2009.
+
+
+
+	
+		Fast-Time Simulation Evaluation of a Conflict Resolution Algorithm Under High Air Traffic Demand
+		
+			TCFarley
+		
+		
+			HErzberger
+		
+	
+	
+		th USA/Europe ATM 2007 R&D Seminar
+		Barcelona, Spain
+		
+			2007
+		
+	
+	Farley, T. C., and Erzberger, H., "Fast-Time Simulation Evaluation of a Conflict Resolution Algorithm Under High Air Traffic Demand," 7 th USA/Europe ATM 2007 R&D Seminar, Barcelona, Spain, 2007.
+
+
+
+	
+		Automated Conflict Resolution: A Simulation Evaluation Under High Demand Including Merging Arrivals
+		
+			TFarley
+		
+		
+			MKupfer
+		
+		
+			HErzberger
+		
+	
+	
+		Proceedings of the 7 th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		the 7 th AIAA Aviation Technology, Integration, and Operations (ATIO) ConferenceBelfast, Northern Ireland
+		
+			2007
+		
+	
+	Farley, T., Kupfer, M., and Erzberger, H., "Automated Conflict Resolution: A Simulation Evaluation Under High Demand Including Merging Arrivals," Proceedings of the 7 th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Belfast, Northern Ireland, 2007.
+
+
+
+	
+		Automated Conflict Resolution -A Simulation-Based Sensitivity Study of Airspace and Demand
+		
+			MKupfer
+		
+		
+			TFarley
+		
+		
+			CYung-Cheng
+		
+		
+			HErzberger
+		
+	
+	
+		Proceedings of the 26 th International Council for the Aeronautical Sciences (ICAS)
+		the 26 th International Council for the Aeronautical Sciences (ICAS)Congress, Anchorage, Alaska
+		
+			2008
+		
+	
+	Kupfer, M., Farley, T., Yung-Cheng, C., and Erzberger, H., "Automated Conflict Resolution -A Simulation-Based Sensitivity Study of Airspace and Demand," Proceedings of the 26 th International Council for the Aeronautical Sciences (ICAS) Congress, Anchorage, Alaska, 2008.
+
+
+
+	
+		Automated Separation Assurance in the Presence of Uncertainty
+		
+			DMcnally
+		
+		
+			DThipphavong
+		
+	
+	
+		Proceedings of the 26 th International Council for the Aeronautical Sciences (ICAS)
+		the 26 th International Council for the Aeronautical Sciences (ICAS)Congress, Anchorage, Alaska
+		
+			2008
+		
+	
+	McNally, D., and Thipphavong, D., "Automated Separation Assurance in the Presence of Uncertainty," Proceedings of the 26 th International Council for the Aeronautical Sciences (ICAS) Congress, Anchorage, Alaska, 2008.
+
+
+
+	
+		The Effects of Speed Uncertainty on a Separation Assurance Algorithm
+		
+			TALauderdale
+		
+	
+	
+		Proceedings of the 10 th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		the 10 th AIAA Aviation Technology, Integration, and Operations (ATIO) ConferenceFort Worth, Texas
+		
+			2010
+		
+	
+	Lauderdale, T. A., "The Effects of Speed Uncertainty on a Separation Assurance Algorithm," Proceedings of the 10 th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Fort Worth, Texas, 2010.
+
+
+
+	
+		Concept and Laboratory Analysis of Trajectory-Based Automation for Separation Assurance
+		
+			DMcnally
+		
+		
+			CGong
+		
+	
+	
+		Air Traffic Control Quarterly
+		
+			15
+			1
+			0
+			2007
+		
+	
+	Forecast @ 4:09) b. Forecast @ 4:15
+	McNally D., and Gong, C., "Concept and Laboratory Analysis of Trajectory-Based Automation for Separation Assurance," Air Traffic Control Quarterly, Vol. 15(1) pp 35-63, 2007. a) 3:59 -Tactical (Forecast @ 4:09) b) 4:00 -Strategic (Forecast @ 4:15)
+
+
+
+	
+		Case study 3. Tactical and Strategic Weather: negative strategic delay
+	
+	
+		Figure 23
+		
+	
+	Figure 23. Case study 3. Tactical and Strategic Weather: negative strategic delay (-2':15")
+
+
+
+	
+		Human-in-the-Loop Evaluation of Ground-Based Automated Separation Assurance for NextGen
+		
+			TPrevot
+		
+		
+			JRHomola
+		
+		
+			JSMercer
+		
+	
+	
+		Proceedings of the 26 th International Council of the Aeronautical Sciences (ICAS)
+		the 26 th International Council of the Aeronautical Sciences (ICAS)Congress, Anchorage, Alaska
+		
+			2008
+		
+	
+	Prevot, T., Homola, J. R., and Mercer, J. S., "Human-in-the-Loop Evaluation of Ground-Based Automated Separation Assurance for NextGen," Proceedings of the 26 th International Council of the Aeronautical Sciences (ICAS) Congress, Anchorage, Alaska, 2008.
+
+
+
+	
+		Initial Study of Controller/Automation Integration for NextGen Separation Assurance
+		
+			TPrevot
+		
+		
+			JRHomola
+		
+		
+			JSMercer
+		
+	
+	
+		AIAA Guidance, Navigation, and Control (GNC) Conference and Exhibit
+		Honolulu, Hawaii
+		
+			2008
+			16
+		
+	
+	Prevot, T., Homola, J. R., and Mercer, J. S., "Initial Study of Controller/Automation Integration for NextGen Separation Assurance," AIAA Guidance, Navigation, and Control (GNC) Conference and Exhibit, Honolulu, Hawaii, 2008. 16
+
+
+
+	
+		Initial Evaluation of Air/Ground Operations with Ground-Based Automated Separation Assurance
+		
+			TPrevot
+		
+		
+			JRHomola
+		
+		
+			JSMercer
+		
+		
+			MJMainini
+		
+		
+			CDCabrall
+		
+	
+	
+		Proceedings of the 8th USA/Europe Air Traffic Management Research and Development Seminar
+		the 8th USA/Europe Air Traffic Management Research and Development SeminarNapa, California
+		
+			2009
+		
+	
+	Prevot, T., Homola, J. R., Mercer, J. S., Mainini, M. J., and Cabrall, C. D., "Initial Evaluation of Air/Ground Operations with Ground-Based Automated Separation Assurance," Proceedings of the 8th USA/Europe Air Traffic Management Research and Development Seminar, Napa, California, 2009.
+
+
+
+	
+		Evaluation of NextGen Air Traffic Control Operations with Automated Separation Assurance
+		
+			TPrevot
+		
+	
+	
+		International Conference on Human-Computer Interaction in Aerospace
+		Cape Canaveral, Florida
+		
+			2010
+		
+	
+	Prevot, T., et al., "Evaluation of NextGen Air Traffic Control Operations with Automated Separation Assurance," International Conference on Human-Computer Interaction in Aerospace, Cape Canaveral, Florida, 2010.
+
+
+
+	
+		Comparison of Ground-Based and Airborne Function Allocation Concepts for NextGen Using Human-In-The-Loop Simulations
+		
+			DJWing
+		
+	
+	
+		Proceedings of the 10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		the 10th AIAA Aviation Technology, Integration, and Operations (ATIO) ConferenceFort Worth, Texas
+		
+			2010
+		
+	
+	Wing, D. J., et al., "Comparison of Ground-Based and Airborne Function Allocation Concepts for NextGen Using Human- In-The-Loop Simulations," Proceedings of the 10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Fort Worth, Texas, 2010.
+
+
+
+	
+		Analysis of Automated Aircraft Conflict Resolution and Weather Avoidance
+		
+			JFLove
+		
+		
+			WNChan
+		
+		
+			CHLee
+		
+	
+	
+		Proceedings of the 9 th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		the 9 th AIAA Aviation Technology, Integration, and Operations (ATIO) ConferenceHilton Head, South Carolina
+		
+			2009
+		
+	
+	Love, J. F., Chan, W. N., and Lee, C. H., "Analysis of Automated Aircraft Conflict Resolution and Weather Avoidance," Proceedings of the 9 th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Hilton Head, South Carolina, 2009.
+
+
+
+	
+		Sequential Traffic Flow Optimization with Tactical Flight Control Heuristics
+		
+			SGrabbe
+		
+		
+			BSridhar
+		
+		
+			AMukherji
+		
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		
+			32
+			3
+			May-June 2009
+		
+	
+	Grabbe, S., Sridhar, B., and Mukherji, A., "Sequential Traffic Flow Optimization with Tactical Flight Control Heuristics," Journal of Guidance, Control, and Dynamics, Vol. 32, No. 3, May-June 2009.
+
+
+
+	
+		The Airspace Concept Evaluation Software Architecture
+		
+			RWindhorst
+		
+		
+			LMeyn
+		
+		
+			VManikonda
+		
+		
+			PCarlos
+		
+		
+			BCapozzi
+		
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		Keystone, Colorado
+		
+			August 2006
+		
+	
+	Windhorst, R., Meyn, L., Manikonda, V., Carlos, P., Capozzi, B., "The Airspace Concept Evaluation Software Architecture," AIAA Guidance, Navigation, and Control Conference and Exhibit, Keystone, Colorado, August 2006.
+
+
+
+	
+		Build 8.0 of the Airspace Concept Evaluation System
+		
+			SGeorge
+		
+	
+	
+		AIAA Modeling and Simulation Technologies (MST) Conference
+		Portland, Oregon
+		
+			2011
+		
+	
+	George, S., 'Build 8.0 of the Airspace Concept Evaluation System', AIAA Modeling and Simulation Technologies (MST) Conference, Portland, Oregon, 2011.
+
+
+
+	
+		An Exploratory Study of Modeling Enroute Pilot Convective Storm Flight Deviation Behavior
+		
+			RDelaura
+		
+		
+			JEvans
+		
+	
+	
+		Proceedings of the 12 th Conference on Aviation, Range, and Aerospace Meteorology
+		the 12 th Conference on Aviation, Range, and Aerospace MeteorologyAtlanta
+		
+			2006
+		
+	
+	DeLaura, R., and Evans, J., "An Exploratory Study of Modeling Enroute Pilot Convective Storm Flight Deviation Behavior," Proceedings of the 12 th Conference on Aviation, Range, and Aerospace Meteorology, Atlanta, 2006.
+
+
+
+	
+		An Approach to Verify a Model for Translating Convective Weather Information to Air Traffic Management Impact
+		
+			WChan
+		
+		
+			MRefai
+		
+		
+			RDelaura
+		
+	
+	
+		Proceedings of the 7th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		the 7th AIAA Aviation Technology, Integration, and Operations (ATIO) ConferenceBelfast, Northern Ireland
+		
+			2007
+		
+	
+	Chan, W., Refai, M., DeLaura, R., "An Approach to Verify a Model for Translating Convective Weather Information to Air Traffic Management Impact," Proceedings of the 7th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Belfast, Northern Ireland, 2007.
+
+
+
+	
+		Transforming the NAS: The Next Generation Air Traffic Control System
+		
+			HErzberger
+		
+	
+	
+		Proceedings of the 24 th International Council of the Aeronautical Sciences (ICAS)
+		the 24 th International Council of the Aeronautical Sciences (ICAS)Congress, Yokohama, Japan
+		
+			2004
+		
+	
+	Erzberger, H., "Transforming the NAS: The Next Generation Air Traffic Control System," Proceedings of the 24 th International Council of the Aeronautical Sciences (ICAS) Congress, Yokohama, Japan, 2004.
+
+
+
+	
+		Automated conflict resolution for air traffic control
+		
+			HErzberger
+		
+	
+	
+		Proceedings of the 25 th International Council of the Aeronautical Sciences (ICAS) Congress
+		the 25 th International Council of the Aeronautical Sciences (ICAS) CongressHamburg, Germany
+		
+			2006
+		
+	
+	Erzberger, H., "Automated conflict resolution for air traffic control," Proceedings of the 25 th International Council of the Aeronautical Sciences (ICAS) Congress, Hamburg, Germany, 2006.
+
+
+
+	
+		Automated Conflict Resolution, Arrival Management and Weather Avoidance for ATM
+		
+			HErzberger
+		
+		
+			TALauderdale
+		
+		
+			YChu
+		
+	
+	
+		Proceedings of the 27 th International Council of the Aeronautical Sciences
+		the 27 th International Council of the Aeronautical SciencesNice, France
+		
+			ICAS) Congress
+			2010
+		
+	
+	Erzberger, H., Lauderdale, T.A., and Chu, Y., "Automated Conflict Resolution, Arrival Management and Weather Avoidance for ATM," Proceedings of the 27 th International Council of the Aeronautical Sciences (ICAS) Congress, Nice, France, 2010.
+
+
+
+	
+		Macroscopic Workload Model for Estimating En Route Sector Capacity
+		
+			JDWelch
+		
+		
+			JWAndrews
+		
+		
+			BDMartin
+		
+		
+			BSridhar
+		
+	
+	
+		Eurocontrol/FAA Air Traffic Management R&D Seminar
+		
+			2007
+			Barcelona, Spain
+		
+	
+	Welch, J. D., Andrews, J. W., Martin, B. D., Sridhar, B., "Macroscopic Workload Model for Estimating En Route Sector Capacity", 7 th Eurocontrol/FAA Air Traffic Management R&D Seminar, Barcelona, Spain, 2007.
+
+
+
+	
+		Nationwide Evaluation of a Conflict Resolution Algorithm
+		
+			LAMeyn
+		
+	
+	
+		Proceedings of the 9 th AIAA Aviation Technology, Integration, and Operations Conference (ATIO)
+		the 9 th AIAA Aviation Technology, Integration, and Operations Conference (ATIO)Hilton Head, South Carolina
+		
+			2009
+		
+	
+	Meyn, L. A., "Nationwide Evaluation of a Conflict Resolution Algorithm," Proceedings of the 9 th AIAA Aviation Technology, Integration, and Operations Conference (ATIO), Hilton Head, South Carolina, 2009.
+
+
+				
+			
+		
+	

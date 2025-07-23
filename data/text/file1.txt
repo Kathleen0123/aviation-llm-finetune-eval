@@ -1,0 +1,342 @@
+
+	
+	
+		
+IntroductionThe Center-Terminal Radar Approach Control (TRACON) Automation System (CTAS) is a set of tools developed to help air traffic controllers manage complex air traffic flows to reduce delays and increase safety [1].These tools, known also as CTAS client applications, rely on the Trajectory Synthesizer (TS) [3,4] as the core computational engine for generating accurate predictions of 4Dtrajectories using the detailed aircraft performance characteristics, weather data, and data from the Host Computer System (HCS).TS outputs predicted aircraft position, altitude, and performance parameters, such as drag, thrust, weight, Rate of Climb or Descent (ROCD), and fuel consumption, as a function of time.CTAS currently supports more than four hundred aircraft types, but about 90% of them are supported indirectly by mapping to aircraft types with known drag and engine thrust models.Obtaining the detailed performance data for more aircraft types from manufacturers and validating them may be problematic and time-consuming.Besides that, previous research validating the accuracy of CTAS TS (see [5] and [6]) was limited to certain centers and aircraft types, and the overall accuracy of CTAS predictions remained largely unknown.On the other hand, the Base of Aircraft DATA (BADA) supports more than 300 aircraft types, including about a hundred aircraft types with extensively validated performance data.BADA is an Aircraft Performance Model (APM) developed and maintained by Eurocontrol and available free of charge.This model is documented in the BADA User Manual [7].The complementary "Base of Aircraft DATA (BADA) Aircraft Performance Modelling Report" [8] provides further definition of BADA parameters.Note that BADA documentation [7] does not always make a clear distinction between the physical and operational components.For instance, BADA thrust model blends together the physical parameters, such as maximum engine thrust, and operational considerations like the flight configuration or using reduced climb power.Note also that BADA does not include any official software implementation, but it provides the data that can be used to verify correctness of any software that implements the BADA APM.The main potential advantage of using BADA is that it directly supports more aircraft types in comparison with CTAS and may provide more accurate aircraft parameters for some aircraft types currently supported by CTAS.Besides that, some elements of the BADA operational model, such as default speeds and the use of reduced climb power, may be based on more realistic assumptions.Another important benefit of using BADA is that it is maintained by Eurocontrol and it is expected to be regularly updated and improved over time.To take full advantage of these benefits, BADA APM was integrated in CTAS TS to augment the "native" CTAS APM for aircraft types not supported by CTAS or having the better models in BADA.A set of validation tools was developed and used to judge the accuracy of BADA APM and CTAS APM by comparing trajectory predictions built using both performance models to radar track and other reference data.Software design for BADA-CTAS Integration is presented in Section 2 of this TM.Section 3 describes the tools developed to validate the correctness of software implementation and the accuracy of BADA APM in comparison with CTAS APM.Section 4 briefly describes the results of software validation.Section 5 describes the results of evaluation of CTAS TS with "native" CTAS and integrated BADA model for various aircraft types and operational parameters.The TM is concluded with Section 6, summarizing the main findings.The Appendix includes examples of BADA Operation Performance Files (OPF) and Performance Table Data (PTD) files.
+BADA-CTAS IntegrationCTAS TS with support for BADA will be referenced in this TM as "CTAS/BADA TS".The term "CTAS TS" will refer to CTAS/BADA TS using only "native" CTAS APM, which is functionally equivalent to the "original" CTAS TS without support for BADA APM.CTAS TS is a faster-than-real-time trajectory predictor that can be called for every radar track hit, or every 12 seconds, for each of thousands flights managed by CTAS tools.So, the main design requirement was to minimize performance penalty introduced by adding support for both CTAS and BADA models.Also, it was desirable to minimize CTAS TS code changes, to separate clearly the BADA-specific code from the rest of CTAS TS, and to make new code consistent with existing CTAS TS infrastructure.• Easy switch between CTAS "native" and BADA APM by changes in user-defined configuration files; • BADA can be used for specific aircraft types or for all aircraft types; • Each element of BADA APM (drag model, thrust model, speed profile, etc.) can be turned on/off and tested separately; • Some parameters of BADA APM, such as aircraft weight, can be specified as aircraft-specific user-defined values; • The weight of aircraft can be specified as a constant or variable.In the latter case, the weight is calculated as a function of time based on fuel consumption as described in [9]; • BADA thrust model was extended to allow the variable power settings to control the engine thrust in response on client speed requests, such as speed advisories for trial planning.Specifically, the maximum climb power is used for acceleration, and the BADA idle-thrust is used for deceleration in any flight phase; • Fuel consumption is always based on instantaneous thrust value, even if it deviates from nominal BADA thrust due to client requests; • Speed profile can be defined as CTAS, BADA "exact" with nominal BADA speeds defined in [7], and BADA "hybrid" with BADA speeds that can be updated by speed requests from CTAS client applications; • Some BADA options defined as "global" in [7], such as reduced climb power or expedited descent, can be defined as aircraft-specific in CTAS/BADA TS.This rich functionality is controlled by two BADA-CTAS Configuration Files, loaded by CTAS at startup time:• data sources, which specifies the available data sources (currently CTAS and BADA 3.8, but other versions of BADA can be added later); • aircraft data sources, which defines the additional options for each element (sub-model) of APM.If BADA APM is requested, the following BADA Input Files will be used (see [7] for details):• SYNONYM.NEW: the ICAO codes and prefixes for files with aircraft-specific data;• BADA.GPF -Global Parameters Files, containing the values for BADA global parameters;• OPF files -Operation Performance Files (one file for each aircraft type, see Appendix A);• APF files -Airline Procedures Files (one file for each aircraft type).Typical operation of CTAS/BADA TS includes three steps:1. Read BADA-CTAS configuration files; 2. Read CTAS common aircraft data files and BADA data files, and use the data from configuration files to instantiate CTAS or BADA implementations for each APM element; 3. Generate trajectories using CTAS and/or BADA APM as defined in configuration files.The trajectories generated by CTAS/BADA TS may be saved in archive files for further analysis and comparisons with radar track and other benchmark data using validation tools described in next section.
+Validation Tools and MethodsThe goals of validation are two-fold.First of all, it should be confirmed that implementation of BADA APM in CTAS/BADA TS is correct by comparison with benchmark data, provided by Eurocontrol in the form of "Performance Table Data" (PTD) files (see [7] and Appendix B).Next, it should be examined how the usage of BADA APM will help improve CTAS.This second goal can be accomplished by running CTAS/BADA TS with CTAS APM and BADA APM side by side and comparing their predictions to each other and to radar track data.For a first goal, the PTD validation tool was developed to validate the implementation of BADA APM by reporting how closely the results produced by the current version of CTAS/BADA TS match the reference data from PTD files.For these comparisons linear interpolation on the TS output is used to get data at flight levels, specified in BADA PTD files.For a second goal, namely, validation of CTAS APM and BADA APM, a number of other tools was created.Two of them are briefly considered in this section:1. TrackComparer tool 2. CmSimTrackComparer tool TrackComparer tool uses methodology similar to what was described in [6].It combines three different analysis techniques:• Systematic analysis -Comparison of every predicted position with actual track data, and of predictions against each other, provided that data can be compared for a specified minimum time or path distance.This analysis generates systematic error statistics for all aircraft types, but it does not reflect the evolution of error along track.• Interval-based sampling technique (IBST) -Samples track data and predictions at regular intervals along the track, as described in [10].• Separation assurance trajectory accuracy algorithm (SA analysis) -Computes metrics at a specific lookahead time starting at (user-defined) climb and descending altitudes.SA analysis is a truncated variant of IBST that computes metrics for only one (first) prediction for each track.This makes it less computationally expensive than IBST, at the cost of a reduced size of data set.The tool requires the following inputs:• Cm sim file, generated by CTAS using HCS data.It contains flight plans, flight plan amendments, and radar tracks.• Trajectory archive files for trajectories generated by CTAS/BADA TS.These files are used for comparison with track data.CmSimTrackComparer tool was originally developed for comparing CTAS/BADA TS predictions against track data for idle-thrust descents with controlled cruise and descent speeds that were recorded for Denver arrivals in 2009, studied in [11].The tool can also be useful for other CTAS data analysis/validation tasks.It combines the following functions:• automatically generate requests to TS from radar track data;• invoke TS for each request;• compare generated predictions against tracks.In contrast to TrackComparer, CmSimTrackComparer has only one required input, a cm sim file, that makes possible to run it without running CTAS.Optional input text files can be used to limit analysis to particular flights and to specify estimated values for descent speeds and aircraft weights.On the other hand, CmSimTrackComparer compares track data to predictions generated using only one APM, either CTAS or BADA, while TrackComparer can simultaneously compare CTAS predictions to track data, BADA predictions to track data, and BADA predictions to CTAS predictions.Both TrackComparer and CmSimTrackComparer tools use the metrics defined in [10]: along-track error (time-correlated):∆AT t = U • V V(1)along-track error (path-correlated):∆AT p = t p -t t(2)cross-track error (time-correlated):∆CT = U × V V(3)altitude error:∆h = h t -h p (4)where t is a time, h is an altitude, and the subcripts p and t designate the path-based and timebased correlations.The vectors U and V are based on the position of aircraft denoted as AC and a trajectory segment between the points T J 1 and T J 2 as shown on Figure 2.All metrics, except for the along-track error for the path distance correlation, have the characteristic that the predicted trajectory is subtracted from the reference (or track).For BADA predictions compared against CTAS, the reference is always the CTAS prediction.Besides these metrics, TrackComparer calculates the metrics for "events," such as the Top of Climb (TOC), the Top of Descent (TOD), and the Estimated Time of Arrival (ETA).In this study the Top of Climb is defined as the end of the longest procedural climb in the flight or prediction, and the Top of Descent is defined as the start of the longest procedural descent in the flight or prediction.A procedural climb is defined as a non-decreasing sequence of altitudes with at least one strictly increasing sequence of altitudes, and procedural descent as a non-increasing sequence of altitudes with at least one strictly decreasing sequence of altitudes.For arriving flights, CTAS makes a clear distinction between Center predictions originating in the ARTCC and ending at the meterfix, and TRACON predictions within the TRACON.Consequently, the metrics for ETA are defined differently for these two classes of predictions.For a Center For each comparison (e.g. for each prediction-reference pair) the maximum, minimum, mean, and absolute mean errors are calculated and stored in SQL-lite database.Then the maximum, mean, minimum, and standard deviation are calculated over each of these metrics separately for CTAS vs. Track, BADA vs. Track, and BADA vs. CTAS comparisons.For example, the "mean of absolute mean errors" is the mean of absolute mean errors for all predictions.Other metrics used in this TM are defined similarly.
+CTAS/BADA TS Software ValidationImplementation of BADA APM in CTAS/BADA TS was validated using the PTD validation tool with benchmark PTD files as of the 5th of May 2011.This validation was performed only for BADA "exact" speeds and constant weight, since the PTD files were generated for these conditionsThe following two metrics were considered: a trajectory success rate, and a comparison success rate.The trajectory success rate is defined as a percentage of trajectories successfully generated by CTAS/BADA TS to all trajectory requests.CTAS/BADA TS may fail to generate trajectories for certain requests because of unrealistic constraints or aircraft performance data or due to limitations imposed by implementation of TS computational algorithms.Over all considered aircraft types, e.g.all types for which the BADA provided the PTD files, the PTD validation gives 99.8% trajectory success rate.The comparison success rate is defined as a percentage of successful comparisons to all comparisons.Comparison is considered successful if the mean absolute errors for all trajectory parameters are less than the specified tolerances listed in Table With these tolerances a comparison success rate with the PTD reference was 78.3%.The majority of failed comparisons were due to thrust or ROCD.These failures occurred because "the PTF/PTD files do not take into account the flight envelope limitations", as the BADA support group acknowledged responding on request by the authors of this TM.Therefore, the tables in BADA PTD files include the data up to the maximum altitudes with a negative rate of climb indicating that aircraft cannot climb up to that altitudes.CTAS TS copes with this situation by increasing thrust to achieve a minimum energy rate required for climb, while ROCD is calculated from the Newton's equation of motion and can never be negative in climb.Therefore, the BADA implementation in CTAS/BADA TS disagrees with BADA PTD reference for conditions that are not physically possible.Increasing the thrust tolerance to 2000 Newtons and the ROCD tolerance to 200 feet per minute resulted in an increased comparison success rate of 90.5%.All remaining failures were due to failed comparisons in drag.All data in BADA PTD files are expressed on the coarse grid as functions of the flight level (FL) (see Appendix B).Hence, comparisons of CTAS/BADA TS results against the PTD data require interpolation between this coarse grid and the the grid used by CTAS/BADA TS.The lift coefficient, and hence the drag, appear to be especially sensitive to these interpolation errors.Other parameters, such as altitude and CAS, were not affected by these errors.
+Evaluation of CTAS/BADA TSBADA documentation [7] already allows certain variability in some elements of BADA APM.For example, a user can choose to use full or reduced climb power, standard descent or expedited descent with spoilers, and so on.Implementation of BADA APM in CTAS/BADA TS further extends this variability.Hence, any discussion of CTAS/BADA TS evaluation results requires specification of "the variant" of BADA APM used.First, the definitions of CTAS and BADA speed profiles should be considered.CTAS TS uses aircraft-specific default speeds, but they can be updated from client speed requests and the initial speed from track.On another hand, BADA User Manual, [7], defines aircraft-specific speeds for all flight phases, which will be called the "BADA exact" speed profile.In addition to this, CTAS/BADA TS supports the "BADA hybrid" speed profile, defined as BADA exact speeds, replaced when necessary with speeds requested by CTAS clients.A variant of "BADA hybrid" speed profile, which will be referred in this TM as "BADA hybrid hold," holds initial speeds as CTAS TS does.Therefore, the "BADA hybrid hold" speed profile is similar to CTAS speed profile, except the definition of default speeds: the BADA "exact" speeds from [7] are used as default speeds for BADA, while for CTAS the default speeds are explicitly specified for each aircraft type.Next, the "default" initial aircraft weight should be defined, which is based on BADA reference weight, corrected to account for a starting point of aircraft.CTAS TS does not have access to flight history before the first prediction point, so the method of initial weight correction based on estimated fuel burn, suggested in [12] and [13], could not be used.Therefore, a more practical, although less accurate, correction technique was necessary.This technique used heuristics, taking into account a starting point of aircraft.Effectively, these heuristics ensured that the initial weight gradually approached the BADA maximum weight at the beginning of climb, and the "landing weight", defined as BADA empty weight increased by 20%, at the end of descent.The code also ensured that the actual aircraft weight could not fall below the "landing weight".BADA Base case can be defined as follows:1. BADA thrust model; 2. BADA drag model; 3. BADA weight model that implies the weight starting from "default" initial weight and changing as a function of consumed fuel; 4. Reduced climb power, which will give more realistic climb profile than the maximum thrust does (see [7], p.24); 5. BADA "exact" speed profile (requests are ignored); 6. BADA model limits (trajectories assumed invalid if BADA limits are violated).Therefore, the BADA Base case can be seen as the most "authentic" implementation of [7].All other BADA test cases are built upon the BADA Base case as shown in Table 2. Examining these cases allows to study the effects of extensions of BADA APM and, to some degree, the effects of uncertanties in speeds, weight, thrust, and drag.Note that only the BADA Base case can be considered as a "nominal" case, for which the BADA APM was validated by the Eurocontrol.All other cases are "off-nominal" models that require additional validation by comparisons of predicted trajectories against track data as described in this section.All comparisons were made using BADA version 3.8 and RUC weather files with 40km grid for corresponding days and locations.
+Fort Worth Center (ZFW), 3 daysThe TrackComparer tool, briefly described in previous section, was used to compare radar track data with predictions obtained using CTAS/BADA TS for different BADA variants for 3 days of traffic from Feb 23 to Feb 25 of 2011 in Fort Worth Center (ZFW).Tables 3 and4 summarize the performance of CTAS and various BADA variants for time-based correlations.Each row in these tables includes the averaged (over all predictions) absolute values of maximal errors, mean errors, absolute values of mean errors, maximal errors, minimal errors, and standard deviations of metrics defined in Section 3.As can be seen from Tables 3 and4, all BADA variants perform as well or slightly better than CTAS in terms of altitude and along-track errors.However, the differences between BADA and CTAS and between different BADA variants in mean of absolute mean errors do not exceed a few percent of error magnitudes, except for BADA Hybrid Hold variant that shows the most noticeable advantage over CTAS in terms of mean of absolute mean along-track errors.The differences between CTAS and BADA become more pronounced when plotted for specific aircraft types and flight phases.Note that the aircraft-type-specific data on all histograms are shown in the order of decreasing aircraft-type frequency from the left to the right, so the data for most frequent aircraft types always appear on the left side.All plots below for along-track and altitude errors are given for time-based correlations.The plots for cross-track errors are not included, since these errors were found to be practically the same for BADA and CTAS.This should be expected since the cross-track errors are mostly related to intent and flight plan amendments, and so they are not sensitive to a particular APM. Figure 3 shows the most frequently observed aircraft types for Fort Worth Center in comparisons between CTAS and BADA Base case.Figures 4 and5 show that overall mean altitude error distributions for all flight phases together are similar for CTAS and BADA.However, Figure 6 indicates that BADA APM may reduce the bias in altitude predictions when compared with CTAS APM because of lower mean of mean altitude errors for 20 of 40 aircraft types and for 6 of 10 most frequent aircraft types.Furthermore, as can be seen from Figure 7, BADA may significantly improve the altitude prediction accuracy of CTAS TS for certain aircraft types, such as CRJ7, CRJ9, BE9L, and E145.Figure 8 shows that using BADA Base case may also help reduce the bias in the along-track error for several aircraft types, including A320, B737, B738, B752, CRJ7, CRJ9, and E145.This may indicate that BADA "exact" speeds can be more realistic than the default CTAS speeds.The event errors are plotted on Figures 9 through 14.These results show an improvement in the TOC time accuracy and generally similar results for TOD time accuracy.The results for ETA indicate that BADA APM may perform slightly better in predicting arrival times for many aircraft types, but for certain aircraft types (E135, BE40, BE36, C182) the BADA ETA errors are much higher when compared with CTAS.Figures 15 through 17 show the IBST analysis results for climb prediction errors expressed as a function of look-ahead time, which is defined as the time interval between the sample time and the future time at which the prediction is made.The plots indicate that BADA may help improve the altitude prediction accuracy in climbs.This can be seen from the fact that the mean altitude error remains essentially flat along the track, and the mean absolute and standard deviation of altitude error are lower than in CTAS for the whole range of look-ahead times.At the same time, in descents BADA underperforms in the interval-based sampling results for mean, mean absolute and standard deviation of altitude error, shown on Figures 18 through 20.Note that the graphs do not start from zero errors because of the logic of the IBST that does not use the track position as the initial position for comparisons between track and predicted points.Instead, the IBST selects a first (most recent) eligible prediction for each track that might be generated some time before a sample point (see [10]).This time difference can be especially large if some predictions after the "first eligible prediction" fail.It is instructive to look at results for the TRACON area only, e.g.excluding en-route predictions.In the TRACON CTAS TS generates predictions only for arriving flights.Modeling of TRACON trajectories is challenging since the arriving aircraft changes its altitude and speed in wide limits, makes frequent turns, uses variable thrust, and deploys flaps, spoilers, and the landing gear affecting the drag.CTAS TS copes with these challenges using the kinematic modeling specifically taylored for arrivals [2].In contrast, BADA APM is kinetic for all flight phases, including the terminal approach and landing.Figure 21 shows most frequent aircraft types with more than 10 flights for subset of flights including TRACON arrivals only.As can be seen from comparison to Figure 3, restricting the data set to the TRACON arrivals results in different most frequent aircraft types, with increased gap between MD82 and other aircraft and significantly reduced fraction of B737.These changes are not unexpected since CTAS is Center-specific, and the flights through particular ARTCC to other Centers can be performed by different airlines using different aircraft.Figures 22 and23 show that BADA may reduce the altitude bias for several most frequent aircraft types in the TRACON, although the mean of absolute mean altitude errors remains roughly the same as in CTAS TS.This finding may not hold for all TRACONs in all Centers, but it is still significant since it proves that BADA kinetic model can outperform the kinematic model, used by CTAS TS in TRACON, [2].All results discussed so far were obtained using the BADA Base case.The BADA Hybrid Hold variant performs similarly, but in the TRACON it reduces the values of mean of mean altitude errors for almost all most frequent aircraft types (except most of Boeing aircraft types), as shown in Figure 24.The improvement over BADA Base case in TRACON area can be attributed to the fact that in BADA Hybrid Hold case the BADA default speeds can be changed by client requests.This advantage becomes even more apparent from comparisons with Denver 2009 descent data (see section 5.4 below).For this reason, for other centers the BADA Hybrid Hold variant was used rather than the BADA Base case.The BADA Expedited Descent variant achieves even more reductions in altitude errors in the TRACON.As can be seen from Figure 25 the mean of mean altitude errors is significantly lower then in CTAS TS for most aircraft types including MD82, MD83, B752, E135 and E145.However, for some aircraft types the mean of mean altitude errors is much larger, as in the case of B733 and B737.The plots for BADA reduced and increased weight variants, shown in Figures 26 through 31 compared with results for BADA Base case with nominal weight in Figures 6 and7, demonstrate the effect of weight uncertainty on prediction accuracy in climb.Again, these plots show the different ordering of aircraft types, because some flights can fly over the center and so the most frequent aircraft types for departing flights are not necessarily the same as for all flights.The reduced weight variant (Figures 26 and29) shows a very good improvement over the BADA Base case in climbs.We can see that in contrast to the BADA Base case, the reduced weight variant performs better than CTAS, rather than worse, for the mean of mean altitude errors for MD82, MD83, E135, B738, and B737 aircraft types.The mean of absolute mean altitude errors have also improved for many aircraft types.The effect of increased weight in climb is less pronounced as can be seen from Figures 28 and 31 It can be noted that CTAS default aircraft weights can also be adjusted to reduce errors of CTAS APM, although this is beyond the scope of this study.One especially interesting BADA variant is the BADA with CTAS speeds since its comparison with CTAS APM allows to study separately the effect of the aircraft performance model for the same speed profile.It is clear from Figures 32 and 33 that the BADA with CTAS speeds reduced the altitude errors for most frequent aircraft types, except CRJ7 and CRJ9.Moreover, for aircraft types with largest altitude errors in CTAS, such as E145, E135, BE20, and BE9L, the BADA with CTAS speeds yields substantially better accuracy.These results demonstrate that the BADA APM is superior for the vast majority of aircraft types, and especially for smaller aircraft types, such as E145 and E135.At the same time, comparison of these plots with Figures 6 and7 does not show significant advantage of using BADA speeds (e.g.Base case variant) over CTAS speeds in terms of altitude accuracy.Aircraft Type
+Los Angeles Center (ZLA), 1 dayUsing the same methodology, the radar track data for 1 day of traffic in Los Angeles center (ZLA) were compared with CTAS TS and BADA Hybrid Hold predictions.Table 5 summarizes results obtained from these comparisons: For this center BADA does not have clear advantages over CTAS in terms of altitude and alongtrack errors.This can be partially explained by the different aircraft type decomposition with most frequent aircraft type B737 rather than MD82, as evident from Figure 34.The results plotted on Figures 35 and36 show that for this center BADA clearly outperforms CTAS in terms of altitude errors for A319, CRJ7, and CRJ9.In TRACON area, BADA altitude errors are much lower in comparison with CTAS only for two aircraft types -A319 and CRJ2, and consistently higher for all other aircraft as becomes apparent from Figures 37 and38.Aircraft Type
+Denver Center (ZDV), 5 daysThis sub-section discusses the performance of the BADA Hybrid Hold variant against CTAS APM for January 31 st through February 4 th 2011 in Denver Center.This time period was characterized by variable weather, including days with rain and snow, low ceilings, and strong winds.Therefore, it was important to verify whether the comparison results for these conditions are consistent with results for two other centers presented above.Clearly for this center BADA does not have any advantages over CTAS in terms of altitude errors, and it shows only minor improvements in terms of along-track errors.Once again, Figure 39 shows a different type decomposition; the most frequently observed aircraft types were the B737, A320, B752, and A319.
+Aircraft TypeFigure 39.Most frequent aircraft types in Denver centerFigures 40 and41 show uneven results for altitude errors, with BADA being substantially more accurate for several aircraft types (CRJ7, E170, B190, BE20, C750, MD82, BE9L), and CTAS much more accurate for other aircraft types (CRJ2, C560, C56X, E120, LJ35).However, the overall BADA performance is affected by the fact that BADA is a little less accurate for the four aircraft types most frequently observed in Denver center: B737, A320, B752, and A319.It is interesting to note that BADA is much more accurate than CTAS in predicting TOC for the vast majority of the most frequently observed aircraft types.This is consistent with results for Los Angeles Center and for several BADA variants for Fort Worth Center as well (compare, for instance, Figure 9 with Figure 42).We could have seen already from comparison between Figures 24 and 22 that the BADA Hybrid Hold variant showed a similar or even better performance than the BADA Base case.This finding could be seen as an indirect evidence of relative insensitivity of BADA accuracy to limited deviations from nominal BADA speeds, allowed by BADA Hybrid Hold speed profile.However, it was desirable to study the effect of off-nominal speeds for better controlled conditions with reduced uncertainty in aircraft weight, speed, and pilot intent.This was done by utilizing the data collected in Denver in 2009, which included descending flights performed according to predefined descent profiles.The data set for Denver-2009 included, in addition to cm sim files with radar tracks, the weather Rapid Update Cycle (RUC) files, the data for advisory descent speeds and, for some flights, the actual descent weights.This is the same data set that was used in study [11].We used for this analysis the CmSimTrackComparer tool, which generated the predictions and calculated their errors for all tracks from cm sim files for the filtered set of flights.Filtering was necessary for two reasons:• The flights with missing/inconsistent data, e.g.all flights not listed in the input files given to us for Denver-2009 data set, had to be excluded, • CmSimTrackComparer does not parse the route from the flight plan, so the flights with cross-track error exceeding 10 nm were filtered out in order to analyze only the flights close to direct-to routes.After this filtering our analysis included more than 40 thousand predictions for 256 flights.Tables 7 and8 summarize the comparison results for path-and time-based correlations: As can be seen from these tables, the altitude errors for time-based correlations are significantly higher than for path-based correlations.This is not surprising because location and altitude of the final prediction point in our analysis were determined from the meterfix position and crossing altitude, while the meterfix crossing time was affected by along-track errors.However, even for path-based correlations the BADA Base case is substantially less accurate than CTAS or BADA Hybrid Hold.This is explained by the fact that ignoring the commanded descent, descent and control speeds results in inaccurate TOD positions and hence in large altitude errors.This can be illustrated by plots for one flight of Boeing 757-200 aircraft, shown on Figures 43 and44.It is interesting to note that the BADA Hybrid Hold model performs almost as well as the CTAS model, with the mean absolute altitude error and standard deviation of altitude error being slightly larger.This can be explained by noting that the advised descent and initial Mach do not differ much from the BADA recommended speeds, hence the altitude profile becomes more accurate.This can be observed from the plots shown on Figures 45 and46 for the same flight.Further analysis is required to determine if BADA accuracy will suffer for off-nominal conditions.These limited results indicate that the performance of BADA APM in idle descents may be similar or slightly worse in comparison with CTAS APM for advised speeds that do not differ significantly from the BADA advised speeds.
+ConclusionThe BADA performance and operational model was integrated into the CTAS TS, the core computational engine of CTAS software.The integrated CTAS/BADA TS software incorporated all possible variants of the BADA model, along with the native CTAS model.The CTAS/BADA TS software was thoroughly validated by comparison of predictions for the BADA Base case with the BADA PTD file reference and other available benchmark data.To assess the accuracy of CTAS/BADA TS for different variants of BADA APM, several validation tools for interval-based sampling and systematic analysis were developed and used to perform the analysis for three different centers, Fort Worth, Los Angeles, and Denver, and for several BADA variants over Fort Worth center.The following observations can be made from these comparisons:• In general, some BADA variants perform as well or slightly better than CTAS in terms of altitude and along-track errors.• Cross-track errors are mostly related to intent errors and flight plan amendments, so they remain practically the same for BADA and CTAS.• Overall the differences between BADA and CTAS in terms of mean of absolute mean errors are relatively small (a few percent of error magnitudes) and statistically insignificant.• There is no one BADA variant that would improve performance for all flight phases and all aircraft types.• BADA has more accurate models for many aircraft types, such as AT72, BE20, BE36, BE9L, CRJ7, E145, PC12, and SR22.These are mostly small or regional aircraft.• CTAS has more accurate models for A319, A320, B190, B733, B737, B738, C182, C56X, and E120.Most notably these aircraft types include large commercial aircraft from Airbus and Boeing.Boeing aircraft types that have very good models in CTAS.However, BADA performance for descents can be improved by using the BADA Hybrid Hold variant with speeds responding to client requests, or the BADA Expedited Descent reducing the altitude errors for most aircraft types in the TRACON.• Most BADA variants fail more frequently than CTAS, mainly due to inconsistency in definition of maximum operating altitude in BADA, where it is defined as aircraft-specific, and in CTAS TS, where the value of 60, 000 ft is used for all aircraft types.Our performance metrics did not include fuel consumption.It is known that the BADA fuel consumption model works well in cruise, but does not perform in climb and descent as accurately compared with cruise (see [14]).The analysis of BADA off-nominal performance with controlled cruise and descent speeds confirmed that• the BADA Base Case was substantially less accurate for descents than CTAS;• the BADA Hybrid Hold variant performed almost as well as CTAS TS did.Finally, on the basis of this limited analysis we can conclude that using BADA APM with "hybrid hold" speed profile and expedited descent can improve the accuracy of CTAS for small and regional aircraft types.More substantial improvement in prediction accuracy can be expected using adaptive estimation of aircraft parameters, such as speed and weight, from historical track data for each flight.
+Appendix BExample of the BADA PerformanceThese requirements motivated the design of container class APMDef, encapsulating CTAS and BADA APMs in abstract model definition interfaces, such as ADragDef, AThrustDef, etc., as shown in Figure1.Here "[CTAS TS]" denotes any classes of "original" CTAS TS reused in CTAS/BADA TS code.In particular, VSFixed is the base CTAS TS class for all vertical solution classes, and DragModel and ThrustModel are the existing CTAS TS classes modeling drag and engine thrust.Each model definition interface member variable in APMDef class, such as mDragDef and mThrustDef, is instantiated only once to CTAS or BADA implementation in constructors of corresponding Model Definition subclasses for each aircraft type based on BADA configuration files.Hence, extending CTAS TS for BADA APM does not introduce any performance penalty in run time.
+Figure 1 .1Figure 1.CTAS/BADA TS Class Diagram
+Figure 2 .2Figure 2. Horizontal Trajectory Prediction Metrics
+compared with Figures 27 and 30 for BADA Base case with nominal weight.This can be explained by inverse dependency of ROCD, and hence the altitude, on aircraft weight, making the altitude errors less sensitive to weight when the weight increases.Using the BADA reduced climb power further reduces this sensitivity as can be seen from equations (3.8-1) and (3.8-2) in [7].
+Figure 3 .Figure 4 .Figure 5 .Figure 6 .Figure 8 .Figure 9 .Figure 13 .34568913Figure 3.Most frequent aircraft types for Fort Worth center
+Figure 36 .36Figure 36.Mean of absolute mean altitude errors in Los Angeles center
+Figure 40 .40Figure 40.Mean of mean altitude errors in Denver center
+Figure 43 .43Figure 43.Boeing 757-200 BADA Base Case idle descent: ground speed
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Table 1 .1PTD Comparison TolerancesParameterToleranceTrue Air Speed (TAS)5 knotsCalibrated Air Speed (CAS) 5 knotsMach0.1Thrust1000 NewtonsDrag1000 NewtonsROCD100 feet per minute1:
+Table 2 .2BADA APM variantsCTAS speedsBase case, but CTAS speed profileHybrid HoldBase case, but BADA hybrid hold speed profileIncreased WeightBase case, but weight ratio = 110% (10% above "default" weight)Reduced WeightBase case, but weight ratio = 90% (10% below "default" weight)Maximum Climb ThrustBase case, but without reduced climb powerExpedited DescentBase case, but with expedited descentReduced Climb and Descent Maximum climb thrust, but with expedited descent
+Table 3 .3Mean altitude errors (ft) for CTAS/BADA TSTest caseComparisonAbs Max Mean Abs Mean MaxMinStd DevBase CaseCTAS vs. Track 25592 BADA vs. Track 25834-267 -176938 89925592 -21308 1932 25834 -21308 1874CTAS SpeedsCTAS vs. Track 22831 BADA vs. Track 24782-281 -223867 84622831 -19415 1835 24782 -19415 1808Hybrid HoldCTAS vs. Track 24506 BADA vs. Track 25109-280 -213898 86624506 -19763 1882 25109 -19763 1837IncreasedCTAS vs. Track 25592-26792725592 -19415 1917WeightBADA vs. Track 25834-17388325834 -21170 1851Reduced WeightCTAS vs. Track 27250 BADA vs. Track 27250-97 -961095 108327250 -19763 2245 27250 -19763 2228MaximumCTAS vs. Track 25592-26392325592 -21308 1916Climb ThrustBADA vs. Track 25834-19689125834 -21308 1867ExpeditedCTAS vs. Track 25592-26793725592 -21308 1932DescentBADA vs. Track 25834-23890325834 -21308 1874Reduced ClimbCTAS vs. Track 25479-26792725479 -19943 1922and DescentBADA vs. Track 25834-26489825834 -21170 1867
+Table 4 .4Mean along-track errors (nmi) for CTAS/BADA TSTest caseComparisonAbs Max Mean Abs Mean Max MinStd DevBase CaseCTAS vs. Track 129.87 BADA vs. Track 129.860.2 0.12.7 2.6145.47 -129.87 4.73 45.47 -129.86 4.52CTAS SpeedsCTAS vs. Track 129.71 BADA vs. Track 129.730.61 0.772.43 2.3545.48 -129.71 4 45.48 -129.73 3.81Hybrid HoldCTAS vs. Track 129.71 BADA vs. Track 129.730.38 0.492.55 2.245.48 -129.71 4.22 45.48 -129.73 3.59IncreasedCTAS vs. Track 129.870.172.745.47 -129.87 4.68WeightBADA vs. Track 131.32-0.03 2.7845.47 -131.32 4.63Reduced WeightCTAS vs. Track 129.87 BADA vs. Track 129.86-0.07 3.09 -0.19 3.0545.47 -129.87 5.62 45.47 -129.86 5.52MaximumCTAS vs. Track 129.870.192.7345.47 -129.87 4.85Climb ThrustBADA vs. Track 129.860.052.6545.47 -129.86 4.65ExpeditedCTAS vs. Track 129.870.182.745.48 -129.87 4.7DescentBADA vs. Track 129.860.042.6645.48 -129.86 4.52Reduced ClimbCTAS vs. Track 129.870.22.745.48 -129.87 4.68and DescentBADA vs. Track 131.32-0.03 2.845.48 -131.32 4.64
+Table 5 .5Mean altitude and along-track errors for BADA Hybrid Hold for Los Angeles centerError typeComparisonAbs Max Mean Abs Mean MaxMinStd DevAltitude (ft)CTAS vs. Track 25960 BADA vs. Track 25598797 8631966 196322475 -25960 3507 19756 -25598 3492Along-trackCTAS vs. Track 122.473.667.3554.26 -122.47 8.9(nm)BADA vs. Track 125.943.836.7351.59 -125.94 8.37
+Table 66summarizes the comparison results for Denver center:
+Table 6 .6Mean altitude and along-track errors for BADA Hybrid Hold for Denver centerError typeComparisonAbs Max Mean Abs Mean MaxMinStd DevAltitude (ft)CTAS vs. Track 22156 BADA vs. Track 23969-52 -64524 53422156 -17490 1383 23969 -17688 1414Along-trackCTAS vs. Track 138.231.763.42105.46 -138.23 4.84(nm)BADA vs. Track 138.382.023.22105.46 -138.38 4.37
+Table 7 .7Mean altitude errors (ft), path-based correlationsTest caseAbs Max Mean Abs Mean MaxMinStd DevCTAS TS11667-19250511667 -5113760BADA Hybrid Hold 11528-43356311528 -10608 759BADA Base Case10276-960101410276 -5987815
+Table 8 .8Mean altitude errors (ft), time-based correlationsTest caseAbs Max Mean Abs Mean MaxMinStd DevCTAS TS21426-42784621426 -45271158BADA Hybrid Hold 21515-67393021515 -13799 1136BADA Base Case20981-632109920981 -54041330
+BADA is found to be most beneficial in climb, especially with the BADA Reduced Weight variant.•Typically BADA is much more accurate than CTAS in predicting Top Of Climb (TOC) for the most prevalent aircraft types.• When compared with CTAS, BADA has slightly worse performance in descent, especially for• Both CTAS and BADA have good models for several aircraft types -A306, B752, C750,CRJ2, CRJ9, E135, E170, H25B, MD82, and MD83, including popular McDonnell Douglas,Embraer, and Canadair aircraft.•
+Table Data FileDataNot all columns in the following table are shown due to a page width limitation.High mass CLIMBS================FL[-] T[K] p[Pa] rho[kg/m3] a[m/s] TAS[kt] CAS[kt]M[-] mass[kg] Thrust[N] Drag[N]0 288 1013251.22534079.0079.000.12110612285515 287 995081.20734079.5879.000.121106120855110 286 977171.19033980.1679.000.121106118755115 285 959521.17233980.7579.000.1211061167551BADA PERFORMANCE FILE RESULTS 20 284 94213 1.15533881.3579.000.1211061146551============================= 30 282 90812 1.12133782.5779.000.1311061105551============================= 40 280 87511 1.08833683.8179.000.131106106455160 276 812001.02433386.3779.000.131106981551Low mass CLIMBS 80 272 752620.96333189.0579.000.141106899551=============== 100 268 696820.90532891.8679.000.141106817551120 264 644410.84932694.7979.000.151106734551FL[-] T[K] p[Pa] rho[kg/m3] a[m/s] TAS[kt] CAS[kt]M[-] mass[kg] Thrust[N] Drag[N]0 288 101325 Medium mass DESCENTS 1.22534072.1272.120.1173612393675 287 99508 ==================== 1.20734079.5879.000.12736120838010 286 977171.19033980.1679.000.12736118738015 285 959521.17233980.7579.000.127361167380 N]20 284 94213 0 288 1013251.155 1.225338 34081.35 60.9079.00 60.900.12 0.09736 10551146 49380 61430 282 90812 5 287 995081.121 1.207337 34082.57 66.3879.00 65.900.13 0.10736 10551105 197380 57140 280 87511 10 286 977171.088 1.190336 33983.81 77.0279.00 75.900.13 0.12736 10551064 191380 52860 276 81200 15 285 959521.024 1.172333 33986.37 128.7879.00 126.000.13 0.20736 1055981 180380 73280 272 75262 20 284 942130.963 1.155331 33889.05 129.7279.00 126.000.14 0.20736 1055899 177380 732100 268 69682 30 282 908120.905 1.121328 33791.86 131.6579.00 126.000.14 0.20736 1055817 170380 731120 264 64441 40 280 875110.849 1.088326 33694.79 133.6179.00 126.000.15 0.20736 1055734 164380 73160 276 812001.024333137.66126.000.211055073180 272 752620.963331141.90126.000.2210550730Medium mass CLIMBS 100 268 696820.905328146.33126.000.2310550730================== 120 264 644410.849326150.95126.000.2410550729FL[-] T[K] p[Pa] rho[kg/m3] a[m/s] TAS[kt] CAS[kt] TDC stands for (Thrust -Drag) * CredM[-] mass[kg] Thrust[N] Drag[N]0 288 1013251.22534079.0079.000.12105512285235 287 995081.20734079.5879.000.121055120852310 286 977171.19033980.1679.000.121055118752315 285 959521.17233980.7579.000.121055116752320 284 942131.15533881.3579.000.121055114652330 282 908121.12133782.5779.000.131055110552340 280 875111.08833683.8179.000.131055106452360 276 812001.02433386.3779.000.13105598152380 272 752620.96333189.0579.000.141055899523100 268 696820.90532891.8679.000.141055817523120 264 644410.84932694.7979.000.151055734523FL[-] T[K] p[Pa] rho[kg/m3] a[m/s] TAS[kt] CAS[kt] M[-] mass[kg] Thrust[N] Drag[
+		
+		
+
+			
+AcknowledgmentsThis work would not have been possible without help and support from many people.We especially want to express our gratitude to Karen Cate for her guidance, to Hassan Eslami for continuous support and encouragement, to Martin Brown for contributions in data analysis and development of validation tools, to Alan Lee and Steven Chan for invaluable help in studying the existing CTAS TS code, to Gano Chatterji and Gilbert Wu for valuable discussions, to Jinn-Hwei Cheng for all her help with check-ins and ClearCase issues, to Pat O'Neal for assistance with data analysis for Denver-2009, and to Laurel Stell for providing data sets for Denver-2009.
+			
+
+			
+			
+			
+
+				
+
+
+	
+		Design of Center-TRACON Automation System
+		
+			HErzberger
+		
+		
+			TJDavis
+		
+		
+			SMGreen
+		
+	
+	
+		Proceedings of the AGARD Guidance and Control Panel 56th Symposium on Machine Intelligence in Air-Traffic Management
+		the AGARD Guidance and Control Panel 56th Symposium on Machine Intelligence in Air-Traffic ManagementBerlin, GDR
+		
+			1993
+			
+		
+	
+	Erzberger, H., Davis, T. J., Green, S. M., Design of Center-TRACON Automation System, Proceedings of the AGARD Guidance and Control Panel 56th Symposium on Machine Intelligence in Air-Traffic Management, Berlin, GDR, 1993, pp. 52-1 -14.
+
+
+
+	
+		Terminal Area Trajectory Synthesis for Air Traffic Control Automation, Proceedings of the 1995 American Control Conference
+		
+			RASlattery
+		
+		
+			1995
+			
+			Seattle, WA
+		
+	
+	Slattery, R. A., Terminal Area Trajectory Synthesis for Air Traffic Control Automation, Pro- ceedings of the 1995 American Control Conference, Seattle, WA, 1995, pp. 1206-1210.
+
+
+
+	
+		Trajectory Synthesis for Air Traffic Automation
+		
+			RASlattery
+		
+		
+			YZhao
+		
+	
+	
+		Journal of Guidance, Control and Dynamics
+		
+			20
+			2
+			
+			March-April 1997
+		
+	
+	Slattery, R. A., and Zhao, Y., Trajectory Synthesis for Air Traffic Automation, Journal of Guidance, Control and Dynamics, Vol. 20, No. 2, March-April 1997, pp. 232-238.
+
+
+
+	
+		The Trajectory Synthesizer Generalized Profile Interface, 10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		
+			AGLee
+		
+		
+			XBouyssounouse
+		
+		
+			JRMurphy
+		
+		
+			Sep. 2010
+			
+			Fort Worth, TX
+		
+	
+	Lee, A. G., Bouyssounouse, X., Murphy, J. R., The Trajectory Synthesizer Generalized Profile Interface, 10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Fort Worth, TX, 13-15 Sep. 2010.
+
+
+
+	
+		Improving and Validating CTAS Performance Models
+		
+			WChan
+		
+		
+			RBach
+		
+		
+			JWalton
+		
+		AIAA- 2000-4476
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		Denver, CO
+		
+			August 2000
+			
+		
+	
+	Chan, W., Bach, R., Walton, J., Improving and Validating CTAS Performance Models, AIAA- 2000-4476, AIAA Guidance, Navigation, and Control Conference and Exhibit, Denver, CO, 14-17 August 2000.
+
+
+
+	
+		A Methodology for Automated Trajectory Prediction Analysis
+		
+			CGong
+		
+		
+			DMcnally
+		
+		AIAA- 2004-4788
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		Providence, RI
+		
+			19 Aug. 2004
+			16
+		
+	
+	Gong, C, and McNally, D., A Methodology for Automated Trajectory Prediction Analysis, AIAA- 2004-4788, AIAA Guidance, Navigation, and Control Conference, Providence, RI, 16-19 Aug. 2004.
+
+
+
+	
+		No. 2009-009
+		Base of Aircraft DATA (BADA) Aircraft Performance Modelling Report
+		
+			Eurocontrol Experimental Centre
+			2009
+		
+		
+			EEC
+		
+	
+	Technical/Scientific Report
+	Eurocontrol Experimental Centre, Base of Aircraft DATA (BADA) Aircraft Performance Mod- elling Report, EEC Technical/Scientific Report No. 2009-009, 2009.
+
+
+
+	
+		
+			RDOaks
+		
+		
+			HFRyan
+		
+		Paglione, M. Prototype Implementation and Concept Validation of a 4-D Trajectory Fuel Burn Model Application, AIAA 2010-8164, AIAA Guidance, Navigation, and Control Conference
+		Toronto, Ontario Canada
+		
+			2010
+		
+	
+	Oaks, R. D., Ryan, H. F., Paglione, M. Prototype Implementation and Concept Validation of a 4-D Trajectory Fuel Burn Model Application, AIAA 2010-8164, AIAA Guidance, Navigation, and Control Conference, Toronto, Ontario Canada, 2010.
+
+
+
+	
+		Implementation and Metrics for a Trajectory Prediction Validation Methodology, AIAA-2007-6517
+		
+			MPaglione
+		
+		
+			ROaks
+		
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		Hilton Head, SC
+		
+			2007
+		
+	
+	Paglione, M and Oaks, R. Implementation and Metrics for a Trajectory Prediction Validation Methodology, AIAA-2007-6517, AIAA Guidance, Navigation, and Control Conference, Hilton Head, SC, 2007.
+
+
+
+	
+		Predictability of Top of Descent Location for Operational Idle-Thrust Descents, 10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		
+			LStell
+		
+		
+			Sep. 2010
+			
+			Fort Worth, TX
+		
+	
+	Stell, L., Predictability of Top of Descent Location for Operational Idle-Thrust Descents, 10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Fort Worth, TX, 13-15 Sep. 2010.
+
+
+
+	
+		Closed Form Takeoff Weight Estimation Model for Air Transportation Simulation
+		
+			HLee
+		
+		
+			GBChatterji
+		
+	
+	
+		AIAA 2010-9156, 10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Fort Worth, TX
+		
+			Sep. 2010
+			
+		
+	
+	Lee, H and Chatterji, G. B. Closed Form Takeoff Weight Estimation Model for Air Transporta- tion Simulation, AIAA 2010-9156, 10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Fort Worth, TX, 13-15 Sep. 2010.
+
+
+
+	
+		Fuel Burn Estimation Using Real Track Data, AIAA-2011-6881, 11th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		
+			GBChatterji
+		
+		
+			20-22 Sep. 2011
+			Virginia Beach, VA
+		
+	
+	Chatterji, G. B. Fuel Burn Estimation Using Real Track Data, AIAA-2011-6881, 11th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Virginia Beach, VA, 20-22 Sep. 2011.
+
+
+
+	
+		Fuel consumption modeling in support of ATM environmental decision-making
+		
+			DSenzig
+		
+		
+			GFleming
+		
+		
+			RIovinelli
+		
+	
+	
+		Proceedings of the Eighth Annual FAA/EUROCONTROL Air Traffic Management Research and Development Seminar
+		the Eighth Annual FAA/EUROCONTROL Air Traffic Management Research and Development SeminarNapa, CA
+		
+			June 29-July 2, 2009
+		
+	
+	Senzig, D., Fleming, G., and Iovinelli, R. Fuel consumption modeling in support of ATM envi- ronmental decision-making, Proceedings of the Eighth Annual FAA/EUROCONTROL Air Traffic Management Research and Development Seminar, Napa, CA, June 29-July 2, 2009.
+
+
+				
+			
+		
+	

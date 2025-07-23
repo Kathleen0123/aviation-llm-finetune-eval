@@ -1,0 +1,852 @@
+
+	
+	
+		
+Record of ChangesVersion #   Table 1.
+List of Figures
+List of Tables
+IntroductionThis Interface Control Document (ICD) contains the requisite information needed by any component of Live Virtual and Constructive (LVC) system to connect and communicate through the LVC Gateway.The information in this document represents the complete set of protocols for all Project research requirements and objectives.The purpose of this ICD is to provide users of the LVC Gateway with the information to develop software that can connect to, and send, and receive data through the LVC Gateway.It should be noted up front that the LVC Software Design Description (LVC SWDD-03) is a companion to the ICD and should be used to complement the details described here.The integrated LVC environment connects participating clients through the HLA and the LVC Gateway through Toolbox component(s) and software wrappers that translate the internal software data into the messaging scheme outlined in this document.
+Applicable DocumentsThe following documents (or later, earlier versions superseded) form a part of this document to the extent specified herein.In the event of conflict between the documents referenced herein and the contents of this document, the contents of this document shall be considered a superseding requirement.
+References
+General Message ConstructEvery Multi-Purpose Interface (MPI) protocol message exchanged between the LVC Gateway and a client system will have a header immediately followed by the payload of the corresponding message.The message type defined in the header indicates the type of message contained in the payload.Total size of the header structure is 12 bytes.
+Message TypesTable 3 identifies different message types that are supported by the LVC Gateway and maps them to their respective data structures.Message data structure of corresponding message types are defined in the next section.Note that the new terminology for Sense and Avoid (SAA) has been introduced into the Phase 1 DAA MOPS.SAA has been renamed to Detect and Avoid (DAA).However, it has been decided to retain all the legacy references to SAA in all of the pertinent messages in this ICD.This preserves and maintains consistent terminology between the current ICD and the software that has been developed using the previous versions of the ICD for the earlier phases of the UAS-in-the-NAS project.If the UAS is equipped with the TIS-B "In" capability, then the client will publish the TIS_B state data of the surrounding traffic including its own.
+MsgHeartbeat 7030An LVC Gateway message sent to every client at a configurable time interval for the sole purpose of detecting whether the client socket port has been closed.7.
+Message StructuresThis section contains the definition of each of the message type data structures.
+Handshake Data StructureThe Handshake Data structure is defined below.This structure represents the payload of a message sent by the client upon establishing the connection with the LVC Gateway (the server).The client handshake message header contains Source parameters that define the data source identification and names as defined in Table 4.The role of the handshake message is twofold: 1) it is responsible for initiating the connection between the client and the server; 2) it registers the client with the server and sets up a publish/subscribe dependency.For example, if the client that connects to LVC Gateway is VSCS, then the clientName is "VSCS" as defined in Table 1.The dataProviderName attribute is set to an empty string.The construct with the dataProviderName field is deprecated as the Cockpit Situation Display (CSD) participant has been replaced with VSCS.The data field is maintained for back-compatibility in case the CSD is introduced back into the LVC system.In that case, the dataProviderName attribute is set to the call sign of the ownship that provides ownship data for the CSD client.The client can publish and subscribe to certain data types specified by the Boolean attributes in the structure defined above.If the client is a VSCS entity then the first three Booleans (b_publish_MsgFlightState, b_publish_MsgFlightPlan, and b_publish_MsgTrajectory) will be set to "true" indicating to the LVC Gateway server that the client will publish its own flight state vector, flight plan and trajectory intent.If the UAS is equipped with the ADS-B "In" capability then the Boolean attribute b_publish_MsgFlightStateADSB will be set to "true" indicating that the client will publish the ADS_B state data of surrounding traffic.In that case, the flag m_equipageFlags in the MsgFlightState structure should be set by the publishing client to a value as defined in Table 5.Note that m_equipageFlags is set to a zero for all other Flight State messages that are not generated using ADS-B and/or TIS-B tracks.The Ikhana Sim will not consume external data.Hence all subscribe attributes will be set to false, indicating to the server that it should not send any traffic data to the Ikhana Sim client.
+MPI Aircraft Flight State Data StructureThe Aircraft Flight State structure is defined below.This structure represents the payload of an aircraft flight state message.Note that some test environments do not generate some of the data fields defined in the message.Those values should be set to either -999999 for integers, -999999.0 for floats and doubles depending upon the variable type.Data fields represented by strings will be published with the constant length as defined in the message interface.If a string is shorter than the allocated space, blank spaces should be filled with "\0" (a null character).For example, "AAL123" should be represented as "AAL123\0\0\0\0\0\0" in a 12 character array.Note: The entity that is equipped with ADS-B will publish flight data that maps to the MsgFlightState structure with the m_equipageFlag field set to the value specified above that corresponds to the ADS-B data.Note: The m_modeFlags field is set at least to ADRS_MPI_FS_LNAV (value of 1) in order for trajectory intent to show in the MACS.
+DAA Aircraft Track State Data Structure for the OwnshipThe Aircraft Track State data structure for the ownship is defined in Table 6.This structure represents the payload of an aircraft track state message that conforms to the RTCA SC-228 DAA Phase 1 MOPS document (with additional data fields used for internal message tracking).It is the baseline structure for the MsgACTrackStateOS and MsgACTrackStateOST messages.Data fields represented by strings will be published with the constant length as defined in the message interface.If a string is shorter than the allocated space, blank spaces should be filled with "\0" (a null character).For example, "AAL123" should be represented as "AAL123\0\0\0\0\0\0" in a 12 character array.Note: Some test environments do not generate some of the data fields defined in the message those values should be set to either -999999 for integers, -999999 for floats and doubles, or to an empty string initialized to a NULL, depending upon the variable type.
+DAA Aircraft Track State Data Structure for IntrudersThe Aircraft Track State data structure for the intruder is defined in Table 7.This structure represents the payload of an intruder aircraft track state message that conforms to the RTCA SC-228 DAA Phase 1 MOPS document (with additional data fields used for internal message tracking).It is the baseline structure for the MsgACTrackState and MsgACTrackStateT messages.Data fields represented by strings will be published with the constant length as defined in the message interface.If a string is shorter than the allocated space, blank spaces should be filled with "\0" (a null character).For example, "AAL123" should be represented as "AAL123\0\0\0\0\0\0" in a 12 character array.Note: Some test environments do not generate some of the data fields defined in the message those values should be set to either -999999 for integers, -999999 for floats and doubles, or to an empty string initialized to a NULL, depending upon the variable type.
+MPI Aircraft Flight Plan StructureThe Aircraft Flight Plan structure is defined below.This structure represents the payload of an aircraft flight plan message.All messages displayed below are defined in the adrs_mpi.hinterface used ADRS.Flight plans for constructive and/or live traffic will be published to LVC Gateway by the HLA via the LVC Gateway Toolbox component that is part of the HLA distributed environment.In addition, any constructive, virtual or live UAS entity connecting to the LVC Gateway will generate and publish a flight plan in the MsgFlightPlan format.The Gateway will transmit UAS flight plans to the LVC Gateway Toolbox and the HLA environment.The message field, m_adrsProc, should be set to the corresponding enum data type adrs_proc_type defined in the adrs_interface.hheader file provide to the user.The m_adrsProc is set to ADRS_PROC_MPI_CLIENT_MACS = 35 if targets are generated by MACS while ADRS_PROC_MPI_CLIENT_VAST = 38 if targets are generated external to MACS, i.e. by a federate from the HLA distributed environment.The m_status field as a minimum should be set to ADRS_MPI_FS_LNAV which corresponds to the bit field for lateral navigation management.CSD will not function nominally if m_status is set to a zero value.
+Aircraft Flight Trajectory Intent StructureThe Aircraft Flight Trajectory Intent structure is defined below.It is a composite of two structures: 1) the trajectory specification structure, and 2) the waypoint structure.Both structures are defined below.The Trajectory Intent Structure represents the payload of an aircraft flight trajectory intent message.This data type is defined in the adrs_trajectory.hinterface file provided to the user.
+Aircraft Delete StructureThe Aircraft Delete structure is defined below.This structure represents the payload of an aircraft delete message.An aircraft may drop out of the simulation environment due to a process crash, operational reasons (intentional shut down of the process) or during the debugging process.The LVC Gateway will send the MsgDeleteAc message to all clients that subscribe to the delete message.This message is initiated by the LVC Gateway clients: Ikhana GCS, Ikhana Sim, Langley UAS, or VIRTUAL UAS and sent to the LVC Gateway.These processes can reconnect and continue participating in the same ongoing simulation.In addition, the Delete message can be initiated by the HLA distributed environment when the aircraft from the background traffic drops out of the simulation.This event will generate a Delete message in the HLA environment which will be propagated throughout the entire distributed system.This informs the system components that the HLA aircraft is no longer active and that the local instance of the aircraft should be removed.In case of the lost link between the Ikhana GCS and the Ikhana aircraft the Delete message will be sent from the IOServer/CPDS to the Gateway.The IOServer/CPDS is an interface between the LVC and Live domains during flight tests.
+Set Ownship StructureThe Aircraft Ownship structure is defined below.This structure represents the payload of an aircraft setownship message.The message is used to inform a CDTI system component about the target it is associated with.The CDTI will initially provide the ownship call sign by the handshake message sent to the LVC Gateway.The ownship call sign is specified by the dataProviderName data field.Upon receiving handshake message, the Gateway will generate MsgSetOwnship message using the received call sign and the CID corresponding to the target with the specified call sign and will send it back to CDTI.
+Sense and Avoid (SAA) Threat Results MessageThe SAA Threat Results Message data structure is defined below.It is a composite of two structures: 1) the threat specification data structure, and 2) the threat data structure.Both structures are defined below.The SAA Threat Results Message Structure represents the payload comprised of array of SaaThreat data structures defined below.Note that the eSaaType in the table below is a type defined as an int, i.e. typedef int eSaaType.The definition of DAA alert levels are defined in the table below.
+Sense and Avoid (SAA) Resolution Maneuver StructureThe SAA Resolution Maneuver data structure is defined below.It is a composite of two structures: 1) the maneuver specification data structure, and 2) the maneuver data structure.Both structures are defined below.The MsgSaaResManeuver structure describes the payload of a SAA Resolution Maneuver message.
+Sense and Avoid (SAA) Resolution Reroute StructureThe SAA Resolution Reroute data structure is defined below.It is a composite of two structures: 1) the resolution reroute specification data structure, and 2) the resolution waypoints data structure.Both structures are defined below.The MsgSaaResReroute structure represents the payload of an aircraft reroute message from a DAA resolution.
+Navigation Mode Message StructureThe Navigation Mode Message is used whenever the ownship flight control system executes a maneuver or when the ownship consumes a waypoint on the route.The purpose is to send the SAA system intent information, so it can build an accurate trajectory prediction while detecting threats.
+ACAS_Xu Data StructuresThe Acasxu wrapper provides updates for aircraft track state messages for the ownship and intruders while the ACAS-Xu algorithm generates the MsgAcasxu output message defined below.The message provides Vertical Resolution Advisory, Horizontal Resolution Advisory, Preventive Horizontal Collision Avoidance Band, and Preventive Horizontal Remain-Well-Clear Band for the given traffic update.The value for ACASXU_MAX_INTRUDERS is set to 64.
+Stratway Bands Data StructureNew terminology for the Stratway subsystem has been introduced.Stratway has been renamed to DAIDALUS.However, it has been decided to retain all the legacy references to Stratway in all of the pertinent messages in this ICD.This preserves and maintains consistent terminology between the current ICD and the software that has been developed using the previous version of the ICD for the earlier phases of the UAS-in-the-NAS project.The original Stratway Bands message is defined in the Stratway+ External Interface (Stratway+ ExternalInterface_Dec_22) ICD provided by LaRC team.The LVC Gateway will receive the Stratway Bands message from the Stratway+ GCS.A UDP client/server multicast protocol is used to send/receive Stratway+ bands data.In this configuration, Stratway+ GCS socket is a server while LVC Gateway socket is a client.LVC Gateway will transmit the Stratway+ bands data to the subscribing clients based on the following Stratway+ Bands Message definitions.The STRWAY_MAX_INTERVALS and STRWAY_MAX_INTRUDERS are set to a value of 10 imposed by the Stratway requirements.The character array in the table is defines as an array of 8 characters, char CharString8Type [8].Written as an int.Can have any value between 0 and 4 as defined in section 3.10.
+The stStratwayIntervalType is of typedef StratwayIntervalListType [STRWAY_MAX_INTERVALS ] and the stStratwayIntruderType is of typedef StratwayIntruderListType [STRWAY_ MAX_INTRUDERS ]The Stratway+ bands data message that is sent from MACS's External Interface Communications Thread consists of the following data members: The data structure presented above is applicable for both 32 bit and 64 bit applications since alignment is 8-byte double-word aligned.However, padding has to be introduced in the structure to enforce the alignment.
+Omni (SAA) Band MessageThe Omni (SAA) Band Message defines an interval with the same alert levels throughout (i.e.PROX, SS, CA, or NONE as defined by eSaaType).The interval is defined as [min, max] inclusive.The same structure (OmniBandInterval) will be used to represent heading and altitude bands in the OmniBand concept (see MsgSaaOmniBands).For heading OmniBandInterval, min and max indicate heading in degrees relative to current ownship heading, e.g.-30 is 30 degrees left of ownship's current heading, and +30 is 30 degrees right of ownship's current heading.For altitude bands, min and max values will always be set to the same value as altitude bands represent a single altitude level in feet above MSL.A heading OmniBandInterval indicates that between min and max the band should be colored according to the associated alertLevel.For example, if min = -45, max = 0, and alertLevel=0, then the interval from 45 degrees left of ownship to its current heading should be painted green.For altitude OmniBandInterval, min = max, so either can represent the altitude level to be shown in the altitude menu and the alertLevel describes the color of its outline in the menu.For example, if min and max=15000 and alertLevel=3, this means that the altitude menu will include 15000 feet entry, whose outline should be red meaning ownship would cause a loss of well-clear if it maneuvers to 15,000 ft.The SAA_MAX_BAND_INTERVALS is set to a maximum value of 65.Indicates how the altitude band is be colored according to the associated alertLevel
+TCAS 7.0 Message StructuresThe FAA TCAS II v7.0 software application is integrated into the LVC system.It will produce a TCAS message output given the intruder inputs in a prescribed format defined above in section 3.10.The pertinent data structures and input requirements are defined below in this section.The TCAS application is a process that generates TA and RA output advisories as part of the tcas_alert_str data structure.The MAX_CALLSIGN_LEN is set to the value of 8.
+TCAS 7.1 Message StructuresThe FAA TCAS II v7.1 software application is integrated into the LVC system.The TCAS II 7.1 wrapper was developed by the NASA Langley SSI team while the original TCAS II 7.1 algorithm was provided by the FAA.The NASA Ames (ARC) IT&E team has modified the original wrapper to incorporate the different I/O infrastructure.The wrapper and the TCAS algorithm form the TCASProcessor application.The pertinent data structures and input dependencies are defined below.The TCASProcessor application generates traffic advisories (TA) and resolution advisories (RA) as part of the TCAS71 Message data structure.The intruderData array will vary in size due to the number of intruders that are picked up by the sensor range.The size of the TCAS71Message structure that is captured by the MsgSize in the MsgHeader will therefore dynamically change as intruder traffic is processed.The MAXNUMBEROFTRAFFIC is set to a maximum value of 32.
+Well Clear Recovery MessageThe Well Clear Recovery Message is responsible for giving limited, suggestive guidance with guidance options in a particular direction, e.g.left turn, right turn, climb, and descend.Well clear recovery guidance has a mandatory requirement to inhibit altitude recovery guidance during a TCAS RA.Well clear recovery guidance is engaged when the Detect and Avoid (DAA) guidance system (e.g.OmniBands) can no longer provide maneuvers guidance that remains well clear of an intruder, i.e. guidance is completely saturated with "non-green" guidance bands, or when a TCAS RA is generated against an intruder at the same time as a DAA Warning alert for a secondary intruder.The enumerations and the Wedge data type are defined below.
+Message Content Notes
+Heartbeat MessageThe Gateway shall periodically send heartbeat message to the clients with enumeration defined below.The LVC Gateway will send a periodic heartbeat message at a configurable time interval to every client for the sole purpose of detecting whether the client socket port has been closed.This infrastructure will detect a process that crashed and was running on the client connected to the Gateway.Upon detecting the closed socket, the Gateway will send MsgHeader message to every client unconditionally.The MsgHeader message requires no action, i.e. no response, by recipients.A message of type MsgHeader of size 12 bytes shall contain the value of 7030 in the MsgType field according to the definitions in Table 1.The MsgSize field (i.e.sizeof(MsgHeader)) shall be set to 12 bytes which essentially means there is no subsequent payload.Therefore, there is no need for the recipient to read the socket port of any further payload data.Clients that receive the MsgHeader message shall be expected to consume this message nominally.Consequently, if the LVC Gateway does in fact detect a closed socket port, then it will forward a delete aircraft message, MsgDeleteAc, to all other active and valid subscribers.A MsgDeleteAc message shall be sent for each aircraft that was owned by the closed client.
+Primitive Data Type Definitions and Sizes in BytesThe "C" structures displayed above are used on a Windows platform using x86 or x86-64 architecture.The byte order for Windows platforms is little endian (the least significant byte is stored first) and the sizes of the primitive data types are given below:• long:Figure 1 .1Figure 1.General System Architecture for UAS-NAS Baseline LVC Simulation ......................................8
+Source Id .......................................................................................................................................10 Table 2. Message Header ............................................................................................................................10 Table 3. Message Type Id ...........................................................................................................................11 Table 4. Handshake Message ......................................................................................................................15 Table 5. MPI Flight State Message .............................................................................................................18 Table 6.DAA Aircraft Track State Data Structure for the Ownship ...........................................................22 Table 7. DDA Aircraft Track State Data Structure for Intruders ................................................................26 Table 8.Flight Plan Message .......................................................................................................................29 Table 9. Trajectory Intent Message .............................................................................................................32 Table 10.Trajectory Specification Structure ...............................................................................................33 Table 11.Trajectory Waypoint Structure ....................................................................................................34 Table 12.Trajectory Waypoint Types .........................................................................................................36 Table 13.Delete Aircraft Message ..............................................................................................................37 Table 14.Set Ownship Message ..................................................................................................................37 Table 15.SAA Threat Results Message ......................................................................................................38 Table 16.SAA Threat Specification Structure ............................................................................................38 Table 17.SAA Threat Message ...................................................................................................................39 Table 18.Alert Levels, Definitions ..............................................................................................................42 Table 19.SAA Release Message .................................................................................................................42 Table 20.SAA Resolution Maneuver Message ...........................................................................................42 Table 21.SAA Resolution Maneuver Specification ....................................................................................43 Table 22.SAA Maneuver ............................................................................................................................43 Table 23.SAA Maneuver Type ...................................................................................................................43 Table 24.SAA Resolution Reroute Message ..............................................................................................45 Table 25.SAA Resolution Reroute Specifications ......................................................................................45 Table 26.SAA Resolution Waypoint Structure ...........................................................................................46 Table 27.Navigation Mode Message ..........................................................................................................47 Table 28.Navigation Mode .........................................................................................................................48 Table 29.ACAS-Xu Alerting and Guidance Message ................................................................................48 Table 30.Vertical Resolution Advisory -Combined Control .....................................................................50 Table 31.Vertical Resolution Advisory -Vertical Control .........................................................................50 Table 32.Vertical Resolution Advisory -Up Advisory ..............................................................................51 Table 33.Vertical Resolution Advisory -Down Advisory .........................................................................51 Table 34.Horizontal Resolution Advisory -Combined Control .................................................................51 Table 35.Horizontal Resolution Advisory Aural Alerts .............................................................................52 Table 36.Vertical Resolution Advisory Interpretation ................................................................................53 Table 37. TCAS Alert Levels ......................................................................................................................54 Table 38.Stratway Interval Type .................................................................................................................54 Table 39.Stratway Interval ..........................................................................................................................55 Table 40.Stratway Intruder .........................................................................................................................55 Table 41.Stratway Bands Message .............................................................................................................55 Table 42.Omni Bands Interval ....................................................................................................................57 Table 43.Omni Bands Message ..................................................................................................................57 Table 44.TCAS 7.0 Alert Structure ............................................................................................................58 Table 45.TCAS 7.0 Threat Table ................................................................................................................60 Table 46.TCAS 7.0 Aural Action Table .....................................................................................................60Table 47.TCAS 7.0 Combined Control ......................................................................................................61 Table 48.TCAS 7.0 Vertical Control ..........................................................................................................61 Table 49.TCAS 7.0 Up Advisory ...............................................................................................................61 Table 50.TCAS 7.0 Down Advisory ...........................................................................................................62 Table 51.RA Output to Display and Aural Subsystem Every Cycle ..........................................................62 Table 52.TCAS 7.1 Message ......................................................................................................................63 Table 53.TCAS 7.1 Intruder State ..............................................................................................................63 Table 54.TCAS 7.1 Alert Level ..................................................................................................................63 Table 55.TCAS 7.1 Aural Alert ..................................................................................................................64 Table 56.TCAS 7.1 Combined Control ......................................................................................................64 Table 57.TCAS 7.1 Down Advisory ...........................................................................................................65 Table 58.TCAS 7.1 Up Advisory ...............................................................................................................65 Table 59.Well Clear Recovery Message .....................................................................................................66 Table 60.Directional Guidance ...................................................................................................................66 Table 61.Guidance Type .............................................................................................................................66 Table 62.Range Type ..................................................................................................................................66 Table 63.Range ...........................................................................................................................................67
+Figure 1 .1Figure 1.General System Architecture for UAS-NAS Baseline LVC Simulation
+float m_cruiseSpeed knots Airspeed of an aircraft in level flight after climb to a set altitude and before descent.float m_descentSpeed knots Airspeed of an aircraft during descent.float m_approachSpeed knots The speed of the aircraft when making an approach to landing.float m_landingSpeed knots The speed of the aircraft after landing.float m_cruiseAltitude feet The height at which an airplane stays for most of a flight.float m_currentGross WeightThe total aircraft weight at any moment during the flight or ground operation.
+Table of Contentsof1 Introduction ...........................................................................................................................................8 2 Applicable Documents ..........................................................................................................................9 2.1
+3 Known LVC System Clients Table1 provides a list of known client systems that can connect to the LVC System.The ID from the table is a unique number that identifies that client as a specific type of client.In order to add a new type of client, either one of the existing IDs must be used or a new ID must be created.Table 1. Source IdSource/Client NameIdDescriptionCSD101DeprecatedIkhanaSim102Ikhana SimulatorIkhanaUAS103Ikhana AircraftLangleyUAS104Langley's UAS AircraftLVCDatalogger105LVC Data LoggerUASRP106LVCGateway107LVC GatewayGlennUAS108Glenn's UAS AircraftADRS109MACS generates TracksSaaProc111Sense And Avoid Processor -JADEM wrapperVSCS112Vigilant Spirit Control StationCPDS/IOServer113Interface to the live data sourceStratwayGCS/ DAIDALUS114The name Stratway has been replaced by DAIDALUSACAS-Xu provides horizontal andACASXU115vertical CA and DAA alerting andguidanceExelisNextGen116Exelis (Harris) provides live data for NASTCAS117TCAS Processor. Contains TCAS II v7.1SSAM118Sensor model adds noise to truth track state dataFPG119Flight Plan Generator
+4 Definition of Messages Used in the LVC System
+Table 2 . Message Header Data Type Data Field Name Description int2MsgTypeId Defined by Message Type in MsgTypeIdTable int MsgSize Header size + payload size defined by each message structure int SrcId Defined by Source/Client Name in Source Id Table
+Table 3 . Message Type Id3Message TypeIDMessage StructureDescriptionMPI Aircraft Flight State DataContains specific in-flight information forMsgFlightState5310Structurea target in the LVC as defined in theFlight State Messages table.MPI Aircraft Flight PlanContains specific Flight Plan informationMsgFlightPlan5201Structurefor a target in the LVC as defined in theFlight Plan Messages table.MPI Aircraft Flight TrajectoryContains information on planned futureMsgTrajectoryIntent5421Intent Structureaircraft behavior in the LVC as defined inthe Trajectory Intent Messages structure.A message initiated by LVC GatewayMsgDeleteAc5202 Aircraft Delete Structureclients, which drop an aircraft from thesimulation.A message responsible for initiating theconnection between the client and theMsgHandshake5960 Handshake Data Structureserver. The message registers the clientwith the server and sets up apublish/subscribe dependency.MsgSetOwnship5901Set Ownship StructureSets the call sign of the ownship.MPI Aircraft Flight State DataIf the UAS is equipped with the ADS-BStructure"In" capability, then the client will publishMsgFlightStateADSB7010the ADS_B state data of the surroundingtraffic including its own.MsgFlightStateTISB7011MPI Aircraft Flight State Data Structure
+State structure, MsgACTrackState, is a duplicate in its form of MsgTrackStateOST defined in TableMessage Type Message Type Message TypeID ID IDMessage Structure Message Structure Message StructureDescription Description DescriptionContains information on Used during trial planning Aircraft Track State for theSAA Threat Results DAA Aircraft Track Statethe number, type, and assessment of maneuvers ownship containingMsgSaaThreatResults MsgAcTrackStateOST5830 5854Message Structure Data Structure for theseverity of intruder aircraft or waypoints by the TRUTH data. This dataAircraft Flight Trajectory Ownshipas defined in the SAA ownship. Sent to SaaProc type conforms to theIntent StructureThreat Messages table. component for conflict MOPS SC-228 document.MsgTrialTrajectoryIntent5454Contains information on assessment. Trial planning Aircraft Track State forMsgSaaResManeuverSt DAA Aircraft Track Statethe number and type of messages are sent at a intruders containingMsgSaaResManeuvers MsgAcTrackStateT5831 5855Data Structure for Intrudersresolution maneuvers as 15Hz rate to the SaaProc TRUTH data. This datadefined in the SAA component for conflict type conforms to theManeuver Messages table. assessment with intruders. MOPS SC-228 document.Contains information on Aircraft Track State for theMsgSaaResReroute MsgAcTrackStateOS [2]5832 5856MsgSaaResRerouteSt DAA Aircraft Track State Data Structure for theSAA reroute maneuvers as Contains information ownship containing live or defined in the SAA provided by the SAA processed data. This dataMsgSaaResManeuverSt OwnshipReroute Messages table. algorithm on the number, type conforms to theMsgSaaTrialThreatResults 5839A message resulting from the sensor surveillance type, and severity of MOPS SC-228 document. intruder aircraft based on Aircraft Track State forDAA Aircraft Track Staterange filtering as part of information provided in the intruders containing live orMsgAcTrackState [3]5857Data Structure for Intrudersthe sensor model applied Trial Trajectory Intent processed data. This datato the entire simulated message. type conforms to theMsgSaaRecapManeuver5840MsgSaaResRerouteSttraffic. Required to display To be determined MOPS SC-228 document.MsgSaaFlightState [1] MsgTrialAccepted Notes: MsgStrwayBands [1] The SAA Aircraft Flight State message is a result of the sensor surveillance range filtering (part of the 5833 MPI Aircraft Flight State Data Structure traffic on the ownship 5452 Not used display. The SAA Aircraft Provides Stratway+ bands Flight State message is a result of the sensor Stratway Bands Data data from the DAIDALUS 5841 Structure system to subscribing sensor model) applied to the all traffic defined by the MsgFlightState message. The filtered traffic is surveillance range filtering clients. rebroadcast as a MsgSaaFlightState message. The SAA Aircraft Flight State structure, (part of the sensor model) Provides CA and DAA MsgSaaFlightState, is a duplicate of MsgFlightState in Table 5. applied to the all traffic defined by the MsgFlightState message. The filtered traffic is rebroadcast as a MsgSaaFlightState MsgAcasxu ACAS_Xu Data Structure alerting and guidance 5842 information generated by [2] The Aircraft Track State message containing noisy data (labeled as MsgACTrackStateOS) is a result the ACAS-Xu algorithm MsgSaaBands 5843 Omni (SAA) Band Message of either the modeled surveillance sensor noise or provided by the live surveillance sensors for the Provides SAA bands data ownship. The Aircraft Track State structure, MsgACTrackStateOS, is a duplicate in its form of from the SAA/JADEM MsgTrackStateOST defined in Table 6. Process system to message. (This message may soon be deprecated) MsgSaaRelease 5834 SAA Release Structure subscribing clients. Provides Resolution [3] The Aircraft Track State message containing noisy data (labeled as MsgACTrackState) is a result of Message that indicates that TCAS 7.0 Alert Message Advisory and Traffic either the modeled surveillance sensor noise or provided by the live surveillance sensors for the ownship. a conflict has been cleared MsgNavMode 5835 Navigation Mode Message Structure TCAS 7.1 Message Advisory and Traffic intent information. Provides Resolution send the SAA system an active TCAS RA. waypoint on the route to descend. Inhibited during ownship consumes a right turn, climb, and maneuver or when the MsgWellClearRecovery 5851 Message Structure direction, e.g. left turn, system executes a Well Clear Recovery options in a particular ownship flight control guidance with guidance Used whenever the Provides limited suggestive maneuver. LVC system component previously advised generated by the TCAS 7.0 as a result of executing a MsgTcasAlert 5850 Structure Advisory Information The Aircraft TrackMsgLaRCTcasAlert5852StructureAdvisory Informationgenerated by the TCAS 7.1LVC system component
+Table 4 . Handshake Message Data Type Data Field Name Description4charclientName[12]Client that is connecting to the LVC gateway defined by Source/Client Name in SrcId TablechardataProviderName[12]Callsign if the ownship, otherwise empty stringboolb_publish_MsgFlightStateSets up a publish dependency for the Flight State Messageboolb_publish_MsgFlightPlanSets up a publish dependency for the Flight Plan Messageboolb_publish_MsgTrajectorySets up a publish dependency for the Trajectory Messageboolb_publish_MsgFlightStateADSBSets up a publish dependency for the ADS-B Flight State Messageboolb_publish_MsgFlightStateTISBSets up a publish dependency for the TIS-B Flight State Messageboolb_subscribe_MsgFlightStateSets up a subscribe dependency for the Flight State Messageboolb_subscribe_MsgFlightPlanSets up a subscribe dependency for the Flight Plan Messageboolb_subscribe_MsgTrajectorySets up a subscribe dependency for the Trajectory Messageboolb_subscribe_MsgFlightStateADSBSets up a subscribe dependency for the ADS-B Flight State Messageboolb_subscribe_MsgFlightStateTISBSets up a subscribe dependency for the TIS-B Flight State Messageboolb_publish_MsgDeleteAcSets up a publish dependency for the Delete Aircraft Messageboolb_subscribe_MsgDeleteAcSets up a subscribe dependency for the Delete Aircraft Messageboolb_publish_MsgSetOwnshipSets up a publish dependency for the Set Ownship Messageboolb_subscribe_MsgSetOwnshipSets up a subscribe dependency for the Set Ownship Messageboolb_publish_MsgSaaFlightStateSets up a publish dependency for the SAA Flight State Messageboolb_subscribe_MsgSaaFlightStateSets up a subscribe dependency for the SAA Flight State Messageboolb_publish_MsgSaaThreatResultsSets up a publish dependency for the SAA Threat Results Messageboolb_subscribe_MsgSaaThreatResultsSets up a subscribe dependency for the SAA Threat Results Messageboolb_publish_MsgSaaResManeuverSets up a publish dependency for the SAA Resolution Maneuver Messageboolb_subscribe_MsgSaaResManeuverSets up a subscribe dependency for the SAA Resolution Maneuver Messageboolb_publish_MsgSaaResRerouteSets up a publish dependency for the SAA Resolution Reroute Messageboolb_subscribe_MsgSaaResRerouteSets up a subscribe dependency for the SAA Resolution Reroute Messageboolb_publish_MsgSaaReleaseSets up a publish dependency for the SAA Release Message
+Table 5 . MPI Flight State Message5Data TypeData Field Name UnitsMin MaxDescriptionNotesm_acidCall signs should conform to thechar[eMPI_ID_Aircraft Call SignFAA/ICAO requirements. Ex:LENGTH=12]SWA123, N123AB, SCAM61intm_cidComputer IdentificationUnique numerical identifier for each aircraft.double m_timeCreatedUTC Decimal secondsTime when the Flight State Message was created.UNIX Epoch time in seconds since January 1, 1970. Include milliseconds by specifying value with 3 decimal places.double m_timeReceivedUTC Decimal secondsTime when the Flight State Message was received.UNIX Epoch time in seconds since January 1, 1970. Include milliseconds by specifying value with 3 decimal places.Northern latitudes are positive,double m_latitudeDecimal degrees-90⁰ +90⁰ Latitude of aircraftSouthern latitudes are negative. Expressed to 6 decimal places.Example: 43.068286Eastern longitudes are positive,double m_longitudeDecimal degrees-180⁰ +180⁰ Longitude of aircraftWestern longitudes are negative. Expressed to 6 decimal places.Example: 43.068286floatm_pressure AltitudeFeetIndicated altitude of aircraft above mean sea level on a standard day.Altitude of aircraft abovefloatm_geoAltitudeFeetor below the WGS-84Not supportedellipsoid.
+Table 6 . DAA Aircraft Track State Data Structure for the Ownship6Data TypeFieldnameUnitsMin MaxDescriptioncharcallsign[MAX_ CALLSIGN_LEN=12]Non-dimensionalAircraft callsignintuidNon-dimensionalUnique Track IdPositive value representing UnixEpoch Time. Value in secondssince January 1, 1970. Includemilliseconds by specifying valuewith 3 decimal places.doubletimeOfApplicabilityDecimal secondsExample: 1474041713.363(representing 16 Sep 2016 16:01:52UTC).DAA MOPS Note 1Positive value representing UnixEpoch Time. Value in secondssince January 1, 1970. IncludedoubletimeReceivedDecimal secondsmilliseconds by specifying value with 3 decimal places.Example: 1474041713.363(representing 16 Sep 2016 16:01:52UTC)Positive value representing UnixEpoch Time. Value in secondssince January 1, 1970. IncludedoubletimeSentDecimal secondsmilliseconds by specifying value with 3 decimal places.Example: 1474041713.363(representing 16 Sep 2016 16:01:52UTC)DAA MOPS Notes 1,2Signed latitude in decimal degreesdoubleLatitudeDecimal degrees-9090format, +North/-South. Specify theangle with 7 positions followingdecimal point. It is based onreference to WGS-84.
+Table 7 . DDA Aircraft Track State Data Structure for Intruders7Data TypeData FieldnameUnitsMinMaxDescriptioncharcallsign[MAX_ CALLSIGN_LEN]Non-dimensionalAircraft callsign or tail numberintuidNon-dimensionalUnique Track IDTime of applicability (TOA)value represents Unix EpochTime. Value in seconds sinceJanuary 1, 1970. Includemilliseconds by specifyingvalue with 3 decimal places.doubletimeOfApplicabilityDecimal secondsExample: 1474041713.363 (representing 16 Sep 201616:01:52 UTC)Note: TOA is provided byCPDS/IOServer ( UTC buttonon the CPDS Bridge UI shouldbe engaged by the user).Positive value representingUnix Epoch Time. Value inseconds since January 1, 1970.Include milliseconds bydoubletimeReceivedDecimal secondsspecifying value with 3decimal places.Example: 1474041713.363(representing 16 Sep 201616:01:52 UTC)Positive value representingUnix Epoch Time. Value inseconds since January 1, 1970.Include milliseconds bydoubletimeSentDecimal secondsspecifying value with 3decimal places.Example: 1474041713.363(representing 16 Sep 201616:01:52 UTC)Non Threat Traffic,Traffic Advisory,Resolution Advisory,intintruderAlertStatusNon-dimensionalProximate TrafficNOTE: provided by DTIF -lines 97-100.
+Table 8 . Flight Plan Message8This is an example of a m_route field in the Flight Plan structure conforming to the standard FAA syntax: KSEA.HAROB5.ERAVE.Q1.EASON.Q1.ETCHY..MLBEC..BDEGA2.KSFO.Data TypeData Field NameUnits Min MaxDescriptionNotesintm_dataSourceDefines where the Flight Plan message originatescharm_acid [eMPI_ID_ LENGTH=12]Aircraft Call SignCall signs should conform to the FAA/ICAO requirements. Ex: SWA123, N123AB, SCAM61Defines the MACS internalValues may be accessed inintm_adrsProcprocess that denotes where aAppendix B, with a value of 38message originated from.to indicate a VAST connection.intm_cidComputer IdentificationUnique numerical identifier for each aircraft.charm_type[ eMPI_STRING_TYP E=16 ]Manufacture and body type. Used to populate flight information such as Line 4 in the FDB.charm_gateName[ eMPI_STRING_ TYPE=20 ]Name of the gate assigned to the aircraft.Name of a fix along anm_meterFixName[established route from overchareMPI_STRING_which aircraft will beTYPE=20 ]metered prior to enteringterminal airspace.Name of an adapted fixcharm_outerFixName[ eMPI_STRING_ TYPE=20 ]along the converted route of flight, prior to the meter fix, for which crossing times are calculated and displayed inthe metering position list.intm_categoryDefines MACS aircraft departure/arrival/overflight category.Values may be accessed in Appendix B Table B1
+Table 9 . Trajectory Intent Message Data Type Data Field Name Description Notes9MpiTrajm_specTrajectory SpecificationSpecStructureThese data fields combined create the TrajectoryMpiTraj Pointm_point[ eMPI_MAX_TRAJ _POINTS=50 ]Trajectory Waypoint StructureIntent Message. The m_point field is limited to 50 waypoints.
+Table 10 . Trajectory Specification Structure (MpiTrajSpec Structure)10Data TypeData Field Name UnitsDescriptionNotesm_acid[Call signs should conform to thechareMPI_ID_LENGTAircraft Call SignFAA/ICAO requirements. Ex:H=12 ]SWA123, N123AB, SCAM61Defines the MACS internal process thatValues may be accessed inintm_adrsProcdenotes where a message originatedAppendix B, with a value of 38 tofrom.indicate a VAST connection.intm_cidComputer IdentificationUnique numerical identifier for each aircraft.intm_numberOfPointsTotal number of waypointsintm_numberOfHoriz PointsNumber of waypoints laterally and longitudinally.feetfloat m_climbSpeedper minuteThe rate of climb or descent of an aircraft indicated in feet per minute.(fpm)
+Table 11 . Trajectory Waypoint Structure (MpiTrajPoint Structure)11The MpiTrajectory of the constructive and/or live traffic is published by the HLA via the LVC Gateway Portal component to the LVC Gateway.The Gateway will publish the trajectory intent of any constructive, virtual or live UAS entity connecting to the LVC Gateway.Subsequently, MsgTrajectory messages associated with UAS entities will be transmitted to the LVC Gateway Portal and HLA environment.The message filed, m_adrsProc, should be set to the corresponding data source value defined in TableB1in Appendix B.Data TypeData Field Name UnitsMin MaxDescriptionNoteseMpi TrajPt Typem_typeDefined by 4 byte MpiTrajPoint structure. enumeration that defines waypoint types in theSee the eMpiTrajPtType table for definitions.charm_waypointId[ eMPI_ID_ LENGTH=12]Name of the fix, waypoint, or FRDNorthern latitudes are positive,floatm_latitudeDecimal degrees-90⁰ +90⁰ Latitude of waypointSouthern latitudes are negative Expressed to 6 decimal places.Example: 43.068286Eastern longitudes arepositive, Western longitudesfloatm_longitudeDecimal degrees-180⁰ +180⁰ Longitude of waypointare negativeExpressed to 6 decimal places.Example: 43.068286The horizontal distancefloatm_turnRadiusDegrees0360that an aircraft uses to turn is referred to asNot supportedthe radius of turn.intm_miscIntValuedouble m_etaUTC secondsEstimated Time of Arrival at the waypoint.Indicatedfloatm_calibratedAir SpeedKnotsairspeed corrected for instrument and positionerror.The height of the aircraft infloatm_altitudeFeetrelation to the mean sealevel (MSL).The amount of fuelfloatm_fuelRemaining Poundsremaining on board anNot supportedaircraftfloatm_outerAir TemperatureFahren-heitThe temperature of the air around an aircraftNot supportedReported byfloatm_windDirection Degrees0360the direction from which it originates in azimuthTo be determineddegreesfloatm_windSpeedKnotsAir moving from high pressure to low pressureTo be determinedThe speed of the aircraftfloatm_trueAirSpeedKnotsrelative to the air mass inwhich it is flying.Note: MACS does not follow the conventions for latitude and longitude specified in the structures defined above.The expected format by MACS is Deegres:Minutes:Seconds.The LVC Gateway accounts for this variance in messages to MACS via ADRS.Enumeration below defines waypoint types in the MpiTrajPoint structure.The size of the enumeration field is 4 bytes.
+Table 13 . Delete Aircraft Message13Data TypeData Field NameDescriptionNotescharm_acid[eMPI_ID_ LENGTH=12]Aircraft Call SignCall signs should conform to the FAA/ICAO requirements. Ex: SWA123, N123AB, SCAM61Defines the MACS internal process thatValues may be accessed in Appendixintm_adrsProcdenotes where a message originatedB, with a value of 38 to indicate afrom.VAST connection.intm_cidComputer IdentificationUnique numerical identifier for each aircraft.
+Table 14 . Set Ownship Message14This message is deprecated as CSD (CDTI) system component is not used for tests any more.It is maintained in the ICD for back compatibility in case if CSD is reused in the LVC environment in future.Data TypeData Field NameDescriptionNotescharm_acid[ eMPI_ID_LENGTH=12 ]Aircraft Call SignCall signs should conform to the FAA/ICAO requirements. Ex: SWA123, N123AB, SCAM61charm_host[ eMPI_STRING_HOST=24 ]The name of the system that provides the ownship to the gateway.intm_cidComputer IdentificationUnique numerical identifier for each aircraft.intm_control
+Table 15 . SAA Threat Results Message15Data TypeData Field NameDescriptionNotesSaa ThreatSpecm_specThreat Specification StructureSaa Threatm_threats[SAA_MAX_THREATS= 50]Threat Data StructureSAA Max Threats is arbitrary, change as required
+Table 16 . SAA Threat Specification Structure16Data TypeData Field NameDescriptionNotesCall signs should conform to thechar m_acid[eMPI_ID_LENGTH=12] Aircraft Call Sign, OwnshipFAA/ICAO requirements. Ex:SWA123, N123AB, SCAM61intm_cidComputer Identification, OwnshipUnique numerical identifier for each aircraft.intm_numberOfThreatsTotal number of threats included in the messageMaximum number of threats limited to 50. May be adjusted, as required.
+Table 17 . SAA Threat Message17Data TypeData Field NameUnitsMin MaxDescriptionNoteseSaa Typem_saaTypeSAA alert levelType defined as an int.intm_intruderCidComputer Identification, IntruderUNIX Epoch time in secondsdouble m_conflictStartTimeUTC secondsConflict start timesince January 1, 1970. Include milliseconds by specifyingvalue with 3 decimal places.UNIX Epoch time in secondsdouble m_conflictEndTimeUTC secondsConflict End Timesince January 1, 1970. Include milliseconds by specifyingvalue with 3 decimal places.double m_conflictDuration SecondsTotal Length of the conflictdouble m_timeToCpaSecondsTime to reach the Closest Point of Approachdouble m_timeToFirstLoss SecondsTime to violation of the Well Clear envelope.Loss of Well Clear occurs 35 seconds from intruder within 450 feet.double m_dTauSimpleSecondsTime to CPA between the ownship and the intruder.Range divided by range ratedouble m_dTauModifiedSecondsTau based on horizontal ranges not slant rangesRange divided by range rateMinimum distancelaterally andfloatm_minHorizSepNMlongitudinally required toremain well clear of anintruderMinimum distancefloatm_minVertSepFeetvertically required to remain well clear of anintruderNorthern latitudes are positive,double m_ownshipCpaLatDecimal degrees-90⁰ +90⁰Latitude of the ownship at the closest point of approach.Southern latitudes are negative Expressed to 6 decimal places.Example: 43.068286Eastern longitudes aredouble m_ownshipCpaLonDecimal degrees-180⁰ +180⁰Longitude of the ownship at the closest point of approach.positive, Western longitudes are negative. Expressed to 6 decimal places.Example: 43.068286Northern latitudes are positive,double m_intruderCpaLatDecimal degrees-90⁰ +90⁰Latitude of the intruder at the closest point of approach.Southern latitudes are negative. Expressed to 6 decimal places.Example: 43.068286
+Table 18 . Alert Levels, Definitions Data Type18When the SAA algorithm determines that SS or CA threat no longer exists, the Sense and Avoid algorithm returns RELEASE as the threat state for the ownship.SaaProc generates the SAA Release message, indicating that the conflict has been cleared and sends the MPI Release Message to the LVC Gateway.The threat symbology is subsequently removed from the CSD or VSCS displays.Alert LevelDescriptionint0No alertint1Proximate alertint2Preventative Self-separation alertint3Corrective Self-separation alertint4Warning Self-separation alertThe color scheme, symbology, for different alert levels is presented in Appendix A.4.3.10 SAA Release StructureNote that the eSaaType in the table below is a type defined as an int, i.e. typedef int eSaaType.
+Table 19 . SAA Release Message19Data TypeData Field NameDescriptionNotesCall signs should conform to thecharm_acid[eMPI_ID_LENGTH=12] Aircraft Callsign, OwnshipFAA/ICAO requirements. Ex:SWA123, N123AB, SCAM61intm_cidComputer Identification, OwnshipUnique numerical identifier for each aircraft.eSaaType m_saaTypeSAA alert levelType defined as an int.
+Table 20 . SAA Resolution Maneuver Message20Data TypeData Field NameDescriptionNotesSaaResManeuverSpec m_maneuverSpecManeuver Specification StructureSaaManeuverm_maneuvers[SAA_MAX_ MANEUVERS=20]Maneuver Data StructureMaximum number of maneuvers is 20
+Table 21 . SAA Resolution Maneuver Specification21Data TypeData Field NameDescriptionNotesCall signs should conform to thechar m_acid[eMPI_ID_LENGTH=12] Aircraft Call Sign, OwnshipFAA/ICAO requirements. Ex: SWA123,N123AB, SCAM61intm_ownshipCidComputer Identification, OwnshipUnique numerical identifier for each aircraft.intm_numberOfManeuversTotal number of aircraft maneuvers
+Table 22 . SAA Maneuver Data Type Data Field Name Units Min Max Description Notes22eManeuver Typem_maneuverTypeManeuver typeAs enumerated in eManeuverTypeeSaaType m_saaTypeSAA alert levelType defined as an int.doublem_startTimeUTC secondsStart time of the SAA maneuverdoublem_endTimeUTC secondsEnd time of the SAA maneuverfloatm_altitudeFeetAltitude of the maneuverNot set (-999999) if maneuver type != altitudefloatm_headingAbsDegrees0359Current true heading of the ownshipNot set (-999999) if maneuver type != headingThe clockwise orRight turn expressed ascounterclockwise angle of thepositive; Left turnfloatm_headingRelDegrees0±180resolution maneuver inexpressed as a negative.degrees from the current trueNot set (-999999) ifheading of the ownship.maneuver type != headingfloatm_speedKnotsSpeed of the maneuverNot set if maneuver type != speed
+Table 23 . SAA Maneuver Type Data Type23Enum ValueData Field NameDescriptionNotesint0eSAA_MANEUVER_TYPE_REROUTE Reroute maneuverint1eSAA_MANEUVER_TYPE_HEADING Maneuver turns to a new headingint2eSAA_MANEUVER_TYPE_SPEEDManeuver commands a new airspeedint3eSAA_MANEUVER_TYPE_ALTITUD EManeuver changes the altitude of the aircraftint4eSAA_MANEUVER_TYPE_COMPOU NDManeuver consists of any combination of changes to route, heading, altitude, or speed.int5eSAA_MANEUVER_TYPE_APP_REFINEDint-999999eSAA_MANEUVER_TYPE_NOT_SET No maneuverSame as INT_NOT_ SET
+Table 24 . SAA Resolution Reroute Message24Data TypeData Field NameDescriptionNotesSaaResRe routeSpecm_rerouteSpecThe resolution reroute specification data structureSaaResWam_waypoints[MPI_MAX_NUThe resolution waypoints dataMaximum number of waypointsypointM_OF_WAYPOINTS=50]structureis 50
+Table 25 . SAA Resolution Reroute Specifications25Data TypeData Field Name Units Min MaxDescriptionNotesCall signs should conform tocharm_acid[eMPI_ID _LENGTH=12]Aircraft Call Sign, Ownshipthe FAA/ICAO requirements. Ex: SWA123, N123AB,SCAM61intm_cidComputer Identification, OwnshipUnique numerical identifier for each aircraft.eSaaType m_saaTypeSAA alert levelType defined as an int.UNIX Epoch time in secondsdoublem_startTimeUTC secondsStart time of the SAA maneuversince January 1, 1970. Include milliseconds by specifyingvalue with 3 decimal places.UNIX Epoch time in secondsdoublem_endTimeUTC secondsEnd time of the SAA maneuversince January 1, 1970. Include milliseconds by specifyingvalue with 3 decimal places.intm_numberOfWay pointsTotal number of waypointsdoublem_turnOutAngle Degrees0±180Turn angle to the next fix from the current locationRight turn expressed as positive; Left turn expressed as a negative.
+Table 26 . SAA Resolution Waypoint Structure26Data TypeData Field NameUnitsMinMaxDescriptionNotesm_name[eMPI_IMay use the actual name of thecharD_LENGTH=16Waypoint Namewaypoint or assign one arbitrarily]if none available.Northern latitudes are positive,double m_latitudeDecimal degrees-90⁰+90⁰ Latitude of ownshipSouthern latitudes are negative. Expressed to 6 decimal places.Example: 43.068286Eastern longitudes are positive,double m_longitudeDecimal degrees-180⁰ +180⁰ Longitude of ownshipWestern longitudes are negative. Expressed to 6 decimal places.Example: 43.068286floatm_altitudeFeetThe altitude of the ownship.Express as above Mean Sea Level (MSL)floatm_speedKnotsTrue airspeed of the ownship
+Table 27 . Navigation Mode Message Data Type Data Field Name Mode Units Min Max Description Notes27FlightplanManualAutopilotOverrideEnumerated ineNav Modem_eNavModeX X X XNavigation Modeaccordance with the eNavMode Table. Mandatory field for allmodes.Call signs shouldconform to theFAA/ICAOcharm_acid[eMPI_ID _LENGTH=12]X X X XAircraft Call Sign, Ownshiprequirements. Ex: SWA123, N123AB,SCAM61Mandatory field for allmodes.Unique numericalintm_ownshipCidX X X XComputer Identification, Ownshipidentifier for each aircraft. Mandatory field for allmodes.float m_headingXDegrees 0 359 Ownship True HeadingIf not in Autopilot Mode, set to -999999If not in Autopilot Mode,float m_altitudeXFeetThe altitude of the ownship.set to -999999. Expressed as aboveMean Sea Level (MSL)If not in Override Mode,floatm_override AltitudeX FeetThe revised altitude of the ownship, when overridden.set to -999999. Expressed as aboveMean Sea Level (MSL)Speed of the ownship relativefloat m_tasX Knotsto the air mass in which it isflying.If not in Override Mode,Indicated airspeed of theset to -999999.float m_casX Knotsownship corrected forAt least one speed mustinstrument and position error.be set.float m_machX KnotsOwnship's airspeed relative to the speed of sound
+Table 28 . Navigation Mode28Data TypeData Field NameValueDescriptionNotesAircraft navigates using ainteNAV_MODE_FLIGHT_PLAN0route defined by a seriesof waypoints.inteNAV_MODE_AUTO_PILOT1Aircraft navigates using VNAV and LNAV.inteNAV_MODE_OVERRIDE2Altitude and/or speed setting are overwritten at the GCS.GCS provides updated waypoint lists followed by override msg.Aircraft navigates usinginteNAV_MODE_MANUAL3manual inputs by thepilot.inteNAV_MODE_NOT_SET-999999 No Nav Mode settingsame as INT_NOT_SET
+Table 29 . ACAS-Xu Alerting and Guidance Message Data Type Data Field Name Units Min Max Description Notes Vertical Resolution Advisory provided by ARINC Label 27029m_ownshipCallsigcharn[MAX_ CALLSIG_LEN=Ownship callsign12]UNIX Epoch time in secondssince January 1, 1970.doublem_timeOf ApplicabiltyDecimal secondsTime at which the alert message was applied.Include milliseconds by specifying value with 3decimal places. Example:474041713.363UNIX Epoch time in secondsdoublem_timeReceivedDecimal secondsTime when the Flight State Message was received.since January 1, 1970. Include milliseconds by specifying value with 3decimal places.
+-Well-Clear Band Information provided by ARINC Label 276Each indicated bit set to1 in the list of bandintervals will beboolm_preventive RWCBands[20]Relative Degrees-180⁰ +180⁰illuminated in YELLOW measured from the current ownship heading.Each bit value (0 or 1) isrepresented by 10Degrees.
+Table 30 . Vertical Resolution Advisory -Combined Control30Data TypeEnum ValueData Field NameDescriptionint0COMB_CONT_NONENo Advisoryint1CLEAR_OF_CONFLICTTraffic conflict is resolved and RA is removed.int2SPARENot Usedint3SPARENot Usedint4CLIMB_CORRRA requiring positive change in vertical speedint5DESCEND_CORRRA requiring negative change in vertical speedint6PREVENTATIVERA requiring no change in vertical speed
+Table 31 . Vertical Resolution Advisory -Vertical Control31Data TypeEnum ValueData Field NameDescriptionint0VERT_CONT_NONENone of the following vertical controlsint1CROSSINGIndicates that the ownship is crossing through the intruder's altitude.int2REVERSEEncounter in which it is necessary to reverse the original RA to avoid the threatint3INCREASEIncrease in the strength of the initial RA to avoid a threatint4MAINTAINRA requiring no change in vertical speed to avoid a threat
+Table 32 . Vertical Resolution Advisory -Up Advisory32Data TypeEnum ValueData Field NameDescriptionNotesintUP_ADV_NONENo up advisoryintCLIMBClimb @ 1500 to 2000 fpmintDONT_DESCENDDo not descendintDONT_DESCEND500Do not descend faster than 500 fpm*Not used for ACAS-XuintDONT_DESCEND1000 Do not descend faster than 1000 fpmintDONT_DESCEND2000 Do not descend faster than 2000 fpm*Not used for ACAS-Xu
+Table 33 . Vertical Resolution Advisory -Down Advisory33Data TypeEnum ValueData Field NameDescriptionNotesintDOWN_ADV_NONENo down advisoryintDESCENDDescend @ 1500 to 2000 fpmintDONT_CLIMBDo not climbintDONT_CLIMB500Do not climb faster than 500 fpm*Not used for ACAS-XuintDONT_CLIMB1000Do not climb faster than 1000 fpmintDONT_CLIMB2000Do not climb faster than 2000 fpm*Not used for ACAS-Xu
+Table 34 . Horizontal Resolution Advisory -Combined Control34Data TypeEnum ValueData Field NameDescriptionNotesintNo AdvisoryNo AdvisoryintClear of ConflictTraffic conflict is resolved and RA is removed.intSPARENot UsedintSPARENot UsedintRight Collision Avoidance AdvisoryRA requiring positive change in headingExample: +30⁰intLeft Collision Avoidance AdvisoryRA requiring negative change in headingExample: -30⁰intRight Self Separation AdvisoryWCR requiring positive change in headingExample: +30⁰intLeft Self Separation AdvisoryWCR requiring negative change in headingExample: -30⁰
+Table 35 . Horizontal Resolution Advisory Aural Alerts35Data TypeEnum ValueRA TypeAural AnnunciationDescriptionVisual Indicationint0No AdvisoryNo advisoryVisual Indication: No Advisoryint1Clear of ConflictTraffic conflict is resolved and RA is removed.Clear of Conflictint4Corrective CATurn Right, Turn RightRA requiring positive change in headingTurn Right, Heading (###)(Red Text)int5Corrective CATurn Left, Turn LeftRA requiring negative change in headingTurn Left, Heading (###)(Red Text)int6Corrective RWCTurn Right, Turn RightRWC requiring positive change in headingTurn Right, Heading (###)(Yellow Text)int7Corrective RWCTurn Left, Turn LeftRWC requiring negative change in headingTurn Left, Heading (###)(Yellow Text)
+Table 36 . Vertical Resolution Advisory Interpretation36Data TypeEnum ValueAdvisoryRA TypeAural AnnunciationVisual IndicationRate to Maintain (fpm)CombinedControlVerticalControlUpAdvisoryDownAdvisoryint0 Clear of ConflictClear of ConflictCLEAR OF CONFLICT100int1 ClimbCorrective Climb, ClimbCLIMB, 1000 fpm +1000401int2Reduce Descent (Do Not Descend)CorrectiveLevel Off, Level OffLEVEL OFF0402int3Altitude Crossing ClimbCorrectiveClimb, Crossing Climb; Climb Climb, CrossingCROSSING 1000 fpm CLIMB+1000411int4RA Reversal (Descend to Climb)CorrectiveClimb, Climb NOW; Climb, Climb NOWCLIMB NOW 1000 fpm+1000421int5 DescendCorrective Descend, DescendDESCEND, -1000 fpm-1000500int6Reduce Climb (Do Not Climb)CorrectiveLevel Off, Level OffLEVEL OFF0500int7Altitude Crossing DescendCorrectiveDescend, Crossing Descend; Descend Descend, CrossingCROSSING -1000 fpm DESCEND,-1000510int8RA Reversal (Climb to Descend)CorrectiveDescend, Descend NOW; Descend, Descend NOWDESCEND NOW, -1000 fpm-1000520int9Limit Climb (Do Not Climb)PreventiveMonitor Vertical SpeedMONITOR V/S600int10Limit Descend (Do Not Descend)PreventiveMonitor Vertical SpeedMONITOR V/S602Multi-Aircraftint11Encounter (Issued WhileCorrectiveLevel Off, Level OffLEVEL OFF0502Climbing)Multi-Aircraftint12Encounter (Issued WhileCorrectiveLevel Off, Level OffLEVEL OFF0402Descending)int13Multi-Aircraft EncounterPreventiveMonitor Vertical SpeedMONITOR V/S602int14Weakening of Positive RA (After Up Sense RA)CorrectiveLevel Off, Level OffLEVEL OFF0402int15Weakening of Positive RA (After Down Sense RA)CorrectiveLevel Off, Level OffLEVEL OFF0500
+Table 37 . TCAS Alert Levels37Data TypeEnum ValueData Field NameDescriptionNotesint0TCAS_THREAT_NONEOther Traffic, altitude unknown.int1TCAS_THREAT_PROXProximate Traffic -non-threat traffic within 6 nm and ±1200 feet from the ownship.As in TCAS 7.0int2TCAS_THREAT_TAIntruders that cause an TA to be issued (Mode A only)As in TCAS 7.0int3TCAS_THREAT_TA_MODE_CIntruders that cause an TA to be issued (Mode A & C)As in TCAS 7.0int4TCAS_THREAT_RAIntruders that cause an RA to be issuedAs in TCAS 7.0
+Table 38 . Stratway Interval Type38Data TypeEnum ValueData Field NameDescriptionint0eSTRWAY_INTERVAL_TYPE_UNKNOWN Interval type not recognizedint1eSTRWAY_INTERVAL_TYPE_NONENo Interval Typeint2eSTRWAY_INTERVAL_TYPE_NEARNear term conflict intervalint3eSTRWAY_INTERVAL_TYPE_RECOVERY Recovery maneuver
+Table 39 . Stratway Interval39Data TypeData Field NameUnitsDescriptionNoteseIntervalType m_eIntervalTypeIndicates the color of the alert level to be displayeddoublem_low_intervalDegrees or Feet MSL aboveIndicates minimum value in degrees or and altitude. feet relative to current ownship headingExample: -30⁰ or -1000 feetdoublem_up_intervalDegrees or Feet MSL aboveIndicates maximum value in degrees or and altitude. feet relative to current ownship headingExample: 30⁰ or 1000 feet
+Table 40 . Stratway Intruder Data Type Data Field Name Description Notes40CharString8 Typem_callsignAircraft Call Sign, IntruderCall signs should conform to the FAA/ICAO requirements. Ex: SWA123, N123AB, SCAM61eSaaTypem_alertLevelSAA alert level
+Table 41 . Stratway Bands Message Data Type Data Field Name Units Description Notes41CharString 8Typem_callSignAircraft Call SignCall signs should conform to the FAA/ICAO requirements. Ex: SWA123, N123AB, SCAM61doublem_timeSecondsSecondsintm_participant Addressintm_numberOf HeadingIntervalsTotal number of heading intervalsStratway IntervalList Typem_headingInterval ListList of heading intervalsintm_numberOfTrue AirspeedIntervalsTotal number of true airspeed intervalsintm_pad1Padding used for data field alignment
+Table 42 . Omni Bands Interval42Data TypeData Field NameUnitsDescriptionNoteseSaaType m_alertLevelSAA alert levelType defined as an int.Degrees orIndicates minimum value inintm_minFeet abovedegrees or feet relative to currentExample: -30⁰ or -1000 feetMSLownship heading and altitude.Degrees orIndicates maximum value inintm_maxFeet abovedegrees or feet relative to currentExample: 30⁰ or 1000 feetMSLownship heading and altitude.Table 43. Omni Bands MessageData TypeData Field NameUnitsDescriptionNotescharm_callsign[eMPI_ID_ LENGTH]Aircraft Call Sign, OwnshipCall signs should conform to the FAA/ICAO requirements. Ex: SWA123, N123AB, SCAM61intm_paddoublem_timeCreatedUTC Decimal secondsTime when the Flight State Message was created.UNIX Epoch time in seconds since January 1, 1970. Include milliseconds by specifying value with 3 decimal places.intm_altSuppressFlagintm_padintm_numberOfHeading IntervalsTotal number of heading intervalsintm_numberOfAltitude IntervalsTotal number of Altitude intervalsOmniBan dIntervalm_headingIntervals[ SAA_MAX_BAND_ INTERVALS]Indicates how the heading band is be colored according to the associated alertLevelSAA_MAX_BAND_INTERVALSOmniBan dIntervalm_altitudeIntervals[ SAA_MAX_BAND_ INTERVALS]= 65, may be adjusted.
+Table 44 . TCAS 7.0 Alert Structure44Data TypeData Field NameUnitsMin MaxDescriptionNotesCall signs should conform tocallsign[MAX_the FAA/ICAO requirements.charCALLSIGN_Intruder Call SignEx: SWA123, N123AB,LEN=8]SCAM61. Maximum length =8charac_type[MAX_ CALLSIGN_ LEN=8]Alphanumeric code designating aircraft typeMaximum length = 8doubletimeCreatedUTC Decimal secondsTime when the Flight State Message was created.UNIX Epoch time in seconds since January 1, 1970. Include milliseconds by specifying value with 3 decimal places.Northern latitudes are positive,doublelatDecimal degrees-90⁰ +90⁰ Latitude of aircraftSouthern latitudes are negative. Expressed to 6 decimal places.Example: 43.068286Eastern longitudes aredoublelonDecimal degrees-180⁰ +180⁰ Longitude of aircraftpositive, Western longitudes are negative. Expressed to 6 decimal places.Example: 43.068286enum_tcas _threat_tthreat_statusIndicates the level of threat posed by the intruder.Enumerated by the tcas_threat_t table.floatrngSecondsDistance to the intruder aircraft based on tau.The direction of theBearing left of the currentfloatbrgDegreesintruder relative to the current heading of theheading of the ownship is negative; to the right of theownship.own ship is positiveintaltFeet above MSLThe altitude of the intruderintraltFeetThe altitude if the intruder above or below the current altitude of the ownshipAltitude below the ownship is negative; above the ownship is positive.The arrow expressingintarrowtrend information for an intruder moving-1 = down arrow; 0 is none; 1 is up arrowvertically.Feet perThe rate of climb orClimb is indicated by positiveintvspdminutedescent of the intrudernumber. Descent is a negative(fpm)aircraft.number.floathdgDegrees0359The true heading of the intruder
+Table 45 . TCAS 7.0 Threat Table45Data Typ eEnum ValueData Field NameDescriptionintTCAS_THREAT_NONEOther Traffic, altitude unknown.intTCAS_THREAT_PROXProximate Traffic -non-threat traffic within 6 nmi and ±1200 ft from the ownship.intTCAS_THREAT_TAIntruders that cause an TA to be issued (Mode A only)intTCAS_THREAT_TA_MODE_C Intruders that cause an TA to be issued (Mode A and C)intTCAS_THREAT_RAIntruders that cause an RA to be issued
+Table 46 . TCAS 7.0 Aural Action Table46Data TypeEnum ValueData Field NameDescriptionNotesintaural_NONENo advisoryintaural_TRAFFIC_TRAFFICTraffic Advisoryintaural_MONITOR_VERTICAL_SPEED Preventive RANo change in vertical speed requiredintaural_CLIMB_CLIMBClimb RAintaural_CLIMB_CROSSING_CLIMB_ CLIMB_CROSSING_CLIMBAltitude Crossing Climb RAintaural_DESCEND_DESCENDDescend RAaural_DESCEND_CROSSING_DESCEAltitudeintND_DESCEND_CROSSING_DESCENCrossingDDescend RAintaural_REDUCE_CLIMB_REDUCE_CL IMBReduce Climb RAintaural_REDUCE_DECENT_REDUCE_ DECENTReduce Descent RA"Adjust Vertical Speed"intaural_INCREASE_CLIMB_INCREASE _CLIMBIncrease Climb RAint10aural_INCREASE_DECENT_INCREAS E _DECENTIncrease Descent RAint11aural_CLIMB_CLIMB_NOW_CLIMB_ CLIMB_NOWRA Reversal to Climb RAint12aural_DESCEND_DESCEND_NOW_D ESCEND_DESCEND_NOWRA Reversal to Descent RAint13 aural_CLEAR_OF_CONFLICTRA Removedint14 aural_TCAS_SYSTEM_TEST_FAILTCAS system test failureint15 aural_TCAS_SYSTEM_TEST_OKTCAS system test passed
+Table 47 . TCAS 7.0 Combined Control47Data TypeEnum ValueData Field NameDescriptionint0COMB_CONT_NONE No Advisoryint1CLEAR_OF_CONFLI CTTraffic conflict is resolved and RA is removed.int2CLIMB_CORRRA requiring positive change in vertical speedint3DESCEND_CORRRA requiring negative change in vertical speedint4PREVENTATIVERA requiring no change in vertical speed
+Table 48 . TCAS 7.0 Vertical Control48Data TypeEnum ValueData Field NameDescriptionint0VERT_CONT_NONENone of the following vertical controlsint1CROSSINGIndicates that the ownship is crossing through the intruder's altitude.int2REVERSEEncounter in which it is necessary to reverse the original RA to avoid the threatint3INCREASEIncrease in the strength of the initial RA to avoid a threatint4MAINTAINRA requiring no change in vertical speed to avoid a threat
+Table 49 . TCAS 7.0 Up Advisory49Data TypeEnum ValueData Field NameDescriptionint0UP_ADV_NONENo advisoryint1CLIMBClimb @ 1500 to 2000 fpmint2DONT_DESCENDDo not descendint3DONT_DESCEND500Do not descend faster than 500 fpmint4DONT_DESCEND1000Do not descend faster than 1000 fpmint5DONT_DESCEND2000Do not descend faster than 2000 fpm
+Table 50 . TCAS 7.0 Down Advisory50Data TypeEnum ValueData Field NameDescriptionint0DOWN_ADV_NONENo advisoryint1DESCENDDescend @ 1500 to 2000 fpmint2DONT_CLIMBDo not climbint3DONT_CLIMB500Do not climb faster than 500 fpmint4DONT_CLIMB1000Do not climb faster than 1000 fpmint5DONT_CLIMB2000Do not climb faster than 2000 fpm
+Table 51 . RA Output to Display and Aural Subsystem Every Cycle51Data TypeData Field NameUnitsMinMaxDescriptionNotesFeet perfloatrateMinuteAdvisory rate to maintain(fpm)intcombined_controlEnumerates the Combined Control Valueintvertical_controlUTC Decimal secondsEnumerates the Vertical Control Valueintup_advisoryDecimal degrees-90⁰+90⁰Enumerates the Up Advisory Valueintdown_advisoryDecimal degrees-180⁰ +180⁰Enumerates the Down Advisory ValueintcrossingEnumerates the combined Control Value1 = crossing 2 = not crossing
+Table 52 . TCAS 7.1 Message52Data TypeData Field NameUnits Min MaxDescriptionNotescharownshipCallsign[ MAX_CALLSIGN_ LEN=8]Ownship Call SignCall signs should conform to the FAA/ICAO requirements. Ex: SWA123, N123AB, SCAM61. Maximum length = 8Aural AlertauralAlertLevelDefines voice alert issued for displayed traffic alerts and RAs.Enumerated in the AuralAlert table.Combine dControlcombinedControlIndicates the type of Resolution Advisory (RA)Enumerated in the TCAS 7.1 Combined Control table.FeetintescapeVSPDFPMper MinuteEscape rate to maintain for safe separationTCAS ZD Model(fpm)Down AdvisorydownAdvisoryDefines value for downward sense alerts.Enumerated in the TCAS 7.1 Down Advisory table.Up AdvisoryupAdvisoryDefines value for upward sense alerts.Enumerated in the TCAS 7.1 Up Advisory table.intnumberOfIntruders032 Total number of intrudersMAXNUMBEROFTRAFFIC = 32Tcas Intruder StateintruderDataIdentification and Alert Level of intruder trafficDefined by TCAS 7.1 Intruder State Message
+Table 53 . TCAS 7.1 Intruder State53Data TypeData Field NameDescriptionNotesintaircraftIdComputer identification of the intruder aircraftTcasAlertLevel alertLevelDefines the Alert Level of the intruderEnumerated in the TCAS 7.1 Alert Level table
+Table 54 . TCAS 7.1 Alert Level54Data TypeEnum ValueData Field NameDescriptionNotesint0NO_DATANo alert data availableint1NO_ALERTNo Alert statusProximate Traffic -non-threat trafficint2PROXIMITY_ALERTwithin 6 nmi and ±1200 ft from theownship.int3TRAFFIC_ALERT_NO _ALTIntruders that cause an TA to be issued (Mode A only)Defined in TCAS 7.0 Threat tableint4TRAFFIC_ALERTIntruders that cause an TA to be issued (Mode A and C)intRESOLUTION_ALERT Intruders that cause an RA to be issued5
+Table 55 . TCAS 7.1 Aural Alert55Data TypeValueData Field NameDescriptionNotesintAA_NONENo AlertsintAA_CLEARRA Removed"Clear of Conflict"intMONITORPreventive RA"Monitor Vertical Speed"intLEVEL_OFFReduce Climb or Descent RA, Weakening of RA"Monitor Vertical Speed"intMAINTAIN_CROSSINGAltitude Crossing, Maintain Rate [of climb or descent] RA"Maintain Vertical Speed, Crossing Maintain"intMAINTAINMaintain Rate [of climb or descent] RA"Maintain Vertical Speed, Maintain"intINCREASE_DESCENTIncrease Descent RA"Increase Descent, Increase Descent"intINCREASE_CLIMBIncrease Climb RA"Increase Climb, Increase Climb""Descend, DescendintDESCEND_NOWRA Reversal to Descent RANOW; Descend,Descend NOW""Climb, ClimbintCLIMB_NOWRA Reversal to Climb RANOW; Climb, ClimbNOW""Descend, Crossingint10DESCEND_CROSSINGAltitude Crossing Descend RADescend; CrossingDescend""Climb, Crossingint11CLIMB_CROSSINGAltitude Crossing Climb RAClimb; CrossingClimb"int12DESCENDDescend RA"Descend, Descend"int13CLIMBClimb RA"Climb, Climb"int14NUM_AURAL_ALERTSNumber of Aural Alerts
+Table 56 . TCAS 7.1 Combined Control Data Type Value Data Field Name Description56int-999999CC_NOT_SETCombined Control not setint0CC_NONENo Advisoryint1CLEAR_OF_CONFLICTTraffic conflict is resolved and RA is removed.int2CLIMB_CORRECTIVERA requiring positive change in vertical speedint3DESCEND_CORRECTIVERA requiring negative change in vertical speedint4PREVENTIVERA requiring no change in vertical speedintPREVENTIVE CC_MAX_ADVISORY
+Table 57 . TCAS 7.1 Down Advisory57Data TypeValueData Field NameDescriptionNotesint-999999 DOWN_ADVISORY_NOT_SET Down Advisory not setint0DOWN_ADVISORY_NONENo advisoryint1DO_DESCENDDescend @ specified rateTCAS standard is 1500 to 2000 fpmint2DONT_CLIMBDo not climb faster than 250 fpmint3DONT_CLIMB500Do not climb faster than 500 fpmint4DONT_CLIMB1000Do not climb faster than 1000 fpmint5DONT_CLIMB2000Do not climb faster than 2000 fpmint= DONT_ CLIMB2000MAX_DOWN_ADVISORYDo not climb faster than 2000 fpm
+Table 58 . TCAS 7.1 Up Advisory58Data TypeEnum ValueData Field NameDescriptionNotesint-999999UP_ADVISORY_NOT_SETUp Advisory not setint0UP_ADVISORY_NONENo advisoryTCASint1DO_CLIMBClimb @ specified ratestandard is 1500 to2000 fpmint2DONT_DESCENDDo not descend faster than 250 fpmint3DONT_DESCEND500Do not descend faster than 500 fpmint4DONT_DESCEND1000Do not descend faster than 1000 fpmint5DONT_DESCEND2000Do not descend faster than 2000 fpm=intDONT_DESCMAX_UP_ADVISORYDo not descend faster than 2000 fpmEND2000
+Table 59 . Well Clear Recovery Message59Defined if and only if the type is Limited Suggestive.If not, shown as null Enumerated in the Range table.Data TypeData Field NameDescriptionNotescharownshipCallsign[ MAX_CALLSIGN_ LEN]Ownship Call SignCall signs should conform to the FAA/ICAO requirements. Ex: SWA123, N123AB, SCAM61. Maximum length = 8enum_Guidance Type_ttypeDefines the type of guidance (directional or limited suggestive)Only the relevant field will be valid. Enumerated in the Guidance Type table.Defines the recoveryenum_Directional Guidiance_tsuggestiondirection for either type, directional or limitedEnumerated in the Directional Guidance table.suggestive.Range_trangeDefines the recovery 'wedge'.
+Table 60 . Directional Guidance60Data TypeEnum ValueData Field NameDescriptionint0TURN_LEFTGenerates a suggestion to turn leftint1TURN_RIGHTGenerates a suggestion to turn rightint2CLIMBGenerates a suggestion to climbint3DESCENDGenerates a suggestion to descendint4MAINTAINGenerates a suggestion to remain at the present altitude and on present course.
+Table 61 . Guidance Type Data Type Enum Value Data Field Name Description61int0NONENo guidance providedint1DIRECTIONALProvides direction arrow indicatorsint2LIMITED SUGGESTIVEProvides the wedge indicating the recommend heading range for WCR.
+Table 62 . Range Type62Data TypeEnum ValueData Field NameDescriptionint0RELATIVE_HEADINGHeading WCR solution expressed in degrees relative to the ownship headingint1ALTITUDEVertical WCR solution expressed in feet above MSLNote: Guidance represents recommended targets bounded by minimum and maximum bounds.The RangType can be RELATIVE_HEADING or ALTITUDE.
+Table 63 . Range63DataData TypeFieldUnitsDescriptionNotesNameenum_Range Type_ttargetGuidance target can be RELATIVE_HEADING or ALTITUDEintm_paddoubleminAltitude = Feet aboveDefines the minimum bounds of the WCR.MSLRelative Heading is determined inRelativerespect to ownship heading.doublemaxHeading = DegreesDefines the maximum bounds of the WCR.
+. ADRS Proc and Category Values Table B1. ADRS_proc Values5 Acronym List ACAS-XU Airborne Collision Avoidance System X Unmanned ACFS Advanced Concepts Flight Simulator ACID Aircraft Identification (call sign) ADRS Aeronautical Datalink and Radar Simulator 7 Appendix BData Origin ValueSourcesADSB ADRS_PROC_UNKNOWN Automatic Dependent Surveillance -Broadcast 0 Unknown sourceAFRC ADRS_PROC_PAS Armstrong Flight Research Center 1 Psuedo Aircraft SimulatorAPI ADRS_PROC_PAS_ADSB Application Program Interface 2Psuedo Aircraft Simulator, ADSBARC ADRS_PROC_PAS_FFSIM Ames Research Center3Psuedo Aircraft Simulator, Future Flight SimulationATC ADRS_PROC_PAS_CI Air Traffic Control4Psuedo Aircraft Simulator, Common InterfaceATS ADRS_PROC_FSR_GENERIC Air Traffic System10Generic Flight Simulator ReportCA ADRS_PROC_FSR_ACFS Collision Avoidance11Advanced Concept Flight Simulator Flight Simulator ReportCAS ADRS_PROC_FSR_B747 Calculated Airspeed12B747 Flight Simulator ReportCATS CDTI ADRS_PROC_FSR_CDTI Change Action Tracking System 13 Control Display Traffic Indicator Control Display Traffic Indicator Flight Simulator Report CI Common Interface ADRS_PROC_FSR_ASTOR 14 Astor Flight Simulator ReportCID ADRS_PROC_FSR_PC_PLANE Computer Identification15Microsoft Flight Simulator Flight Simulator ReportCONOPS CPA ADRS_PROC_FSR_B757 Concept of Operations Closest Point of Approach CPDS Conflict Prediction and Detection System B757 Flight Simulator Report (corresponds to old 16 PROC_PACS) ADRS_PROC_FSR_MINIACFS 17 Custom ACFS Flight Simulator ReportCSD ADRS_PROC_ISM_C Cockpit Situation Display20CTAS ADRS_PROC_ISM_T Center TRACON Automation System 25DAA ADRS_PROC_MPI_CLIENT Detect and Avoid30LVC GatewayDPM ADRS_PROC_MPI_CLIENT_ADRS Deputy Project Manager31LVC Gateway, ADRSEPU ADRS_PROC_MPI_CLIENT_PILOT Estimated Position of Uncertainty 32 LVC Gateway, MACS Pilot PositionFAA ADRS_PROC_MPI_CLIENT_CATS Federal Aviation Administration 33LVC Gateway, Change Action Tracking SystemFFSIM FIS-B ADRS_PROC_MPI_CLIENT_FREQ_CT Future Flight Simulator Flight Information Services-Broadcast R 34 LVC Gateway, Frequecy CenterFL ADRS_PROC_MPI_CLIENT_MACS Flight Level35LVC Gateway, Multi Aircraft Control SystemFLAPS FPM ADRS_PROC_MPI_CLIENT_ATS_GAT Flexible Acquisition Processing System Feet per minute EWAY 36 LVC Gateway, Aplication Traking System GatewayFPS ADRS_PROC_MPI_CLIENT_CTAS Feet per second37LVC Gateway, Center TRACON Automation SystemFRD ADRS_PROC_MPI_CLIENT_VAST Fix, Radial, Distance38LVC Gateway, Virtual Airspace Simulation TechnologiesFS ADRS_PROC_MPI_SERVER Flight State40LVC Gateway as serverFT ADRS_PROC_MPI_SERVER_ADRS Flight Test41LVC Gateway as server with ADRSGCS ADRS_PROC_CI_CLIENT Ground Control Station50Common InterfaceHFOM ADRS_PROC_CI_CLIENT_ADRS Horizontal Figure of Merit51Common Interface, ADRSHFOMR ADRS_PROC_CI_CLIENT_CDTI Horizontal Figure of Merit -Rate (Velocity) 52 Common Interface, Control Display Traffic IndicatorHHMMSS HIL HITL HLA HVE ICAO ICDHours, Minutes, Seconds 4 bytes Horizontal Integrity Limit • unsigned long: 4 bytes Human in the Loop • int: 4 bytes High Level Architecture • unsigned int: 4 bytes Horizontal Velocity Error • short int: 2 bytes International Civil Aviation Organization • unsigned short int: 2 bytes • char: 1 byte Interface Control Document
+Table B2 . Category ValuesB2Flight StatusValueADRS_MPI_DEPARTURE1ADRS_MPI_ARRIVAL2ADRS_MPI_OVERFLIGHT3ADRS_MPI_SATELLITE_ARRIVAL4ADRS_MPI_SATELLITE5ADRS_MPI_DEPARTURE_ARRIVAL6ADRS_MPI_SATELLITE_DEPARTURE7ADRS_MPI_SATELLITE_TO_EXTERNAL8ADRS_MPI_EXTERNAL_TO_SATELLITE9ADRS_MPI_AMBIGUOUS_CATEGORY
+			Appendix A. Detect and Avoid Symbology
+			THIS PAGE INTENTIONALLY LEFT BLANK
+		
+		
+			
+• float: 4 bytes • double: 8 bytes
+Byte Order and Need for Byte SwappingAll clients will publish messages in network byte order as computer networks transmit multi-byte numbers in this particular byte order.The most significant byte of a multi-byte number that is transmitted first over a network constitutes network byte order.Generally, different hosts (different CPUs) in the distributed environment can be little-endian or big-endian depending upon how bytes are ordered within a single word in the host memory.Therefore, when the little-endian host sends messages over the network it needs to convert (byte swap) them to network byte order before sending the messages out.Consequently, when the little-endian host receives a message over the network, it needs to convert the message back to host native byte representation, i.e. little-endian byte order.
+IHITL			
+			
+
+				
+
+
+	
+		Voltage References
+		
+			References ..................................................................................................................................
+		
+		10.1109/9780470547038.ch3
+	
+	
+		Voltage References
+		
+			IEEE
+			
+			9
+		
+	
+	References ....................................................................................................................................9
+
+
+
+	
+		
+		
+			RosaGarcía-Ruiz
+			
+				2 Standards ....................................................................................................................................
+			
+		
+		10.3916/school-of-authors-009
+		
+			null
+			Grupo Comunicar
+			9
+		
+	
+	2 Standards ......................................................................................................................................9
+
+
+
+	
+		Lunar Volatiles Collector (LVC)
+		
+			Known LVC System Clients ............................................................................................................
+		
+		10.2514/6.2022-1697.vid
+		
+			
+			American Institute of Aeronautics and Astronautics (AIAA)
+			10
+		
+	
+	Known LVC System Clients ...............................................................................................................10
+
+
+
+	
+		9. Messages – Definition, setting, output
+		
+			4 Definition of Messages Used in the LVC System ...........................................................................
+		
+		10.1515/9783110407617-010
+	
+	
+		ISPF Programmer's Guide
+		
+			DE GRUYTER
+			null
+			10
+		
+	
+	4 Definition of Messages Used in the LVC System ..............................................................................10
+
+
+
+	
+		general message
+		
+			1 General Message Construct .....................................................................................................
+		
+		10.1007/springerreference_15312
+		
+			null
+			Springer-Verlag
+			10
+		
+	
+	1 General Message Construct ........................................................................................................10
+
+
+
+	
+		Message types for securities
+		
+			2 Message Types .........................................................................................................................
+		
+		10.3403/bs6636
+		
+			null
+			BSI British Standards
+			11
+		
+	
+	2 Message Types ...........................................................................................................................11
+
+
+
+	
+		A message from NASPE Sport Structures: Domain 5: Teaching and Communication National Standards for Sport Coaches
+		
+			RichardKStratton
+			
+				3 Message Structures ...................................................................................................................
+			
+		
+		10.1080/08924562.2005.10591133
+	
+	
+		Strategies
+		Strategies
+		0892-4562
+		2168-3778
+		
+			18
+			3
+			
+			
+			Informa UK Limited
+		
+	
+	3 Message Structures .....................................................................................................................14
+
+
+
+	
+		TLS Handshake Message for Supplemental Data
+		
+			SSantesson
+			
+				1 Handshake Data Structure ....................................................................................................
+			
+		
+		10.17487/rfc4680
+		
+			
+			RFC Editor
+			14
+		
+	
+	3.1 Handshake Data Structure ......................................................................................................14
+
+
+
+	
+		Applications of state estimation in aircraft flight-data analysis
+		
+			RBach, Jr.
+			
+				2 MPI Aircraft Flight State Data Structure ..............................................................................
+			
+		
+		
+			RWingrove
+			
+				2 MPI Aircraft Flight State Data Structure ..............................................................................
+			
+		
+		10.2514/6.1983-2087
+	
+	
+		10th Atmospheric Flight Mechanics Conference
+		
+			American Institute of Aeronautics and Astronautics
+			
+			18
+		
+	
+	3.2 MPI Aircraft Flight State Data Structure ...............................................................................18
+
+
+
+	
+		A Detect-and-Avoid (DAA) Supplemental Data Service Provider (SDSP) for Small Unmanned Aircraft Sy...
+		
+			Ownship .................................................
+		
+		10.2514/6.2021-2392.vid
+		
+			
+			American Institute of Aeronautics and Astronautics (AIAA)
+			21
+		
+	
+	3.3 DAA Aircraft Track State Data Structure for the Ownship ...................................................21
+
+
+
+	
+		A Detect-and-Avoid (DAA) Supplemental Data Service Provider (SDSP) for Small Unmanned Aircraft Sy...
+		
+			.......................................................
+		
+		10.2514/6.2021-2392.vid
+		
+			
+			American Institute of Aeronautics and Astronautics (AIAA)
+			25
+		
+	
+	3.4 DAA Aircraft Track State Data Structure for Intruders .........................................................25
+
+
+
+	
+		Flight-Test Plan Design and Evaluation in a Closed-Loop Framework for a General Aviation Aircraft
+		
+			MPI Aircraft Flight Plan Structure ........................................................................................
+		
+		10.2514/6.2022-2170.vid
+		
+			
+			American Institute of Aeronautics and Astronautics (AIAA)
+			29
+		
+	
+	3.5 MPI Aircraft Flight Plan Structure .........................................................................................29
+
+
+
+	
+		Decentralized Trajectory Optimization of Multiple Aircraft Using Intent-Based Coordination
+		
+			Aircraft Flight Trajectory Intent Structure ..........................................................................
+		
+		10.2514/6.2021-0863.vid
+		
+			
+			American Institute of Aeronautics and Astronautics (AIAA)
+			32
+		
+	
+	3.6 Aircraft Flight Trajectory Intent Structure .............................................................................32
+
+
+
+	
+		DELETE THIS FILE
+		
+			7 Aircraft Delete Structure ......................................................................................................
+		
+		10.2514/3.59796
+	
+	
+		Journal of Aircraft
+		Journal of Aircraft
+		0021-8669
+		1533-3868
+		
+			12
+			1
+			
+			
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	3.7 Aircraft Delete Structure ........................................................................................................37
+
+
+
+	
+		Internal Structure and Properties of A Fuzzy Set
+		
+			Set Ownship Structure .........................................................................................................
+		
+		10.4135/9781412984300.n4
+	
+	
+		Fuzzy Set Theory
+		
+			SAGE Publications, Inc.
+			
+			
+		
+	
+	Set Ownship Structure ...........................................................................................................37
+
+
+
+	
+		Sense and Avoid Concepts: Vehicle‐Based SAA Systems (Vehicle‐to‐Vehicle)
+		
+			ŠtěpánKopřiva
+			
+				SAA) Threat Results Message ................................................................
+			
+		
+		
+			DavidŠišlák
+			
+				SAA) Threat Results Message ................................................................
+			
+		
+		
+			MichalPěchouček
+			
+				SAA) Threat Results Message ................................................................
+			
+		
+		10.1002/9781119964049.ch6
+		
+			
+			Wiley
+			
+		
+	
+	9 Sense and Avoid (SAA) Threat Results Message ..................................................................38
+
+
+
+	
+		Figure 5—figure supplement 2. Structure and stability of SAA complexes with lysoPC and POPC.
+		
+			SAA Release Structure ....................................................................................................
+		
+		10.7554/elife.46630.014
+		
+			null
+			eLife Sciences Publications, Ltd
+			42
+		
+	
+	3.10 SAA Release Structure ......................................................................................................42
+
+
+
+	
+		Sense and Avoid Concepts: Vehicle‐Based SAA Systems (Vehicle‐to‐Vehicle)
+		
+			ŠtěpánKopřiva
+			
+				Resolution Maneuver Structure ...............................................
+			
+		
+		
+			DavidŠišlák
+			
+				Resolution Maneuver Structure ...............................................
+			
+		
+		
+			MichalPěchouček
+			
+				Resolution Maneuver Structure ...............................................
+			
+		
+		10.1002/9781119964049.ch6
+		
+			
+			Wiley
+			
+		
+	
+	3.11 Sense and Avoid (SAA) Resolution Maneuver Structure .................................................42
+
+
+
+	
+		Sense and Avoid Concepts: Vehicle‐Based SAA Systems (Vehicle‐to‐Vehicle)
+		
+			ŠtěpánKopřiva
+			
+				SAA) Resolution Reroute Structure ...................................................
+			
+		
+		
+			DavidŠišlák
+			
+				SAA) Resolution Reroute Structure ...................................................
+			
+		
+		
+			MichalPěchouček
+			
+				SAA) Resolution Reroute Structure ...................................................
+			
+		
+		10.1002/9781119964049.ch6
+	
+	
+		Sense and Avoid
+		
+			Wiley
+			
+			
+		
+	
+	3.12 Sense and Avoid (SAA) Resolution Reroute Structure .....................................................45
+
+
+
+	
+		GPS and the Signal Format and Navigation Message of BDS-2
+		
+			YuLu
+			
+				13 Navigation Mode Message Structure ...............................................................................
+			
+		
+		10.1007/978-981-16-1075-2_3
+	
+	
+		Navigation: Science and Technology
+		
+			Springer Singapore
+			
+			
+		
+	
+	3.13 Navigation Mode Message Structure .................................................................................46
+
+
+
+	
+		Verification of Neural Network Compression of ACAS Xu Lookup Tables with Star Set Reachability
+		
+			14 ACAS_Xu Data Structures ..............................................................................................
+		
+		10.2514/6.2021-0995.vid
+		
+			
+			American Institute of Aeronautics and Astronautics (AIAA)
+			48
+		
+	
+	3.14 ACAS_Xu Data Structures ................................................................................................48
+
+
+
+	
+		Quasi-ground, quasi-beta, and quasi-gamma bands—1974
+		
+			MitsuoSakai
+			
+				Stratway Bands Data Structure ........................................................................................
+			
+		
+		10.1016/0092-640x(75)90014-5
+	
+	
+		Atomic Data and Nuclear Data Tables
+		Atomic Data and Nuclear Data Tables
+		0092-640X
+		
+			15
+			6
+			
+			
+			Elsevier BV
+		
+	
+	3.15 Stratway Bands Data Structure ..........................................................................................54
+
+
+
+	
+		Welcome Message from the Chairs
+		
+			SAA) Band Message ............................................................................................
+		
+		10.1109/coins51742.2021.9524242
+	
+	
+		2021 IEEE International Conference on Omni-Layer Intelligent Systems (COINS)
+		
+			IEEE
+			
+			56
+		
+	
+	3.16 Omni (SAA) Band Message ..............................................................................................56
+
+
+
+	
+		Distinctive Characteristics of Muhammad’s Message
+		
+			AbdouFilali-Ansary
+			
+				Message Structures .........................................................................................
+			
+		
+		
+			SikeenaKarmaliAhmed
+			
+				Message Structures .........................................................................................
+			
+		
+		10.3366/edinburgh/9780748639670.003.0004
+	
+	
+		IslamBetween Message and History
+		
+			Edinburgh University Press
+			
+			
+		
+	
+	Message Structures ...........................................................................................57
+
+
+
+	
+		On Reliable Topological Structures for Message-Switching Communication Networks
+		
+			IRubin
+			
+				Message Structures .........................................................................................
+			
+		
+		10.1109/tcom.1978.1093974
+	
+	
+		IEEE Transactions on Communications
+		IEEE Trans. Commun.
+		0096-2244
+		
+			26
+			1
+			
+			
+			Institute of Electrical and Electronics Engineers (IEEE)
+		
+	
+	Message Structures ...........................................................................................62
+
+
+
+	
+		clear message
+		
+			19 Well Clear Recovery Message .........................................................................................
+		
+		10.1007/springerreference_10131
+		
+			null
+			Springer-Verlag
+			65
+		
+	
+	3.19 Well Clear Recovery Message ...........................................................................................65
+
+
+
+	
+		Enhancing the Functionality of Performance Measurement Tools for Message Passing Environments
+		
+			MarianBubak
+			
+				4 Message Content Notes ............................................................................................................
+			
+		
+		
+			WŀodzimierzFunika1
+			
+				4 Message Content Notes ............................................................................................................
+			
+		
+		
+			KamilIskra
+			
+				4 Message Content Notes ............................................................................................................
+			
+		
+		
+			RadosŀawMaruszewski
+			
+				4 Message Content Notes ............................................................................................................
+			
+		
+		
+			RolandWismüller
+			
+				4 Message Content Notes ............................................................................................................
+			
+		
+		10.1007/3-540-48158-3_9
+	
+	
+		Recent Advances in Parallel Virtual Machine and Message Passing Interface
+		
+			Springer Berlin Heidelberg
+			null
+			
+		
+	
+	4 Message Content Notes ..............................................................................................................67
+
+
+
+	
+		QoE-based pseudo heartbeat message compression mechanism for future wireless network
+		
+			ZhiqunHu
+			
+				1 Heartbeat Message ...............................................................................................................
+			
+		
+		
+			ZhaomingLu
+			
+				1 Heartbeat Message ...............................................................................................................
+			
+		
+		
+			XiangmingWen
+			
+				1 Heartbeat Message ...............................................................................................................
+			
+		
+		
+			WenpengJing
+			
+				1 Heartbeat Message ...............................................................................................................
+			
+		
+		10.1002/dac.3122
+	
+	
+		International Journal of Communication Systems
+		Int. J. Commun. Syst.
+		1074-5351
+		
+			29
+			9
+			
+			
+			Wiley
+		
+	
+	4.1 Heartbeat Message .................................................................................................................67
+
+
+
+	
+		Encapsulated Data Data Type
+		10.32388/2ynru4
+		
+			
+			Qeios
+			67
+		
+	
+	4.2 Primitive Data Type Definitions and Sizes in Bytes ..............................................................67
+
+
+
+	
+		Understanding and integrating quantum chemistry byte by byte
+		
+			AnnabelleLolinco
+			
+				............................................................................
+			
+		
+		10.31274/etd-20200624-21
+		
+			null
+			Iowa State University
+			68
+		
+	
+	4.3 Byte Order and Need for Byte Swapping ..............................................................................68
+
+
+
+	
+		Acronym List
+		
+			5 Acronym List ....................................................................................................................................
+		
+		10.1002/0470855304.acron
+	
+	
+		IP Over WDM
+		
+			John Wiley & Sons, Ltd
+			null
+			
+		
+	
+	5 Acronym List ......................................................................................................................................69
+
+
+
+	
+		Applying Sensor Uncertainty Mitigation Schemes to Detect-and-Avoid Systems
+		
+			Appendix A. Detect and Avoid Symbology .....................................................................................
+		
+		10.2514/6.2020-3264.vid
+		
+			
+			American Institute of Aeronautics and Astronautics (AIAA)
+			72
+		
+	
+	Appendix A. Detect and Avoid Symbology .......................................................................................72
+
+
+
+	
+		APPENDIX: LIST OF STIMULI USED IN THE STUDY, WITH ASSOCIATED VALUES OF CONCEPT FAMILIARITY AND AGE OF ACQUISITION (A-o-a)
+		
+			BAppendix
+			
+				ADRS Proc and Category Values ................................................................................
+			
+		
+		10.4324/9780203990292-22
+	
+	
+		Category Specificity in Brain and Mind
+		
+			Psychology Press
+			
+			
+		
+	
+	Appendix B. ADRS Proc and Category Values ..................................................................................73
+
+
+				
+			
+		
+	

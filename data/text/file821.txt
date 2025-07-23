@@ -1,0 +1,260 @@
+
+	
+	
+		
+IntroductionIn the National Airspace System (NAS), arrival meter fixes are fixes over which aircraft are metered prior to entering terminal airspace.Using meter fixes is critical for air traffic controllers to manage arrival traffic safely and efficiently.When aircraft funnel through the same meter fix they are required to maintain minimum separation for safety reasons.However, for an airport, high demand at a few arrival meter fixes can cause unacceptable arrival scheduling delay even though runways and the rest of the meter fixes are still underutilized.Many factors, including but not limited to, uncoordinated flight plans, geometric locations of airports, uncertainty in flight times and departure times, and weather, contribute to the imbalance among meter fixes and runways.The Optimized Route Capability (ORC) concept [1] proposed by the FAA was envisioned to assist Traffic Management Units (TMUs) identify and resolve arrival flight delays caused by imbalance between meter fixes and runways by collecting and interpreting data, predicting and calculating arrival flight times, and evaluating and optimizing route options.NASA teamed with the FAA to implement an initial algorithm and evaluate the ORC concept [2].The ORC concept takes advantage of precise predictions from automation functions.These predictions include the estimated times of arrivals (ETAs) at meter fixes and arrival schedules inside the Terminal Radar Approach Control (TRACON) areas.In the NAS, they can be obtained by using the Traffic Flow Management System (TFMS) and Time Based Flow Management (TBFM) automation tools [3], respectively.The core function of ORC monitors arrival flight delays at meter fixes based on predicted meter fix ETAs and arrival schedules.If the estimated arrival flight delays at meter fixes exceed a predefined delay threshold, a route option search engine of ORC function will be triggered.The search function will evaluate eligible re-routes and identify the best routes to alternative meter fixes.The resulting reroutes will be presented to decision makers.The initial implementation and evaluation were reported in previous work [2], which showed substantial flight time saving.In the initial implementation, the route option search function utilized a brute-force search method based on a heuristically prioritized flight list and the route option search space was limited to be the spatial dimension only.This work extends previous work by introducing an optimization search method and adding a temporal dimension in reroute search space.The optimization search method was used to identify reroutes with more flight time savings than the brute force method.The temporal dimension was added in reroute options to identify the best time to reroute, which was expected to further improve results.This paper is organized as follows: Section II describes the concept and implementation architecture of ORC; Section III presents the proposed approach; Section IV & V provide the experiment setup, results and analysis; Section VI concludes this work.
+Optimized Route CapabilityWhen imbalance at the meter fixes occurs, traffic managers may not be able to notice the imbalance in time and it is also hard for traffic managers to identify efficient re-route candidates as they don't have adequate time for conducting many evaluations.The ORC concept [1][2] is proposed to build a tool to assist traffic managers to identify and resolve arrival flight delays caused by such imbalance.
+Concept
+Figure 1. ORC concept diagramFigure 1 presents the main functions in the ORC concept.The predictions of ETAs at meter fixes and arrival schedules inside the TRACON areas are first obtained to predict congestion at overloaded arrival meter fixes.Once arrival fix overloads are predicted, a set of pre-filtered reroute options will be fed into a search function.The search function will identify the best re-route combinations after evaluating possible delays associated with each given re-route option.
+ImplementationIn the implementation, the Future ATM Concepts Evaluation Tool (FACET) [4] tool was used to serve as a trajectory prediction function to estimate unimpeded meter fix ETAs, where the simulation cycle is one minute.A simplified model of the TBFM arrival scheduler, which was developed to reduce computation time for iterative use, was applied to emulate TBFM to predict the schedules inside of the TRACON airspace [2][5].This arrival scheduler takes flights' ETAs as inputs and allocates the scheduled times of arrival (STAs) to flights based on separation requirements, runway assignment logic and adaption data similar to the existing TBFM tool [3].Fig. 2 shows the implementation diagram for ORC evaluation experiments.The diagram shows a self-contained close-loop design.The rerouting solution, if it exists, suggested by the ORC algorithm is automatically accepted by the system and fed into the next time-step (e.g., 1 minute) of simulation.
+Figure 2. ORC implementation diagramAs shown in this figure, the traffic data and airport related data, such as the published standard terminal arrival routes (STARs) will be fed into the system.The 'Reroute Generator' function generates cloned flights with flight plans re-directed to different arrival fixes.For eligibility of reroutes to alternative meter fixes, certain rules were applied: If a flight is within 5 minutes travel time to any center boundary, it will not be eligible to reroute; If a flight's ETA to its arrival fix is more than 90 or 120 minutes or if it's 700 miles away from the airport, it will be not eligible.There are also geographical restrictions on reroutes a flight can only reroute to its neighboring arrival fixes.The flight plan list, including those candidate reroute flight plans, will be fed into FACET all together.Corresponding meter fix arrival times will be calculated at once for all flights to save computational time.The information of actual flights will be input into the arrival scheduler to see if there is any non-absorbable delay at arrival fixes.If the arrival fix delay is over a predefined threshold, the search engine is triggered to find a rerouting solution to offload the congested arrival fix.The search engine will try to replace current routes with alternative routes and identify a re-routing option that can reduce the arrival fix delay to less than the predefined threshold.If no alternative route can cut the delay to the threshold, then a partial solution that can reduce the delay the most will be output.Or there will be no solution at all if none of alternative routes could reduce the delay.Either a complete or partial solution will be fed into next step, affecting the next cycle of reroute generation.
+Planning HorizonsThere are two planning horizons in the ORC implementation.One decides when a flight is eligible for rerouting, which is called eligibility horizon.The perception horizon, which is usually further away in time than the range of eligibility horizon, dictates when a flight should be taken into account in the arrival scheduler, even if it is out of scope for reroute eligibility.These two horizons can be the same and can be defined using either a distance or a time.In previous work, a 90-minute range was utilized for both, which means flights beyond 90 minutes from the airport are not eligible for rerouting nor can they be observed and considered in the arrival scheduler.Shortcomings may arise when both ranges are set the same.Because the information of the trailing flights is unknown, it affects the optimality of the reroute solution.
+MethodIn the ORC concept the best re-routes and the best time for re-routing when resolving overloads at meter fixes will be identified.Re-routing flights right after they are eligible may cause a "first-come-firstreroute" phenomenon, which is due to the absent information about the trailing flights that are out of the detection or perception horizon.
+Expansion of reroute optionsIn this work, a temporal dimension was added in the search space.Figure 2 shows an example of adding a temporal dimension in reroute options.The current position of the flight is shown as a green triangle and its current flight plan (a white dash line) shows the flight is going to fly to WHACK meter fix via SWB.Meanwhile, this flight is eligible to reroute to the meter fixes MPORT and LINKK via CVE and LFT, respectively, as shown in yellow dash lines.Adding temporal reroute options will allow this flight to be rerouted in any future time at specific Δt minute intervals.This extension of the reroute solution space provides an extra degree of freedom in rerouting by allowing flights to go to alternative fixes at a future time.Therefore, the optimizer doesn't have to rush into a sub-optimal reroute solution at planning time.
+Figure 2. Temporal dimension in reroutes
+OptimizationThe search method applied in the initial algorithm [2] was developed based on a brute-force search with a heuristic priority flight list for rerouting.Two shortcomings may arise from the initial method: the brute-force method will encounter difficulties when the re-route options are large due to increased numbers of flights or enlarged planning horizon; Second, in the future, when introducing uncertainties into the model, a powerful optimization method is definitely desired due to an even larger search space.In order to develop an ORC algorithm with a high capability of searching, such that alternative routes with more flight time saving can be identified in a fast-time or real-time fashion, a genetic algorithm (GA) method [6] is developed and implemented based on a Non-dominated Sorting Genetic Algorithm (NSGA) [7] for the ORC concept.A Genetic Algorithm (GA) mimics the process of natural selection by selection, mutation, and crossover.It is widely applied because of its capability of handling nonlinear optimization problems and parallel computing.(1)To achieve the maximum runway throughput, another cost function (Eqn.2), which is to minimize the total of the runway landing times rwySTA i , is also tried in this work.(2)
+ExperimentsExperiments were set up to examine the proposed method.As described previously, the experiments are designed to be closed-loop.Any reroute solution recommended by the algorithm will be executed in the next simulation cycle except for the reroutes planned in a future time.A future reroute will be re-evaluated in the next simulation cycle until it becomes a present reroute.
+Traffic ScenarioA traffic scenario was created based on 2-hour historical arrival traffic into George Bush Intercontinental Houston Airport on Oct 22, 2014.On this day, Houston airport had high traffic volume, low weather impacts and was dominated by the W3 runway configuration, which is West flow and three arrival runways in operation.Flight plans were slightly changed to make sure flights would go through one of the four major meter fixes, WHACK (Northeast), MPORT (Northwest), GMANN (Southwest) and LINKK (Southeast).The traffic was increased by adding some flights to create a challenging rush to WHACK.A total of 163 flights were included in the traffic scenario and 12 of them were added manually to increase the load at WHACK.According to the original arrival fix ETAs, the traffic reaches its peak around 11:45 am, when the load at WHACK is about 15 flights in a 15minute interval while MPORT, GMANN, and LINKK have 5, 1, and 7 flights, respectively.
+Horizon Set-upIn the experiments, the proposed approach used different values for the eligibility horizon and perception horizon.Because of the capability of finding solutions in a future time, the new approach can perceive and utilize the information of trailing flights beyond the eligibility horizon without rushing into a 'first-come-first-reroute' situation.
+ResultsExperiments were conducted to evaluate the proposed new approach along with different parameter settings.The study cases including their search methods and associated parameters are shown in Table 1.The 'ORC0' case is the same approach used in previous work [2].The 'ORC1' case utilized a different cost function to increase runway throughput (Eqn.2).The 'ORC2' case increased the perception horizon to 120 minutes to include trailing flight information to improve planning.The 'ORC3' case introduced the temporal dimension.
+Delay savingsThe delay refers to the delay at the runway, which is the difference between unimpeded runway landing time and the actual/simulated runway landing time.Figure 5 shows the comparison of delay savings among different cases.The comparison between 'ORC0' and 'ORC1' shows that minimizing the total runway landing times allows 18 minutes more delay savings, and therefore, increases the runway throughput.By increasing the perception horizon in 'ORC2', the delay savings were further improved by 6 minutes.Using the ultimate approach, 'ORC3' can plan reroutes in a future time to increase the delay savings another 6 minutes to 143 minutes.
+Figure 5. Comparison of delay savings
+Delay distributionsWhen there is no ORC, flights stay with their original arrival fixes.Imposed delays at arrival meter fixes can be called scheduled delay and have to be absorbed through holding or vectoring before entering TRACON.When ORC moves flights, extra flight time may be imposed when flights are directed to alternative meter fixes.Since the time to fly (TTF) would be different between different meter fixes to runways, extra flight time may also be introduced here as well.Figure 6 shows the total delay distributions associated with original routing and the ORC cases.The remainder of the ORC comparisons will be between 'ORC2' and 'ORC3' to focus on the effects of adding the temporal dimension.Results demonstrated that the only delay source for the 'Original' was the scheduled delay.ORC algorithms introduced extra time due to the change of meter fixes even though they managed to reduce the overall delays.The delays caused by extra distances to alternative meter fixes for 'ORC2' and 'ORC3' are 54 and 43 minutes, respectively.The difference between the ORC cases is actually caused by one less reroute in 'ORC3', which will be further investigated in the next section.
+Figure 6. Comparison of delay sources
+Reroute solutionsBesides the delay savings, the number of flights moved is another important metric.Figure 7 presents the time history of reroutes suggested by 'ORC2' and 'ORC3'.Orange boxes identify reroutes to MPORT, whereas the rest are to LINKK.This figure demonstrates that 'ORC3' suggested moving eight flights to alternative meter fixes, with two to MPORT and six to LINKK.'ORC2' moved nine flights with three to MPORT and six to LINKK.Fewer moves are preferred in actual operations due to the operational complexity associated with each move.Fewer moves also lead to less extra time to alternative fixes as shown in Fig. 6 in previous section.The main difference between these two cases is the timing of those moves.Apparently, most of moves from 'ORC3' happened later than those from 'ORC2'.The average time frame of the route changes was postponed around 30 minutes.Because the temporal dimension was added into the rerouting solutions of 'ORC3', it had the capability to consider trailing flights for future reroutes even though they were still out of the eligibility horizon.'ORC3' can consider solutions in future times to improve the optimality and stability of the route change suggestions.Therefore, 'ORC3' can wait for the best moves, which enhances ORC's capability in actual operations.Controllers prefer to make these decisions as late as possible, because, in the real world, the uncertainty is usually high when the look-ahead time is early and it decreases with time.
+Meter fix loadsFigure 9 presents the meter fix loads that resulted from different cases between 11:00 to 13:00 in 15-minute intervals.Both ORC cases managed to offload WHACK traffic to alternative meter fixes around 11:52 and reduced the load at WHACK from 22 in the 'Original' case to less than 15.Most of these reroutes were to LINKK, which matches the solutions described in the previous section.Meanwhile, slight differences exist between 'ORC2' and 'ORC3', including numbers of reroutes and destination meter fixes.
+Figure 9. Comparison of meter fix loads
+Airport loadsFigure 10 presents the airport loads that resulted from different cases between 11:00 to 14:00 in 15minute intervals.The figure shows that both ORC cases shifted the airport load forward from 'Original' by moving flights to alternative arrival fixes to utilize the airport capacity, which was not fully used in the 'Original' case due to the saturated WHACK fix.This shift happened around 13:00, when both ORC cases pushed the runway loads to about 28 per 15-minute interval.The 'Original' underutilized runways with less then 20 landings in the same period because WHACK fix was congested and formed the bottleneck.
+Figure 10. Comparison of airport loadsBoth ORC cases showed great similarity in airport loads.However, 'ORC3' was able to push a couple more flights earlier than 'ORC2' around 13:00 to further utilize the runway capacity.
+DiscussionAdding a temporal dimension in reroute options enables the optimizer to identify the best time to move flights and enhance the optimality and stability of the reroutes.Although adding a temporal dimension introduces a large number of reroute options, it can be handled well by the GA optimization algorithm.Including uncertainty in future work will be important and necessary in order to handle departure time and weather impacts precisely.Since GA-type optimization can be parallelized and combined with Graphics Processing Unites (GPU) implementation [8], the proposed approach will enable the introduction of uncertainties in future research, where uncertainties can be injected to route options in terms of their corresponding look-ahead times.
+SummaryThe ORC concept was proposed to facilitate traffic managers to fully utilize airport runway capacity when bottlenecks are formed in certain meter fixes.By making full use of the data and prediction capability provided by automation tools and optimization/search capability by advanced algorithms, the ORC concept can ease the burden on traffic mangers while improving the efficiency in TRACON operations.On the basis of initial implementation of the ORC concept, a temporal dimension was added to route options, which provides the opportunity for the ORC tool to find the best time to change routes.Meanwhile, a GA-based optimization algorithm was developed to enable ORC to solve the large solution space due to the expanded route options.Experiments were conducted using the same 2hour traffic scenario used in previous work.Results showed that the new approach further improved total delay savings from 113 to 143 minutes.More importantly, the suggested reroutes from the proposed approach were on average 30 minutes later than previous ORC approaches, which may be preferred in actual operations to reduce uncertainty.Also, the number of route changes recommended was less than previous approaches, which would reduce complexity associated with rerouting flights.This work offers promise in improving the efficiency and stability of reroutes in the NAS.Figure 3 .Figure 4 .34Figure 3. Sample reroute options
+Figure 7 .Figure 878Figure 7.Comparison of reroutes (orange boxes represent reroutes to MPORT) Figure 8 provides the runway landing time differences among individual flights when comparing 'ORC2' and 'ORC3'.Positive values denote that the flight landed earlier in 'ORC3' and negative values appear when the flight landed earlier in 'ORC2'.Out of 163 flights, 17 flights are presented with different runway landing times.Although the overall delay reductions are only slightly different as shown in Fig.6, the individual flight landing times for these 17 flights are quite different due to the different route choices.
+Figure 8 .8Figure 8.Comparison of flight landing times
+
+Table 1 . Case study set up1CaseCost functionSearchTemporal dimensionEligibility horizonPerception horizonORC0Eqn. 1Brute-force + priority flight listNo90 min90 minORC1Eqn. 2GANo90 min90 minORC2Eqn. 2GANo90 min120 minORC3Eqn. 2GAYes90 min120 min
+		
+		
+
+			
+AcknowledgementsThe authors would like to acknowledge the contributions from Philip Basset of FAA, Christina Young and Albert Schwartz from the FAA Technical Center in generating the traffic scenario for the ORC evaluation experiments.
+			
+
+			
+
+				
+
+
+	
+		Optimized Route Capability (ORC) Intelligent Offloading of Congested Arrival Routes
+		
+			ShannonZelinski
+		
+		
+			MinXue
+		
+		
+			PhilipBassett
+		
+		10.2514/6.2016-4357
+	
+	
+		16th AIAA Aviation Technology, Integration, and Operations Conference
+		Washington, D.C
+		
+			American Institute of Aeronautics and Astronautics
+			September 2015
+		
+	
+	Federal Aviation Administration, September 2015, "Optimized Route Capability -A Revised Concept of Operations", Washington, D.C.
+
+
+
+	
+		Optimized Route Capability (ORC) Intelligent Offloading of Congested Arrival Routes
+		
+			ShannonZelinski
+		
+		
+			MinXue
+		
+		
+			PhilipBassett
+		
+		10.2514/6.2016-4357
+	
+	
+		16th AIAA Aviation Technology, Integration, and Operations Conference
+		Washington, D.C
+		
+			American Institute of Aeronautics and Astronautics
+			June 2015
+		
+	
+	Zelinski, S., Xue, M., and Bassett, P., June 2015, "Optimized Route Capability Intelligent Offloading of Congested Arrival Routes", AIAA Aviation 2016, Washington, D.C.
+
+
+
+	
+		A framework for decision making in extended enterprises: The FAA NextGen case
+		
+			HamidRDarabi
+		
+		
+			MoMansouri
+		
+		
+			NazaninAndalibi
+		
+		
+			EileenPara
+		
+		10.1109/icumt.2010.5676566
+		
+	
+	
+		International Congress on Ultra Modern Telecommunications and Control Systems
+		
+			IEEE
+			
+		
+	
+	FAA NextGen Decision Support Systems, https://www.faa.gov/nextgen/update/progress_and_ plans/decision_support_systems/
+
+
+
+	
+		FACET: Future ATM Concepts Evaluation Tool
+		
+			KarlDBilimoria
+		
+		
+			BanavarSridhar
+		
+		
+			ShonRGrabbe
+		
+		
+			GanoBChatterji
+		
+		
+			KapilSSheth
+		
+		10.2514/atcq.9.1.1
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			9
+			1
+			
+			June 2000
+			American Institute of Aeronautics and Astronautics (AIAA)
+			Napoli, Italy
+		
+	
+	3 rd USA
+	Bilimoria, K., Sridhar, B., Chatterji, G., Sheth, K., and Grabbe, S., June 2000, "FACET: Future ATM Concepts Evaluation Tool", 3 rd USA/Europe Air Traffic Management R&D Seminar, Napoli, Italy.
+
+
+
+	
+		A Closed-Form Solution to Multi-Point Scheduling Problems
+		
+			LarryMeyn
+		
+		10.2514/6.2010-7911
+	
+	
+		AIAA Modeling and Simulation Technologies Conference
+		Toronto, Canada
+		
+			American Institute of Aeronautics and Astronautics
+			August 2010
+		
+	
+	Meyn, L., August 2010, "A Closed-Form Solution to Multi-Point Scheduling Problems", AIAA Modeling and Simulation Technologies Conference, Toronto, Canada.
+
+
+
+	
+		Genetic Algorithms + Data Structures = Evolution Programs
+		
+			ZMichaelwicz
+		
+		10.1007/978-3-662-03315-9
+		
+			1996
+			Springer Berlin Heidelberg
+			Berlin Heidelberg
+		
+	
+	Michaelwicz, Z., 1996, "Genetic Algorithms + Data Structures = Evolution Programs", Springer- Verlag, Berlin Heidelberg.
+
+
+
+	
+		A fast and elitist multiobjective genetic algorithm: NSGA-II
+		
+			KDeb
+		
+		
+			APratap
+		
+		
+			SAgarwal
+		
+		
+			TMeyarivan
+		
+		10.1109/4235.996017
+	
+	
+		IEEE Transactions on Evolutionary Computation
+		IEEE Trans. Evol. Computat.
+		1089-778X
+		
+			6
+			2
+			
+			2003
+			Institute of Electrical and Electronics Engineers (IEEE)
+		
+	
+	Deb, K., Pretap, A., Agarwal, S., and Meyarivan, T., "A Fast and Elitist Multi-objective Genetic Algorithm: NSGA-II", IEEE Transaction On Evolutionary Computation, Vol.6, No.2, 2003, pp.182-197.
+
+
+
+	
+		Integrated Arrival- and Departure-Schedule Optimization Under Uncertainty
+		
+			MinXue
+		
+		
+			ShannonZelinski
+		
+		10.2514/1.c032957
+	
+	
+		Journal of Aircraft
+		Journal of Aircraft
+		0021-8669
+		1533-3868
+		
+			52
+			5
+			
+			2015. 2016
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	35th Digital Avionics Systems Conference September 26-29
+	Xue, M., and Zelinski, S., "Integrated Arrival and Departure Schedule Optimization Under Uncertainty", AIAA Journal of Aircraft, Vol.52, No.5, 2015, pp.1437-1443. 35th Digital Avionics Systems Conference September 26-29, 2016
+
+
+				
+			
+		
+	

@@ -1,0 +1,429 @@
+
+	
+	
+		
+I. IntroductionOISE from aircraft has direct health, social and economic impacts to local residents and communities near the airport vicinity.It is one of the leading aviation-induced environmental issues that have been studied for decades.In U.S., about 500,000 people today are affected by aircraft noise based on the FAA's Office of Environment and Energy's standard, i.e. people that live in the area where the Average Day-and-Night Sound Exposure Level over 24 hours (DNL) is 65dB or more.65dB DNL is recommended as threshold of compatibility with residential land use.However, experts have suggested a lower level of 55dB DNL as "level of environmental noise requisite to protect the public health and welfare with an adequate margin of safety" (1972 Noise Control Act).In addition, global air transportation is expected to grow annually at near 5% according to Airbus and Boeing [1,2] that will result in an increased number of people affected by aircraft noise.There are mainly two ways to reduce aircraft noise impact on the environment.One is through developing noisereduction aircraft engine technologies.The other is by redesigning currently operated terminal routes to mitigate the aircraft noise impact while ensuring safety and throughput.Some recent work can be found in [3][4][5][6][7][8][9][10][11].The FAA has developed the Integrated Noise Model (INM) and its replacement Aviation Environmental Design Tool (AEDT) 5  software to simulate terminal flight operations and assess noise impact in the vicinity of airport.For the rest of this paper, only AEDT is mentioned when referring to the FAA's aviation noise assessment software for simplicity purposes.AEDT was commonly used by the FAA and local airport authorities to evaluate the noise impact for any terminal route design.However, designing such noise-abatement terminal routes using AEDT can be difficult and time-consuming.First, any flight profile change requires modification of input files.Secondly, the design parameters are restricted.For example, users cannot specify aircraft speed and engine thrust in some circumstances.Thirdly, intermediate results such as noise impact resulting from only a partial flight profile are not available, although users having special knowledge of the software system can read and write to the database directly to achieve some degree of flexibility.Fourthly, AEDT does not provide Application Program Interface (API) to integrate with external programs.All external communications has to go through its Graphical User Interface (GUI) and output files.There exists work on terminal route design using the noise models that are different from AEDT.However, AEDT is certified by the FAA to assess airport noise impact for planning and regulation in U.S.This motivates the development of a tool, named AIRNOISE, for fast-time aircraft noise impact evaluation and preliminary terminal route design with the following benefits:(1) Accurate: The noise computation method in AIRNOISE is similar to AEDT with some simplifications by excluding atmospheric and terrain corrections; This results in a good approximation of the noise impact; (2) Fast and simple to use: An interactive GUI is developed allowing users to directly modify flight routes and displaying the corresponding noise exposure levels in near real-time due to the maximization of the software computation efficiency using machine efficient language and/or high performance computing; (3) Flexible to use: The standalone noise computation module can be conveniently customized to integrate with other flight simulation software for fast-time noise exposure level computation or integrate with optimization software for iterative terminal route design.The paper is organized as follows: Section II introduces the software model.Section III uses Baltimore-Washington International Airport to demonstrate the software usage.Finally, Section IV provides the conclusion.
+II. Software ModelThe overall software structure of AIRNOISE is presented in Fig. 1.The leftmost block in Fig. 1 specifies the software inputs that are given by flight profiles (including aircraft position, aircraft speed, and engine thrust) following Standard Terminal Approach Routes (STARs) or user-defined routes.Inputs also include locations of receptors that can be either uniformly distributed grid points or centroids of census blocks in the airport vicinity from the United States Geological Survey (USGS) database.The rightmost blocks represents the noise computation programs.The noise computation method is based on SAE's standard procedures that are also used in the FAA's software [12][13][14].Detailed equations and discussions can be found in previous work [15].The method is implemented in the C programming language.The C-version AIRNOISE generally takes a few seconds to calculate noise impact, measured by Sound Exposure Level (SEL), on hundreds of receptors resulting from a single aircraft approach profile.However, DNL, which is commonly used by federal and local authorities to determine noise impact at an airport, is computed by accumulating SELs from hundreds of individual aircraft event during a 24-hour period that could take minutes using the C-version AIRNOISE.Gradient-based optimization algorithms for noise-abatement terminal route design also require to calculate the SELs of hundreds of candidate routes.In order to reduce the noise computational time to a real-time level in those scenarios, the C code is revised into a compatible version to run on NVidia's CUDA platform.The CUDA-version AIRNOISE allows access to multiple NVidia's video cards for GPU-accelerated parallel computing that greatly reduces the total computation time up to hundredfold.Finally, the GUI (middle block in Fig. 1) that is developed in the Python language provides interaction with users for terminal route design, noise impact visualization and analytics.Figure 1.AIRNOISE software structure Users can pick and move any waypoint along the route profiles using the mouse in the GUI.The Python program then calls the precompiled C programs to calculate the corresponding noise exposure levels and displays the results.Figure 2 illustrates an example to move a waypoint from A to A' along a terminal approach route.The route's vertical profile changes accordingly as shown in Fig. 3. Figure 4 show those receptors, at which SELs are equal or greater than 60dB obtained from AIRNOISE.Figure 5 shows a case of a Boeing 737-300 that approaches to the Baltimore-Washington International Airport (KBWI).Figure 5 also displays centroids of all census blocks with population of 100 or greater in the airport vicinity.The flight passes though the eastside of Baltimore City while descending to runway 33L. Figure 5.A Boeing 737-300 (red line) that approaches to Baltimore-Washington International Airport, where the census population near the airport is categorized using different colors Census locations with high noise exposure can be quickly identified using AIRNOISE as shown in Fig. 6.It took a total of less than 2 seconds to compute SELs at all census block locations using C-version AIRNOISE in this case.Furthermore, various statistics can be revealed using outputs from AIRNOISE.For example, Figure 7 shows the distribution of population that are exposed to various sound exposure levels resulting from the flight.About 40,000 census population are exposed to SEL 70dB or greater.That is considered to be moderately loud or "annoying".About 2,600 census population are exposed to SEL 80dB or greater, a level that can cause possible hearing damage.
+Census
+III. ResultsIn this Section, the Baltimore-Washington International Airport (KBWI) is chosen to demonstrate AIRNOISE's usage.Figure 9 shows all STARs (standard terminal approach routes) and the runway configuration at KBWI.First, noise impact, measured by sound exposure levels, is computed using AIRNOISE are directly compared with outputs from the FAA's AEDT software given the same flight profile input to validate the accuracy of ARINOSIE.Then AIRNOSIE's usage is demonstrated by various use cases at KBWI.Lastly, the performance of the CUDA-version AIRNOISE is discussed.
+III.1 Validation with AEDTFirst, a single approach flight operation is simulated using the FAA's AEDT2b to generate a flight profile that includes aircraft position, aircraft speed and engine thrust at an ordered sequence of waypoints.Note that it is not required to use AEDT2b to create a flight profile.AIRNOISE can work with any trajectory synthesizer.However, same flight profile inputs are used for validation purposes.The flight profile are imported into AEDT2b and AIRNOISE separately to compute SEL values at a given set of uniformly distributed grid points.The SEL values from AEDT2b and AIRNOISE are shown in Fig. 10.Figures 10 also shows the absolute difference of SEL values between AEDT2b and AIRNOISE at each grid point.These results show that differences between outputs from AEDT and AIRNOISE are less than 1dB at most grid points, except in the area near runway.The reason for such large SEL value discrepancy near the runway area is that AIRNOISE does not calculate SELs resulting from aircraft ground roll and taxi operations.Sound exposure levels resulting from a single approach flight profile of other Boeing and AIRBUS aircraft types are also obtained from AIRNOISE with the similar accuracy in comparison with results obtained from the FAA's AEDT2b Figure 10.AEDT2b screenshot that shows the flight profile plan view of a Boeing 737-300 on approach to KBWI (top the difference of Sound Exposure Level (SEL) values obtained from AEDT2b and AIRNOISE at a set of grid points (top right), the SEL output from AEDT2b (bottom left), and the SEL output from AIRNOISE (bottom right)
+III.2 A Use CaseFigure 11 shows the noise impact resulting from a Boeing 737-300 following an "ANTHM ONE 1" route that flies over central northern Baltimore city and is destined to runway 33L. Figure 11 also shows the flight vertical profile and population distribution that are exposed to 40dB SEL or greater.Analysis of outputs from AIRNOSIE shows that nearly 260,000 census population are exposed to 60dB SEL or greater due to this flight.Note that accumulated noise exposure levels or DNL will increase as more aircraft fly through this route.One of the main applications of AIRNOISE is to modify terminal approach routes and quickly evaluate the noise impact.directly towards final approach fix instead of going through "HOOOK" and "JANNS".Analysis shows that the census population that are exposed to 60dB and above is reduced by about 25,000 from 260,000 to 235,000.Note that this is simply to demonstrate AIRNOISE's capability.In terminal route design, other factors should also be considered to ensure safety and operational feasibility, which is left for future work.Area Navigation (RNAV) STARs "MIIDY ONE 2", "TROYZ TWO 2", and "RAVNN FOUR 2" are also destined to runway 33L in addition to "ANTHM ONE 1". Figure 13 summarizes the noise impacts obtained from AIRNOISE.Figure 14 shows histogram of the census population noise exposure.Route "ANTHM ONE 1" has a noise impact significantly greater than other routes measured by total number of census population that are exposed to 50dB or more, and route "MIIDY ONE" has the least noise impact.
+III.3 Discussion of CUDA-version AIRNOISEThe sound exposure levels are computed at thousands of predefined grids.They are the functions of relative orientations and distances to the aircraft, which means the computation of a value at one grid is independent of others.Therefore, the calculation of the sound levels can be parallelized and should benefit from the application of programmable GPUs, which has been widely used in parallel computing.In order to reduce the noise computational time to a real-time level, this aforementioned approach was implemented using Compute Unified Device Architecture (CUDA) [16] programming to make use of GPUs.In a Linux platform with 18x2.5 GHz Xeon, 32 GB memory, and two GeForce GTX690 GPUs, the computation of the sound exposure level for a ten-segment trajectory was finished in several hundredth of a second, which was hundreds time faster than C implementation on CPUs.
+IV. ConclusionThe FAA developed the Integrated Noise Model (INM) and its replacement Aviation Environmental Design Tool (AEDT) software to assess airport-neighbor noise impact resulting from all aviation activities for airport planning and regulation.However, a software tool is needed that is simple to use for terminal route modification, quick and reasonably accurate for preliminary noise impact evaluation and flexible to use for iterative design of optimal noiseabatement terminal routes.This paper describes the development of a software, named AIRNOISE, for fast-time calculation of airport noise impact and noise-abatement terminal route design that satisfy this criterion.A CUDAversion of AIRNOISE utilizing GPU-accelerated parallel computing is also developed to ensure fast-time noise impact evaluation for very large cases and/or iterative design processes that could otherwise take up to hours using INM/AEDT or C-version AIRNOISE.Applications of AIRNOISE can include: (1) preliminary noise impact assessment at the planning stage of new airport construction projects, (2) fast-time noise evaluation in response to local resident's noise related complaints due to noise pattern change resulting from route and/or flight schedule changes, and (3) integrate with optimization algorithms for noise-abatement terminal route design .Some future work may include: (1) improve AIRNOISE's GUI to be more user friendly, (2) add interface to import multiple flight trajectories from XML files and applied C-and CUDA-version AIRNOISE for airport DNL computation; (3) integrate AIRNOISE with an available trajectory synthesizer or developed a capable trajectory synthesizer to create flight profiles including aircraft speed and engine thrust given the aircraft flight routes as inputs; and (4) develop optimization algorithms to design the terminal noise-abatement route based on AIRNOISE.Figure 2 .Figure 3 .23Figure 2. Flight route plan view change when moving a waypoint from A to A'
+Figure 4 .4Figure 4. Receptors (red dots) with sound exposure level at 60dB or above resulting from an approach flight of Boeing 737-300 (blue line) obtained from AIRNOISE
+Figure 6 .Figure 7 .67Figure 6.Census block locations with 100 population or greater and 50db SEL or greater from AIRNOISE
+Figure 8 .8Figure 8. AIRNOISE Screenshot with a Boeing 737-300 that approaches to Baltimore-Washington International Airport
+Figure 9 .9Figure 9.Standard terminal approach routes (STARs) toward KBWI (top) and the runway configuration (bottom) (Courtesy of Google Map
+Figure 11 .11Figure 11.Boeing 737-300 approaches to KBWI following "ANTHM ONE 1" route (top), flight descent profile (bottom left), and distribution of population that are exposed to 40dB or greater (bottom right)
+Figure 12 illustrates this by modifying "ANTHOM ONE 1" by taking a shortcut from waypoint "ROAPS" ROAPS HOOOK JANNS Flight descent profile Number of people (in thousands)
+Figure 12 .12Figure 12.Boeing 737-300 approaches to KBWI following a modified "ANTHM ONE 1" route (top), flight descent profile (bottom left), and distribution of population that are exposed to 40dB or greater (bottom right)
+Figure 14 .14Figure 14.Disbtribution of the census popluation that is exposed to various sound exposure levels by arrival STAR
+
+
+			Downloaded by NASA AMES RESEARCH CENTER on August 17, 2016 | http://arc.aiaa.org| DOI: 10.2514/6.2016-3905
+		
+		
+			
+
+				
+
+
+	
+		Airbus industrie's global market forecast 1998 – 2017
+		
+			Airbus
+		
+		10.1016/s1290-0958(99)80005-7
+	
+	
+		Air & Space Europe
+		Air & Space Europe
+		1290-0958
+		
+			1
+			2
+			
+			2015-2034
+			Elsevier BV
+		
+	
+	AIRBUS, "Global Market Forecast 2015-2034"
+
+
+
+	
+		Current Market Outlook
+		
+			Boeing
+		
+		
+			2015-2034
+		
+	
+	Boeing, "Current Market Outlook 2015-2034"
+
+
+
+	
+		Systems Analysis of Noise Abatement Procedures Enabled by Advanced Flight Guidance Technology
+		
+			J. -PClarke
+		
+		10.2514/2.2590
+	
+	
+		Journal of Aircraft
+		Journal of Aircraft
+		0021-8669
+		1533-3868
+		
+			37
+			2
+			
+			March 2000
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	J. -P. Clarke, "Systems Analysis of Noise-Abatement Procedures Enabled by Advanced Flight Guidance Technology", Journal of Aircraft, Vol. 37, No. 2, March 2000
+
+
+
+	
+		Optimization of Noise Abatement Departure Trajectories
+		
+			HGVisser
+		
+		
+			RA AWijnen
+		
+		10.2514/2.2838
+	
+	
+		Journal of Aircraft
+		Journal of Aircraft
+		0021-8669
+		1533-3868
+		
+			38
+			4
+			
+			July 2001
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	H. G. Visser and R. A. A. Wijnen, "Optimization of Noise Abatement Departure Trajectories", Journal of Aircraft, Vol. 38, No. 4, July 2001
+
+
+
+	
+		Human Factors Implications of Continuous Descent Approach Procedures for Noise Abatement
+		
+			HayleyJ DavisonReynolds
+		
+		
+			RJohnHansman
+		
+		
+			TomGReynolds
+		
+		10.2514/atcq.14.1.25
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			14
+			1
+			
+			June, 2005
+			American Institute of Aeronautics and Astronautics (AIAA)
+			Baltimore, MD
+		
+	
+	6 th USA
+	H. J. Reynolds, T. G. Reynolds and R. J. Hansman, "Human Factors Implications of Continuous Descent Approach Procedures for Noise Abatement in Air Traffic Control", 6 th USA/Europe Air Traffic Management R&D Seminar, Baltimore, MD, June, 2005
+
+
+
+	
+		Noise-Minimum Runway-Independent Aircraft Approach Design for Baltimore-Washington International Airport
+		
+			MinXue
+		
+		
+			EllaMAtkins
+		
+		10.2514/1.15692
+	
+	
+		Journal of Aircraft
+		Journal of Aircraft
+		0021-8669
+		1533-3868
+		
+			43
+			1
+			
+			January 2006
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	M. Xue and E. M. Atkins, "Noise-Minimum Runway-Independent Aircraft Approach Design for Baltimore- Washington International Airport", Journal of Aircraft, Vol. 43, No. 1, January 2006
+
+
+
+	
+		Multi-Aircraft Dynamic Continuous Descent Approach Methodology for Low-Noise and Emission Guidance
+		
+			SAlam
+		
+		
+			MHNguyen
+		
+		
+			HAAbbass
+		
+		
+			ChrisLokan
+		
+		
+			MEllejmi
+		
+		
+			SKirby
+		
+		10.2514/1.c031241
+	
+	
+		Journal of Aircraft
+		Journal of Aircraft
+		0021-8669
+		1533-3868
+		
+			48
+			4
+			
+			July 2011
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	S. Alam, M. H. Nguyen, H. A. Abbass, C. Lokan, M. Ellejmi and S. Kirby, "Multi-Aircraft Dynamic Continuous Descent Approach Methodology for Low Noise and Emission Guidance", Journal of Aircraft, Vol. 48, No. 4, July 2011
+
+
+
+	
+		Vertical Trajectory Optimization for Continuous Descent Arrival Procedure
+		
+			SangGyunPark
+		
+		
+			John-PaulClarke
+		
+		10.2514/6.2012-4757
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		Minneapolis, MN
+		
+			American Institute of Aeronautics and Astronautics
+			August 2012
+		
+	
+	S. G. Park and J. -P Clarke, "Vertical Trajectory Optimization for Continuous Descent Arrival Procedure", AIAA Guidance Navigation, and Control Conference, Minneapolis, MN, August 2012
+
+
+
+	
+		Optimized Profile Descent Arrivals at Los Angeles International Airport
+		
+			J-PClarke
+		
+		
+			JBrooks
+		
+		
+			GNagle
+		
+		
+			AScacchioli
+		
+		
+			WWhite
+		
+		
+			SRLiu
+		
+		10.2514/1.c031529
+	
+	
+		Journal of Aircraft
+		Journal of Aircraft
+		0021-8669
+		1533-3868
+		
+			50
+			2
+			
+			March 2013
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	J. -P. Clarke, J. Brooks, G. Nagle, A. Scacchioli, W. White, and S. R. Liu, "Optimized Profile Descent Arrivals at Los Angeles International Airport", Journal of Aircraft, Vol. 50, No. 2, March 2013
+
+
+
+	
+		Noise Analysis and Negotiation Tool for Terminal RNP Procedure Design
+		
+			HongseokCho
+		
+		
+			MarkAzzam
+		
+		
+			RJohnHansman
+		
+		
+			LukeJensen
+		
+		10.2514/6.2013-4343
+	
+	
+		2013 Aviation Technology, Integration, and Operations Conference
+		Los Angeles, CA
+		
+			American Institute of Aeronautics and Astronautics
+			2013. August 2013
+		
+	
+	AIAA Aviation Conference
+	H. Cho, M. Azzam, R. J. Hansman, L. Jensen, "Noise Analysis and Negotiation Tool for Terminal RNP Procedure Design", 2013 AIAA Aviation Conference, Los Angeles, CA, August 2013
+
+
+
+	
+		Development of Generic Ground Tracks of Performance Based Navigation Operations for Fleet-Level Airport Noise Analysis
+		
+			AmeliaJWilson
+		
+		
+			MatthewJLevine
+		
+		
+			JoseEnriqueBernardo
+		
+		
+			MichelleKirby
+		
+		
+			DimitriNMavris
+		
+		10.2514/6.2015-3029
+	
+	
+		15th AIAA Aviation Technology, Integration, and Operations Conference
+		Dallas, TX
+		
+			American Institute of Aeronautics and Astronautics
+			2015. June, 2015
+		
+	
+	A. J. Wilson, M. J. LeVine, M. Kirby, D. Marvis, "Development of Generic Ground Tracks of Performance Based Navigation Operations for Fleet-Level Airport Noise Analysis", 2015 AIAA Aviation Conference, Dallas, TX, June, 2015
+
+
+
+	
+		Procedure for the Calculation of Airplane Noise in the Vicinity of Airports
+		10.4271/air1845
+		SAE Committee A-21
+		
+			March 1986
+			SAE International
+		
+	
+	SAE Committee A-21, "SAE-AIR-1845: Procedure for the Calculation of Airplane Noise in the Vicinity of Airport", March 1986
+
+
+
+	
+		On the Modeling of UAM Aircraft Community Noise in AEDT Helicopter Mode
+		
+			EDinges
+		
+		
+			MYaworski
+		
+		10.2514/6.2023-3363.vid
+	
+	
+		Doc #AEDT-ADD-01
+		
+			American Institute of Aeronautics and Astronautics (AIAA)
+			July 2010
+		
+	
+	Version 3.0.0
+	E. Dinges and M. Yaworski, "AEDT Algorithm Description Document, Aircraft Performance Module", Doc #AEDT-ADD-01, Version 3.0.0, July 2010
+
+
+
+	
+		2008 IEEE internet network management workshop (INM)
+		10.1109/inetmw.2008.4660335
+		INM 7.0
+	
+	
+		2008 IEEE Internet Network Management Workshop (INM)
+		
+			IEEE
+			January 2008
+		
+	
+	FAA Office of Environment and Energy, "INM 7.0 Technical Manual", January 2008
+
+
+
+	
+		Simple Tool for Aircraft Noise-Reduction Route Design
+		
+			JinhuaLi
+		
+		
+			NeilYChen
+		
+		
+			BanavarSridhar
+		
+		
+			HokNg
+		
+		10.2514/6.2015-2598
+	
+	
+		15th AIAA Aviation Technology, Integration, and Operations Conference
+		Dallas, TX
+		
+			American Institute of Aeronautics and Astronautics
+			June 2015
+		
+	
+	J. Li, N. Y. Chen, H. K. Ng and B. Sridhar, "Simple Tool for Aircraft Noise-Reduction Route Design", AIAA Aviation 2015 Conference, Dallas, TX, June 2015
+
+
+
+	
+		
+			NDZone
+		
+		CUDA Toolkit Documentation
+		
+	
+	Zone, N. D., "CUDA Toolkit Documentation"
+
+
+				
+			
+		
+	

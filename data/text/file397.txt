@@ -1,0 +1,262 @@
+
+	
+	
+		
+I. INTRODUCTIONNASA has developed an Integrated Arrival, Departure, and Surface (IADS) traffic management system and deployed it at Charlotte Douglas International Airport (CLT) in North Carolina for field evaluation under the Airspace Technology Demonstration 2 (ATD-2) project [1].One of the main IADS system capabilities evaluated during the ATD-2 Phase 1 effort is surface metering enabled by a tactical surface scheduler for efficient aircraft operations.The tactical surface scheduler calculates the Target Takeoff Times (TTOT) of departures based on the Unimpeded Taxi-out Time (UTT) from gate to runway and the estimated flight ready time provided by airlines, called Earliest Off-Block Time (EOBT).Then, the scheduler provides ramp controllers with pushback advisories to mitigate the congestion on the ground and reduce taxi time [2].Therefore, the accuracy of the EOBT data is one of the key factors that determine the performance of the scheduler [3].Airlines have their own business rules to generate the EOBTs of departures as accurately as possible and update them until actual pushback, based on flight readiness status, turnaround time from the previous flight, passenger boarding progress, and baggage loading rate.They also keep updating their prediction algorithms to improve the EOBT prediction performance.The EOBTs, however, are often inaccurate and deviate from the actual flight ready times because they are estimated from a variety of events each with their own uncertainty.This uncertainty in the EOBTs makes it difficult for the IADS scheduler to achieve the maximum benefits from surface metering [4].NASA has archived actual operations data from the ATD-2 field demonstration, but the relationship between EOBT quality and surface metering performance is not straightforward; there are many other factors affecting the surface operations day-to-day, such as traffic demand pattern, weather condition, runway/taxiway closure, and Traffic Management Initiatives.Badrinath et al. evaluated the impact of the EOBT uncertainty on taxi time prediction and surface metering benefits using a queueing network model and showed that the surface metering benefits in terms of taxi-out time savings significantly reduced due to the EOBT errors.Their framework, however, was based on several assumptions (e.g., normal distribution for EOBT errors and no loss in runway throughput) for simplified analyses [4].In this study, therefore, we investigate the impact of the EOBT uncertainty on the airport surface traffic management performance and benefits of surface metering through fast-time simulation, which allows us to target specific variables of interest and repeat the simulation runs with different values while other conditions remain the same.In this case, the variables related to the EOBT accuracy will be targeted.For the fast-time simulation, we use the Surface Operations Simulators and Scheduler (SOSS), NASA's fast-time simulation tool developed for concept evaluation of airport surface operations [5].SOSS fast-time simulations were used to determine the effect of the taxi time delay buffer on the performance of the tactical surface scheduler used in the ATD-2 project [6].SOSS was also utilized to assess the benefits and costs of the ATD-2 concept operations at several busy airports [7].This paper describes the following contributions.First, based on the actual EOBT data recorded at CLT, we proposed a linear regression-based EOBT quality model that represents the way airlines update the EOBTs of individual departure flights, considering the accuracy compared to the actual pushback time and the update interval.This EOBT quality model could generate not only EOBT data with a distribution similar to actual EOBT data, but also different distributions for varying EOBT accuracy.Second, the fast-time simulation model to assess the impact of the EOBT uncertainty was developed by integrating the SOSS simulation engine with the ATD-2 tactical surface scheduler and the EOBT model.This simulation model was then validated with the actual operations data.Lastly, multiple fasttime simulation runs were implemented with different levels of EOBT accuracy.To evaluate how the EOBT uncertainty affects airport performance and benefits of surface metering, the simulation results were analyzed in terms of various measurements, including the number of metered flights, gate hold time, taxi-out time, takeoff delay, and target takeoff time compliance and predictability.This paper is organized as follows: Section II provides how the EOBT model is developed based on the actual EOBT data analysis at CLT.In Section III, the fast-time simulation framework that integrates the SOSS tool with the ATD-2 tactical surface scheduler, as well as the EOBT model, is described.This simulation model is validated with traffic scenarios from actual operations data.Section IV explains how the fast-time simulations are set up to evaluate the impact of the EOBT uncertainty and compares various airport surface performance metrics, depending on the EOBT accuracy level, from the simulation results.Section V concludes with a summary of key findings from the EOBT impact study using the fast-time simulation.
+II. EOBT MODELIn this section, we characterize the EOBT data provided by airlines as a series of purely random events, which are the combination of the two probabilistic quantities: 1) the timing of the updates up to the Actual Off-Block Time (AOBT), and 2) the accuracy of the updated EOBTs as a function of the timing.We first propose a modeling framework that produces such probabilistic EOBT updates, and then use the probability distributions of the actual EOBT errors at CLT to estimate the model parameters.The proposed statistical model generating EOBT values will be used in the fast-time simulation for evaluating the impact of EOBT accuracy on airport surface operations.
+A. EOBT Data AnalysisOne-week of flight data from CLT in February 12-18, 2018 were used for the EOBT data analysis.Some irregular flight data like cancelled or return-to-gate flights were filtered out.This resulted in 2,280 flights in total, for which 3,761 EOBT updates were observed.In this analysis, two main variables were analyzed: 1) EOBT accuracy, and 2) EOBT update interval.The EOBT accuracy is defined as the difference between actual and estimated off-block times (AOBT -EOBT).The EOBT update interval represents the time between two EOBT updates of the same flight, or between the last EOBT update time and AOBT.Circles represent cases where the flight has only a single EOBT update within the lookahead time window.Connection lines from the last EOBT to the AOBT were not drawn for better visualization.This plot shows that in general, the EOBT errors tend to decrease to negative values as the time progresses.This result implies that the EOBT prediction becomes more conservative (i.e., EOBT is later than AOBT), as it approaches AOBT.The same patterns were reported in the analysis of the EOBT data from the FAA's Traffic Flow Management System (TFMS) for CLT [4].
+B. EOBT Model DevelopmentFor the EOBT model development, a two-step approach was used.First, we modelled the EOBT update times of each flight within the [-30 min, 0 min] lookahead time window.Then, we modelled the EOBT accuracy at each update time given from the first step.We tried to create a model that could produce an EOBT distribution similar to the actual EOBT data distribution.We also tried to minimize the number of parameters to ease configuration changes necessary to generate different EOBT distributions, with the support of probability distributions provided by commercial software libraries like Apache Commons Math package and MATLAB.In the first step for modeling EOBT update times, we considered the following two variables: 1) the number of EOBT updates per flight (referred to as PD1), and 2) the time elapsed from the reference time (i.e., 30 min before AOBT) to the time when the EOBT value is updated (referred to as PD2).To model how many times the EOBTs are updated for a single flight, Poisson distribution was chosen because this discrete probability distribution is commonly used to model the number of events happening, with one parameter (l).For the update time distance modeling, the Weibull distribution was selected, which was originally used for particle size distribution modeling.In the EOBT model, the time elapsed between two updates can be modelled as a 'size' in time, given the number of EOBT updates obtained from the Poisson distribution.The Weibull distribution, which has only two parameters (A and B), showed the better fit to our EOBT data samples among various continuous distributions available from Apache Commons Math package.From the actual data analysis, we tried to fit the probability distributions of these two values, as shown in Fig. 2. The histogram bar graphs (blue) and regression curves (red) represent the actual data and the modelled distributions, respectively.The EOBT update times, Xk, for each flight can be modelled using the values randomly sampled from these two distributions and (1).Xk = -30 + random(PD2), k = 1, 2, …, random(PD1) (1)In the second step, we first developed a linear regression model, as expressed in (2), to fit the average accuracy trend along the lookahead time.In (2), x and y represent the lookahead time to the actual off-block time and the mean EOBT error (AOBT-EOBT) at x, respectively, with the regression coefficients, c0 and c1.y = c0 + c1 * x (2)Next, we fitted a sequence of probability distributions with actual EOBT error data in 3-minute bins within the [-30, 0] lookahead time window to obtain the mean (µ) and standard deviation (s) values.As shown in the upper plot in Fig. 3, the sigma values did not vary much with the lookahead time, except at very short lookahead times where the sample size was small.To make it easy to configure the model, we decided to use a single sigma value across all lookahead times, which was calculated as the mean weighted by the sample size of the data within each lookahead time bin.This overall weighted sigma value is drawn in a red line in Fig. 3. Using zero mean and the weighted sigma value, we created a probability distribution for EOBT accuracy (PD3).The EOBT accuracy, Y, can be modelled using the following equation:Y = c0 + c1 * Xk + random(PD3) (3)where Xk is the EOBT update time from the previous model in (1).
+C. EOBT Model ValidationFrom the data analysis using the actual 1-week EOBT data at CLT, we obtained the following parameters in TABLE I.
+III. FAST-TIME SIMULATION SETUP AND VALIDATIONThis section describes how the fast-time simulation model is integrated with the tactical surface scheduler, as well as with the EOBT model developed in the previous section.This simulation model is validated with actual operations data at CLT.
+A. Integration with Tactical Scheduler and EOBT ModelFor the fast-time simulation, we used SOSS as the simulation engine.SOSS is a fast-time air traffic simulation tool that NASA has developed and improved for the concept evaluation of airport surface operations [5].It can also be connected with external modules like a scheduler function, through a common algorithmic interface for data exchanges.As input, SOSS receives the basic flight information required for the simulation from a traffic scenario file, which includes flight call sign, aircraft type, origin and destination airports, gate, runway, and scheduled times of departures and arrivals.In this research, SOSS was integrated with the tactical surface scheduler used in the ATD-2 field evaluation.For smooth data exchanges between SOSS and the scheduler, we adopted the Surface Modeling module, representing the IADS Surface Modeler used in the ATD-2 project [3].This module not only processes the input and output of the tactical surface scheduler such as flight plan data, current flight states, pilot ready call, surface trajectory prediction, scheduling group, and estimated and scheduled times of arrival at control points on the surface, but also takes the EOBT data from the EOBT model, as well as the external parameters from the airport adaptation files.The EOBT model, mimicking airline's EOBT data sources, provides occasional EOBT updates of the scheduled departures until pushback.From the tactical surface scheduler, SOSS receives the metering data, including the flights subject to surface metering and their Target Off-Block Times (TOBTs).The data flow between SOSS, Surface Modeling module, EOBT model, and tactical surface scheduler is illustrated in Fig. 5.In this simulation, it is assumed that the departures push back at the given times (i.e., TOBT from the tactical surface scheduler for metered flights, or flight ready time for non-metered flights), without any delay.A detailed description of the ATD-2 tactical surface scheduler can be found in [3].
+B. Simulation ScenariosThe traffic scenarios used in the simulation were created based on the actual flight data at CLT.Four days having large surface delay during the most congested time period (9-11am) were selected for the 'South Simultaneous' configuration.Fig. 6 depicts the CLT airport diagram, where three parallel runways (18L/36R, 18C/36C, and 18R/36L) and one diagonal runway (5/23) are shown.In the 'South Simultaneous' configuration, three south parallel runways (18C, 18L, and 18R) are used for arrivals, whereas two runways near the main terminal (18C and 18L) are used for departures.For the selected scenario dates, TABLE II shows the number of departures and arrivals in each date, as well as the target excess taxi-out time for the tactical surface scheduler.The target excess taxi time is a parameter defined in time units set by the users that influences the maximum amount of excess taxi time the departure aircraft may experience when surface metering turns on.Less excess taxi time and longer gate holding are expected as the target excess taxi time parameter is made smaller [2].
+C. Simulation Model ValidationBefore running the fast-time simulation with the tactical surface scheduler, the simulation model was validated based on the actual operations data.In this validation, the SOSS model was run without connection to the tactical surface scheduler.In the traffic scenarios, actual off-block times were used as departure pushback time input.Similarly, actual landing times were simulated for arrivals.The ramp and movement area taxi speed values for individual departures and arrivals, as well as pushback process times for engines spooling up, were derived from actual operations data and adjusted to obtain the better match between simulation output and actual data in terms of taxi-out/in times and surface counts.The runway separation times were also adjusted to make the simulated runway throughput close to the actual throughput for each runway.For the validation, we compared the simulation output with the actual data in terms of several airport performance metrics, including taxi-out and taxi-in times (total and broken up by ramp area and airport movement area), runway throughputs, and aircraft counts on the surface.In this section, the comparison results of total taxi-out/in times and runway throughput on January 22 nd , 2018 are shown as a representative example.Fig. 7 Comparison of simulation output ("sim") and actual operations data ("ops") for validation: Taxi-out times (top) and taxi-in times (bottom).This is an example result for the 1/22/2018 scenario.Fig. 7 shows the average taxi-out times (top) and taxi-in times (bottom) by runway from the simulation ('sim' in plots) and actual data ('ops' in plots) for the scenario on 1/22/2018.The mean and median values of taxi times for all flights from simulation and actual data are similar, although there are small differences at each runway level.The accumulated runway throughputs were also compared, as shown in Fig. 8.The simulation cannot exactly mimic the actual operations, which have some uncertainties beyond the simulation modeling capability, but the throughput curves show a good match with each other.
+IV. EOBT ACCURACY IMPACT STUDY USING FAST-TIMESIMULATION In this section, we investigate the impacts of the EOBT accuracy using the fast-time simulation model that was validated with actual operations data in Section III.Four different EOBT uncertainty levels are set up for the given traffic scenarios by adjusting the accuracy parameter in the EOBT model described in Section II.After implementing multiple simulation runs, various performance metrics from the simulation outputs will be analyzed.
+A. Simulation Setup for EOBT Accuracy Impact StudyTo assess the impact of the EOBT accuracy on the airport performance, we set up four different EOBT configurations for each traffic scenario.From the EOBT model developed in Section II, we created different EOBT accuracy levels by adjusting the sigma (s) value, while maintaining the same values for other parameters in the model, as shown in TABLE III.The last column in the table shows the standard deviation of the EOBT errors.The Sigma3 case in TABLE III is the baseline where the parameters match the EOBT model fit to actual EOBT data at CLT from TABLE I.As a reference, we also defined a 'Perfect EOBT' case, named Sigma0, where EOBTs do not change over time, and the initially given EOBT is exactly the same as the actual flight ready time.Fig. 9 shows the distributions of EOBT values simulated from the EOBT models with different sigma values.The red line in each plot shows the trend from the scattered data.As expected, the EOBT accuracy shows larger variations as the sigma value increases from 0 to 5. For each EOBT configuration from TABLE III and each traffic scenario from TABLE II, we implemented 20 simulation runs with perturbed inputs.In the fast-time simulations, the perturbation variables were the EOBT values generated from the EOBT model and the flight ready times.The flight ready times for individual departures were randomly sampled from a normal distribution [mean, std.dev., minimum, maximum] = [-3.0,1.0, -10.0, 4.0] (in minutes), with respect to scheduled off-block times.With this stochastic simulation setup, each traffic scenario had a total of 80 simulation runs.
+B. Simulation Result AnalysisTo analyze the simulation outputs, several airport performance metrics were measured.These metrics include the
+Sigma5number of metered flights, gate hold time, taxi-out time, takeoff delay, target takeoff time compliance and its predictability.
+1) Number of metered flightsTABLE IV shows the number of metered flights for each scenario date, depending on the EOBT uncertainty level.In general, the number of departures subject to surface metering depends on the target excess taxi time parameter predefined in the scheduler and the traffic demand distribution in the given scenario.The lower the target excess taxi time value is set, the more departures are held at gates.The number of metered flights is also determined by the degree of traffic concentration (i.e., how many flights are concentrated in the peak time) since the beginning of metering.Because both the target excess taxi time parameter and traffic demand are fixed in this study, the numbers of metered flights are almost constant for each given scenario, regardless of the EOBT uncertainty level.
+2) Gate holdIn this paper, the gate hold time for a departure aircraft is defined as the difference between its flight ready time and the target off-block time provided from the tactical surface scheduler.Fig. 10 shows the mean overall gate hold times, which are calculated as the sum of gate hold times divided by the number of all departures in the scenario, by different EOBT configuration for the four traffic scenarios.The gate hold generally increases with the EOBT variations.This is related to how the Target Off-Block Times (TOBTs) are calculated in the tactical surface scheduler.Equation ( 4) describes the logic of the TOBT calculation [2].
+TOBT = max{EOBT or Current Time, TTOT -UTT -Y}(4)where UTT is the unimpeded taxi time from gate to runway, and Y is the target excess taxi-out time.Basically, the target off-block time is a function of EOBT, but if the EOBT is already passed or less than the desired pushback time calculated from the TTOT, the TOBT is independent of the EOBT.In that case, the TOBTs strongly rely on the traffic demand, which determines the TTOTs considering the separation requirements between consecutive takeoffs and other runway constraints, given the target excess taxi time parameter.The mean gate hold in the perfect EOBT condition (Sigma0) represents this case.Among the metered flights in the other EOBT configurations, a few departures have large (negative) EOBT errors and induce longer gate hold.As a result, they take a relatively small portion of the mean gate hold, as can be seen in Fig. 10.
+3) Taxi-out times and their reduction by surface meteringWe then analyzed the taxi-out times of departures, which is defined as the aircraft transit time from actual pushback to wheels-off.Fig. 11 shows the average taxi-out times in the ramp area (dark green) and the airport movement area (AMA) (light green) for the departures toward both departure runways (18C on the left and 18L on the right), depending on the EOBT accuracy represented by the sigma value.The average taxi times for each runway are almost constant, regardless of the sigma value, although the AMA taxi time for 18C is longer than for 18L due to the airport layout.It seems that the taxi times are not affected by the EOBT accuracy because the departures are metered by the tactical surface scheduler in all the cases, resulting in the maximum taxi time reduction achievable for the given target excess taxi time parameter.This plot is for the 1/22/2018 scenario, but the other plots for the remaining traffic scenarios also show the same trend.Mean Taxi-Out Times (minutes)  To assess the benefits of surface metering, the taxi-out time reduction by gate holding was also analyzed.Fig. 12 shows the mean values of the taxi-out time reduction, defined as the difference of taxi-out times between when metering was on and off, for each scenario and EOBT accuracy.Compared to the taxi times when metering is not applied, we can see that the taxi times are reduced by 0.7~1.7 minutes per aircraft through surface metering.In addition, as the estimated flight ready times become more accurate, the amount of taxi time reduction increases.For these four scenarios, however, it seems that there is no notable improvement between the Sigma1 and Sigma5 cases because the existence of flights having wrong EOBT information itself attenuates the benefits of surface metering by making it difficult for the scheduler to sort the takeoff sequence and calculate the target takeoff times.From these results, in general, we can conclude that surface metering reduces taxi-out times, but the existence of EOBT errors, regardless of the size of the errors, prevents the tactical surface scheduler from maximizing the benefits in taxi time reduction.
+4) Takeoff delayWhen implementing surface metering, it would be a concern if the metered departures take off later than scheduled due to gate holding.Therefore, the takeoff delay of the metered departures was analyzed here.In this analysis, takeoff delay was calculated as expressed in (5).Takeoff delay = ATOT -(Flight Ready Time + UTT) (5) where ATOT and UTT represent actual takeoff time and unimpeded taxi-out time from gate to runway, respectively.For easier trend observations, takeoff delay results were aggregated from the four different traffic scenarios and shown in Fig. 13 with the corresponding gate holding times for each EOBT configuration.According to the simulation results, it seems that there is no significant correlation between gate hold and takeoff delay (p value = 0.0766).Although departures are held at gates longer when their EOBTs are less accurate, gate holding for surface metering does not significantly add more takeoff delay because the surface metering by holding departures at gates during a peak period can mitigate the congestion on the surface and reduce waiting times in departure queues.Also, this result may be related to the priority rules in the tactical scheduler.In other words, the flights having inaccurate EOBTs are handled as uncertain flights and sent to later runway slots, whereas the flights with accurate EOBTs fill in the takeoff slots efficiently.The results are also supported by other metrics such as runway throughput and the number of departures in the AMA.As long as the departure traffic demand was sufficient, there were no significant differences on the runway throughput and departure queue length by the EOBT accuracy level.
+5) Target takeoff time compliance and predictabilityFrom the fast-time simulations, we can observe the compliance with the target takeoff times given by the tactical surface scheduler.The TTOT compliance is defined as the difference between actual and target takeoff times (ATOT -TTOT).The target takeoff times of departures are provided by the tactical surface scheduler, but calculated differently, depending on the surface metering conditions.For metered flights, the TTOT can be computed by summing up the TOBT, UTT, and buffer time, as shown in (6).In this calculation, the buffer time is added to prevent the departure runway from getting dried up while computing the target off-block time at the gate, and usually set to be as same as the target excess taxi time parameter.TTOTi = TOBTi + UTTi + Buffer, for metered flight i (6)For non-metered flights, the TTOT can be calculated as given in (7).Basically, the TTOT is the sum of EOBT and UTT, but when the EOBT has already passed, the latest flight ready time (readyT), which is the same as the current time in the simulation, is used instead of EOBT to calculate the TTOT.According to these plots, the overall TTOT compliance appears not to be impacted by the EOBT quality.The reason why the Sigma0 case shows the worst TTOT compliance is related to the TTOT calculation method for non-metered flights.Because the Sigma0 case doesn't allow any EOBT later than the current ready time, the TTOTs for non-metered flights tend to be slightly aggressive and sometimes earlier than actual takeoff times, compared to other EOBT configurations.For nonmetered flights, in fact, the TTOTs are close to the unimpeded takeoff times, without taking waiting time in the queue into account.To complement TTOT compliance, another metric, TTOT predictability, was also evaluated by looking at the variance of the TTOT compliance.The top graph in Fig. 16 shows the standard deviations of TTOT compliance in each EOBT accuracy condition.As the EOBT accuracy gets worse, the variance of TTOT compliance becomes larger, which means that takeoff time predictability becomes worse.The p value of this standard deviation calculation was 0.0419.As an alternative evaluation method, the differences between the 85 th and 15 th percentiles were also observed in the bottom graph of Fig. 16, and it showed a similar correlation between EOBT accuracy and TTOT predictability.This result indicates that better EOBT quality can help achieve better takeoff time predictability.V. CONCLUSIONS The accuracy of estimated flight ready times, called EOBT, is known as one of the main factors determining the performance of a tactical scheduler for surface metering.Based on the actual EOBT data gathered from Charlotte airport, we developed an EOBT model that enabled us to generate the controlled EOBT data for individual flights, taking the accuracy and update interval into account.We then integrated this EOBT model with the SOSS airport surface traffic simulation engine and the ATD-2 tactical surface scheduler for running fast-time simulations.Using four actual traffic scenarios at CLT, we implemented fasttime simulations with different EOBT accuracy configurations in order to evaluate the impact of the EOBT quality upon the scheduler performance in surface operations.The simulation results showed that the EOBT uncertainty increased the amount of gate hold times, but had no impact on the taxi-out times of departures while surface metering was turned on using the given target excess taxi time parameter.When compared to the metering off conditions, the results demonstrated that surface metering did reduce taxi-out times, but the existence of EOBT errors attenuated some of the benefits.These results are roughly consistent with the previous analysis based on a queuing network model [4], although the approach and detailed parameters are different.According to the simulation results, the EOBT uncertainty did not show significant effects on the mean takeoff delays and TTOT compliance at the departure runways, but had statistically significant impact on the TTOT predictability measured by the standard deviation of TTOT compliance.As shown in this study, EOBT is not only an important metric that airlines calculate and use for planning their departure flights, but also a key input that can affect the tactical scheduler performance.Since the airlines keep updating their prediction algorithms to improve the EOBT accuracy, there may be a need to occasionally analyze the latest EOBT data and properly update the parameters used in the EOBT model, which is a potential future work.The EOBT model could be improved by varying parameters by airline.Although the EOBT accuracy is considered the most important parameter, in terms of scheduler performance, we also need to test other parameters, such as EOBT update interval, to evaluate their impacts on surface operations.Such studies will help us identify the key performance metrics impacted by EOBT quality and justify the effort and cost that airlines need to put into improving the EOBT accuracy.These results can also provide some insights to make the tactical surface scheduler robust against the uncertainty in the flight ready times.Lastly, this research was done for CLT, but it would be interesting to evaluate the impact of EOBT uncertainty at different busy airports and confirm that we can reach the same conclusions.Fig. 11Fig. 1 shows the EOBT accuracy changes in the lookahead time window [-30 min, 0 min] as the time becomes closer to the actual off-block time.Each line represents a sequence of EOBT updates for a single flight within the lookahead time window.Circles represent cases where the flight has only a single EOBT update within the lookahead time window.Connection lines from the last EOBT to the AOBT were not drawn for better visualization.This plot shows that in general, the EOBT errors tend to decrease to negative values as the time progresses.This result implies that the EOBT prediction becomes more conservative (i.e., EOBT is later than AOBT), as it approaches AOBT.The same patterns were reported in the analysis of the EOBT data from the FAA's Traffic Flow Management System (TFMS) for CLT[4].
+Fig. 11Fig. 1 EOBT error changes over time, with update sequences
+Fig. 22Fig. 2 The number of EOBT updates (top) and the EOBT update times within [-30 min, 0 min] lookahead time window (bottom).
+Fig. 33Fig. 3 Parameters over lookahead time for EOBT accuracy model: Sigma values (top) and weighting factors (bottom).
+12.67, c1 = -0.54With the given parameters in TABLE I, we generated the EOBT time values from the proposed EOBT model for model validation.The top and bottom scatter plots in Fig. 4 show the actual data of EOBT errors vs. lookahead time and the test dataset of EOBT errors generated from our EOBT model vs. lookahead time, respectively.The EOBT values from the EOBT model cannot be exactly the same as the actual EOBTs for an individual flight, but it is shown that the distributions are visually similar.
+Fig. 44Fig. 4 EOBT distribution comparison: Actual EOBT data (top) and EOBT data generated from EOBT model for test (bottom).
+Fig. 55Fig. 5 Data flow between SOSS, Surface Modeling module, EOBT Model, and Tactical Surface Scheduler.
+Fig. 66Fig. 6 CLT airport layout.
+Fig. 88Fig. 8 Comparison of simulation output ('sim') and actual operations data ('actual') for validation: Accumulated runway throughput for runways 18C (top) and 18L (bottom).
+Fig. 1010Fig. 10 Mean overall gate hold by EOBT accuracy (in minutes).
+Fig. 1111Fig.11Mean taxi-out times by EOBT accuracy for the 1/22/2018 scenario (in minutes).The error bar in each bar represents the standard deviation of the total taxi-out times in ramp area and AMA.
+Fig. 1212Fig. 12 Mean taxi-out time reduction by EOBT accuracy (in minutes).
+Fig. 1313Fig. 13 Mean gate hold and takeoff delay for metered flights by EOBT accuracy (in minutes).
+TTOTjFigs. 14 and 15 show the histogram for TTOT compliance distribution and the aggregated values for mean absolute TTOT compliance in each EOBT configuration, respectively.
+Fig. 1414Fig. 14 TTOT compliance distributions by EOBT accuracy.
+Fig. 1515Fig. 15 Mean absolute TTOT compliance by EOBT accuracy (in minutes).
+Fig. 1616Fig. 16 TTOT predictability represented by the standard deviation of the TTOT compliance (top) and the difference between 85th and 15th percentiles of TTOT compliance (bottom) (in minutes).
+TABLE II.PARAMETERS IN EOBT MODELEOBT ModelProbability Distribution or Regression ModelParameters
+TABLE II .IIFLIGHT COUNTS FOR EACH TRAFFIC SCENARIOSScenarioDeparture CountArrival CountTargetDates18C 18L All18C18L 18RAllExcessTaxiTime1/22/2018 53399283552959 min1/23/2018 50419192649849 min2/12/2018 52469893947958 min2/14/2018 46459153048789 min
+TABLE IIIIII.PARAMETERS FOR EACH EOBT CONFIGURATIONCase namelABc0c1sStd. Dev.Sigma01.658.11.60000Sigma11.658.11.6-12.67-0.541.002.73Sigma3 (baseline)1.658.11.6-12.67-0.543.023.93Sigma51.658.11.6-12.67-0.545.005.58Fig. 9 EOBT distributions with different sigma values.
+TABLE IVIV.NUMBER OF METERED FLIGHTSScenarioDepartureEOBT ConfigurationDatesCountSigma0Sigma1Sigma3Sigma51/22/201892353635331/23/201891212222242/12/201898272829302/14/20189117171617
+		
+		
+
+			
+ACKNOWLEDGMENT This research work was sponsored by NASA Airspace Operations and Safety Program's Airspace Technology Demonstration 2 (ATD-2) project.
+			
+
+			
+
+				
+
+
+	
+		Airspace Technology Demonstration 2 (ATD-2) phase 1 Concept of Use (ConUse)
+		
+			YJung
+		
+		
+			February 2018
+		
+	
+	Y. Jung, et al., "Airspace Technology Demonstration 2 (ATD-2) phase 1 Concept of Use (ConUse)," February 2018.
+
+
+
+	
+		Field evaluation of the baseline integrated arrival, departure, and surface capabilities at Charlotte Douglas International Airport
+		
+			YCJung
+		
+		
+			WJCoupe
+		
+		
+			ACapps
+		
+		
+			SEngelland
+		
+		
+			SSharma
+		
+	
+	
+		13th USA/Europe Air Traffic Management Research and Development Seminar
+		
+			June 2019
+			Vienna, Austria
+		
+	
+	Y. C. Jung, W. J. Coupe, A. Capps, S. Engelland, and S. Sharma, "Field evaluation of the baseline integrated arrival, departure, and surface capabilities at Charlotte Douglas International Airport," 13th USA/Europe Air Traffic Management Research and Development Seminar, Vienna, Austria, June 2019.
+
+
+
+	
+		ATD-2 Phase 3 Scheduling in a Metroplex Environment Incorporating Trajectory Option Sets
+		
+			WilliamJCoupe
+		
+		
+			YoonJung
+		
+		
+			LiangChen
+		
+		
+			IsaacRobeson
+		
+		10.1109/dasc50938.2020.9256509
+	
+	
+		2020 AIAA/IEEE 39th Digital Avionics Systems Conference (DASC)
+		13th USA/Europe Air Traffic Management Research and Development Seminar
+		Vienna, Austria
+		
+			IEEE
+			June 2019
+		
+	
+	W. J. Coupe, H. Lee, Y. Jung, L. Chen, and I. Robeson, "Scheduling improvements following the phase 1 field evaluation of the ATD-2 integrated arrival, departure, and surface concept," 13th USA/Europe Air Traffic Management Research and Development Seminar, Vienna, Austria, June 2019.
+
+
+
+	
+		Evaluating the Impact of Uncertainty on Airport Surface Operations
+		
+			SandeepBadrinath
+		
+		
+			HamsaBalakrishnan
+		
+		
+			EmilyClemons
+		
+		
+			TomReynolds
+		
+		10.2514/6.2018-4242
+	
+	
+		2018 Aviation Technology, Integration, and Operations Conference
+		Atlanta, GA
+		
+			American Institute of Aeronautics and Astronautics
+			2018. June 2018
+		
+	
+	S. Badrinath, H. Balakrishnan, E. Clemons, and T. G. Reynolds, "Evaluating the impact of uncertainty on airport surface operations," 2018 AIAA Aviation Forum, Atlanta, GA, June 2018.
+
+
+
+	
+		Validation of Simulations of Airport Surface Traffic with the Surface Operations Simulator and Scheduler
+		
+			RobertDWindhorst
+		
+		
+			JustinVMontoya
+		
+		
+			ZhifanZhu
+		
+		
+			SergeiGridnev
+		
+		
+			KatyGriffin
+		
+		
+			AdityaSaraf
+		
+		
+			SteveStroiney
+		
+		10.2514/6.2013-4207
+	
+	
+		2013 Aviation Technology, Integration, and Operations Conference
+		Los Angeles, CA
+		
+			American Institute of Aeronautics and Astronautics
+			August 2013
+		
+	
+	R. D. Windhorst et al., "Validation of simulations of airport surface traffic with the Surface Operations Simulator and Scheduler," AIAA Aviation Technology, Integration and Operations Conference, Los Angeles, CA, August 2013.
+
+
+
+	
+		Assessing tactical scheduling options for time-based surface metering
+		
+			ShannonZelinski
+		
+		
+			RobertWindhorst
+		
+		10.1109/dasc.2017.8101901
+	
+	
+		2017 IEEE/AIAA 36th Digital Avionics Systems Conference (DASC)
+		St. Petersburg, FL
+		
+			IEEE
+			September 2017
+		
+	
+	S. Zelinski and R. Windhorst, "Assessing tactical scheduling options for time-based surface metering," 36th Digital Avionics Systems Conference (DASC), St. Petersburg, FL, September 2017.
+
+
+
+	
+		Simulation-based Benefits and Costs Assessment of NASA's Airspace Technology Demonstration-2
+		
+			AdityaSaraf
+		
+		
+			MartinPopish
+		
+		
+			ValerieSui
+		
+		
+			NatashaLuch
+		
+		
+			MarcRose
+		
+		
+			BenjaminLevy
+		
+		
+			JamieCardillo
+		
+		
+			HamsaBalakrishnan
+		
+		
+			SandeepBadrinath
+		
+		
+			RichardCoppenbarger
+		
+		10.1109/dasc.2018.8569626
+	
+	
+		2018 IEEE/AIAA 37th Digital Avionics Systems Conference (DASC)
+		London, UK
+		
+			IEEE
+			September 2018
+		
+	
+	A. Saraf et al., "Simulation-based benefits and costs assessment of NASA's Airspace Technology Demonstration-2," 37th Digital Avionics Systems Conference (DASC), London, UK, September 2018.
+
+
+				
+			
+		
+	

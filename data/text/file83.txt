@@ -1,0 +1,975 @@
+
+	
+	
+		
+In response to changing traffic and staffing conditions, supervisors dynamically configure airspace sectors by assigning them to control positions.A finite horizon airspace sector configuration problem models this supervisor decision.The problem is to select an airspace configuration at each time step while considering a workload cost, a reconfiguration cost, and a constraint on the number of control positions at each time step.Three algorithms for this problem are proposed and evaluated: a myopic heuristic, an exact dynamic programming algorithm, and a rollouts approximate dynamic programming algorithm.On problem instances from current operations with only dozens of possible configurations, an exact dynamic programming solution gives the optimal cost value.The rollouts algorithm achieves costs within 2% of optimal for these instances, on average.For larger problem instances that are representative of future operations and have thousands of possible configurations, excessive computation time prohibits the use of exact dynamic programming.On such problem instances, the rollouts algorithm reduces the cost achieved by the heuristic by more than 15% on average with an acceptable computation time.
+Nomenclature αParameter in workload cost g w (X) A Adjacency matrix for sectors w(c, T ) Workload threshold in control position c when the traffic situation is T w(X) A M × 1 vector in which the i th component is w(c i , T ), c i ∈ C β Parameter in single time step cost g(X k , u k , X k+1 ) T Uncertain prediction of future traffic ŵ(c, T )Expected workload level in control position c when the traffic prediction is T ŵ(c, T )Expected workload threshold in control position c when the traffic prediction is T CSet of all valid configurations C i Set of all valid configurations with i control positions µ heur (X, d) Heuristic control policy; outputs a control actionµ k (X k )Indicates what control action to take at time step k and state X k π Control policy specifying µ k for all time steps of interest Jk (X k )Rollouts approximate optimal cost-to-go from state X k at time step k w(X)A M × 1 vector in which the i th component is w(c i , T ), c i ∈ C C A configuration; a set of control positions c A control position; a set of sectors d kRequired number of control po-sitions at time step k g(X k , u k , X k+1 ) Single time step cost g r (X k , u k , X k+1 ) Reconfiguration cost g w (X)Workload Optimal action at time step k w(c, T )Workload in control position c when the traffic situation is T X System state; includes C and T
+IntroductionIn current air traffic management operations, airspace is partitioned into static volumes called sectors to facilitate the division of responsibilities between air traffic controller teams.A sector configuration maps a set of airspace sectors into a set of control positions such that each sector is assigned to exactly one control position.A single team of one to three air traffic controllers monitors each control position.Supervisors select configurations so as to 1) assign enough controller teams to busy airspace and 2) avoid workload associated with transitions between configurations [20].Current air traffic control operations require so much memorization that each controller is only certified to control a set of six to eight sectors referred to as an "area of specialization," such as the area shown in figure 1.The relatively small number of sectors in each area mean that there are a relatively small number of permitted sector configurations in each area.1 1 1 1 1 1 1 1 1 1 1 1 1 1Fig. 1 The six sectors in Area 7 of Cleveland Air Route Traffic Control Center.With planned improvements in automation and changes in operations proposed by MITRE [1,28], Mogford [31][32][33], and the Federal Aviation Administration [11], controllers will be able to control a wider range of sectors.This will increase the number of possible configurations.This increase in configuration options makes it more likely that an appropriate sequence of configurations will exist to fit any given traffic and controller resource situation.However, it will also make the selection of appropriate sector configurations more challenging for supervisors.Therefore, a tactical decision-support tool that suggests good sector configurations will aid supervisors in this context [11].Several algorithms for configuring sectors that could be used in such a decision-support tool have been proposed [4,5,7,9,10,[12][13][14][15][16][17][18][19]36].These algorithms vary in the version of the sector configuration problem they attempt to solve.One supports tactical decision-making [9], but the rest focus on pre-tactical or strategic decisions concerned with staff planning.Some attempt to minimize the number of control positions required to safely manage the traffic [4,5,10].Others set a required number of control positions at each time [7] or put an upper bound on the number of control positions at each time [9,16,17,36].These algorithms also vary in how they quantify controller workload.Workload is quantified using aircraft count [4,5,10], inter-control position coordination [7], control position throughput [36], detailed human task load models [9], or neural networks trained on historical traffic data and sector configurations [13,15,18,19].Furthermore, none of the existing algorithms explicitly consider the uncertainties involved in predictions of air traffic.Such uncertainties impact predictions of any measure of controller workload.The workload associated with reconfigurations is treated differently by existing algorithms for configuring sectors.Several algorithms ignore this reconfiguration workload [4,5,9,10], but some take steps to control the frequency of reconfigurations [12,14,15,36].None specify an explicit reconfiguration cost that considers the differing levels of workload induced by different reconfigurations, even though such differences exist and have been studied [20,21,26,27].These algorithms also vary in the solution methods they utilize to select configurations.The methods include original heuristics [4,5], integer programming [10,36], genetic algorithms [7,16,17], brute-force exhaustive search [9], and treesearch methods like branch-and-bound and the A algorithm [12,[14][15][16][17].In this paper, a new formulation of the tactical sector configuration problem is proposed.This formulation explicitly considers uncertainties in predictions of air traffic by using predictions of future air traffic sampled from an appropriate distribution.The control actions in this problem are the sector configurations at each time step over a finite time horizon.These configurations must contain a required number of control positions at each time step.The objective is to minimize the expected value of a weighted sum of a workload cost and a reconfiguration cost.Three algorithms for this problem are proposed and evaluated.One of these algorithms is a myopic heuristic, another is an exact dynamic programming algorithm that can be solved with value iteration, and the third uses rollouts to generate an approximate dynamic programming solution.The rest of this paper is structured as follows.The new sector configuration problem is specified in Section 2. The algorithms for this problem are described in Section 3. In Section 4, the performance of the algorithms is analyzed by applying them to small problem instances from current operations and large problem instances from possible future operations.Section 5 contains conclusions and Section 6 contains suggestions for future work.
+Problem SpecificationThe problem is to select an airspace configuration at each time step while considering a workload cost, a reconfiguration cost, and a constraint on the number of control positions at each time step.The problem specification consists of a system model and dynamics, problem constraints, and an objective function.Let S = {s 1 , s 2 , . . ., s N } be the set of N sectors to be configured.The matrix A is an adjacency matrix that specifies which sectors are neighbors.Element A i j is 1 if s i is adjacent to s j , otherwise it is 0. A configuration of S is specified by C = {c 1 , c 2 , . . ., c M }, where M is the number of control positions.Each control position c i ∈ C is itself a set that contains one or more sectors.
+System ModelThe system state at time step k is X k = (C k , T k ), where C k is the sector configuration at k and T k specifies the aircraft traffic situation for the sectors in S at k. T k contains state and flight plan information for all aircraft that are currently in or are planning to fly through the sectors in S. It contains all the aircraft data available for predicting future traffic situations.The size of the state space for C k can be in the thousands or millions for problems of interest in the future air traffic management system.For one such problem studied in Section 4, there are 8,362 valid configurations of 11 sectors.For one current-day problem in the French airspace, there are around 124,000 valid configurations [17].The size of the state space for T k is infinite because aircraft state variables can be continuous.The control at a time step sets the configuration for the next time step: u k = C k+1 .Aircraft trajectory predictors can be used to predict the traffic situation at future time steps, but there is no simple function or stationary statistical distribution that specifies the dynamics of T k .However, there are some distributions available that describe the dynamics of the number of aircraft in a sector [37].Rather than explicitly modeling the dynamics of traffic, these distributions are used to model the dynamics of the number of aircraft in each sector, one measure of workload, as will be discussed in the next two sections.
+WorkloadThere are many functions that attempt to quantify the workload in a control position, given the control position and the current traffic [6, 22-25, 29, 35].Let the selected workload function be specified by w(c, T ).Let w(X) return a |C| × 1 vector in which the i th component is the workload for c i ∈ C and where X = (C, T ).Uncertain predictions of future traffic T can also be passed into the workload function, yielding corresponding predictions of the control position workloads.There is a workload threshold associated with each control position.This threshold is not a hard constraint, but as workload approaches and exceeds the threshold, operations in the control position probably become less safe and less efficient.This threshold may depend on characteristics of the traffic in the sector, such as sector transit times [38].Let w(c, T ) specify the workload threshold for c when the traffic situation is T , and let w(X) be a |C| × 1 vector in which the i th component is the workload threshold for c i ∈ C. Generally, the workload threshold for a control position is much smaller than the sum of the thresholds of the individual sectors that make up the control position.
+Workload DynamicsWanke et al. used historical prediction errors to estimate distributions that describe the dynam-ics of a measure of workload [37].This workload measure, which is used in the current air traffic management system, is the peak aircraft count that occurs in a sector during a 15-minute time period.Wanke et al. specify a distribution for future peak aircraft count based on prediction lookahead time, sector type, and properties of a particular prediction of the future traffic in the sector (peak predicted number of aircraft in the sector during the time period and the fraction of those aircraft that have departed at the time of the prediction).Unfortunately, there are no published joint or conditional distributions capturing the relationship between peak aircraft count levels over time and in different control positions.For this research, the 15-minute lookahead distributions of peak aircraft count derived by Wanke et al. are used to model the dynamics of the workload in each sector [37].Algorithms also use these distributions when making predictions about the future, even if the predictions are made with a lookahead time that is larger than 15 minutes.It is assumed that the distributions are independent across sectors and time steps because no joint or conditional distributions are available.The traffic-related distribution parameters (predicted number of aircraft in the sector and the fraction of those aircraft that have departed at the time of the prediction) are computed from historical traffic rather than predicted traffic because the operational prediction data is not available.A sample distribution is shown in figure 2.This approach allows for algorithm performance evaluations based not only on the single sample path of historical traffic but also on other sample paths that could have occurred.This sort of evaluation is essential when evaluating any algorithm that claims to be robust to uncertainties.Predictions that are consistent with the workload dynamics can be generated by sampling the independent distributions that govern the system dynamics, enabling algorithms to accurately and quickly approximate expected values of future costs.This approach assumes that samples in nearby sectors and at nearby times are independent.A second assumption is that uncertainties in predictions are constant with respect to looka- head time.The impact of these assumptions and alternative approaches to handling system uncertainties should be evaluated in future research.
+ObjectiveThere are two components of the cost at each stage: a workload cost g w and a reconfiguration cost g r .The total cost g is a weighted sum of the two.The workload cost penalizes cases where the w(X k ) exceeds w(X k ).This cost function starts with the amount by which the workload exceeds the workload threshold in each control position, multiplies it by the parameter α, squares the result, and finally sums the results for all the control positions in C k :g w (X k ) = α[w(X k ) -w(X k )] + 2 2 ,(1)where the operators are defined as follows.For a real input a, [a] + is 0 if a < 0 and a if a ≥ 0. When operating on a vector, as in (1), the operator [•] + applies separately to each element in the vector.Also, for a vector a, a 2 2 is the squared 2-norm of a.Control positions with workload levels below the threshold are not penalized.Alternative workload cost function formulations are possible.Airspace sector design and configuration research has pursued objectives like workload balance, traffic flow conformance, and low inter-control position coordination [8,30,34,39]; these could be added to this cost function in future work.The next component is the reconfiguration cost, which increases as the next configuration becomes more different from the current configuration.Significant configuration changes induce workload for air traffic control staff as they transition from one control position to another [20,21,26,27].This cost specifies the number of control positions in C k+1 that were not present in C k :g r (X k , u k , X k+1 ) = |C k+1 \C k |, (2)where \ is the set minus operator.Alternate reconfiguration cost formulations may be considered.[17].The authors of this paper have previously used [20].These possibilities are independent of the traffic situations T k and T k+1 , but the reconfiguration workload does depend on the traffic situation, and more sophisticated cost functions may consider the traffic in control positions that are being combined and split to move from one configuration to the next [21,26,27].
+Gianazza et al. use min{|Ck |, |C k+1 |} -|C k ∩ C k+1 | as a distance function in a genetic algorithm|C k \ C k+1 |The overall single time step cost is simply the weighted sum of equations ( 1) and (2):g(X k , u k , X k+1 ) = g w (X k ) + βg r (X k , u k , X k+1 ).(3) It is parameterized by α and β, a nonnegative weight on the reconfiguration cost.Appropriate values for α and β are a topic for future research.The overall problem considered here is a finite horizon expected total cost problem with the objective minπ=(µ 0 ,µ 1 ,...,µ K-1 ) E K-1 ∑ k=0 g(X k , u k , X k+1 ) X 0 , (4)subject to the system model described in subsection 2.1 and the constraints discussed in subsection 2.3.For some random variable a and a variable it depends on b, E[a|b] denotes the expected value of a given b.Also, π is a control policy in which each µ k (X k ) indicates what control action to take at time step k and state X k .
+ConstraintsA valid C must assign each s i ∈ S to a control position:M [ i=1 c i = S,(5)where ∪ is the set union operator.A valid C also cannot assign any s i to more than one control position:c i ∩ c j = / 0 ∀ c i , c j ∈ C, i = j, (6)where ∩ is the set intersection operator and / 0 is the empty set.These two requirements ensure that 1 ≤ M ≤ N.All the s i in a valid c must define a single connected component in the graph specified by A. This ensures that sectors in the same control position are adjacent to each other.Furthermore, certain control positions may not be allowed for reasons such as a preference for convexity in the top-view of control positions or a maximum control position size constraint.Any valid configuration C contains no disallowed control position.The set C contains all valid configurations of a given set of sectors S. Furthermore, let C i be the set of all valid configurations with i control positions (i.e.|C| = i ∀ C ∈ C i ).It is easy to see that |C 1 | = 1 and |C N | = 1, but there may be many valid configurations when the number of control positions is between 1 and N.There is a constraint on the control that specifies the number of control positions that can be used at each time step.This constraint is needed because a certain number of controller teams are available and should be working at each time step.Let d k specify the required number of control positions at k. Therefore, u k ∈ C d k+1 is a constraint.
+AlgorithmsThis section proposes three algorithms that attempt to solve the problem defined in Section 2.The first is a myopic heuristic that is similar to the heuristic in Refs.[4,5].It computes a solution quickly but makes no guarantees on its optimality.The next algorithm uses dynamic programming and solves for the optimal costs-to-go with value iteration.It computes the optimal solution but is computationally intensive and can be slow when |C| is large.The final algorithm utilizes an approximate dynamic programming technique known as rollouts.It uses the myopic heuristic to approximate the optimal costs-to-go and is therefore a hybrid of the first two algorithms.It can guarantee better performance than the myopic heuristic and produces a solution faster than exact dynamic programming.
+Myopic HeuristicA myopic heuristic algorithm was designed for this problem.This algorithm is myopic because when selecting u k it only considers the expected workload levels in the next time step and the required number of control positions in the next time step.The expected workload levels ŵ(c, Tk+1 ) and workload thresholds ŵ(c, Tk+1 ) are approximated with the mean workload from Monte Carlo simulations of the next time step.If|C d k+1 | > |C d k | or ŵ(c, Tk+1 ) > ŵ(c, Tk+1 ) for some c ∈ C k , then c max = argmax c∈C k ŵ(c, Tk+1) is split into two control positions.If there are multiple ways to split c max , the split that leaves the lowest maximum ŵ(c, Tk+1 ) in the two resulting control positions is selected.If|C d k+1 | < |C d k |, then the algorithm selects a combination to implement.It searches for an acceptable combination by starting with c min = argmin c∈C k ŵ(c, Tk+1 ).All possible ways to combine c min with a neighboring c are investigated, and the combination that results in the control position with the lowest is implemented, assuming that expected workload is below a threshold.If no acceptable combination involving c min is found, the control position with the next lowest expected workload is considered until eventually an acceptable combination is determined.Some additional logic helps ensure that some combina-tion is found so that the constraint u k ∈ C d k+1 is not violated.
+Dynamic Programming Solution via Value IterationA fundamental quantity in dynamic programming is the optimal cost-to-go; it is the cost that would be incurred if optimal actions are taken from some state onward.The optimal cost-to-go function here depends on the time step k and is specified asJ k (X k ) = min µ k ,...,µ K-1 E K-1 ∑ j=k g(X j , u j , X j+1 ) X k .(7) This optimal cost-to-go is approximated with the average cost from Monte Carlo simulations constructed from the workload distributions discussed in sub-section 2.1.2.The expression for this approximation isJ k (X k ) ≈ min µ k ,...,µ K-1 1 H H ∑ h=1 K-1 ∑ j=k g(X h j , u j , X h j+1 ) ,(8)where X h j is the state at time step j in Monte Carlo simulation h, h = 1, 2, . . ., H.In this finite time horizon case, the J k (X k ) values can be computed with value iteration starting at the final time step [2].The optimal action to take at each time step can then be found withu k ∈ argmin u k ∈C d k+1 E g(X k , u k , X k+1 ) + J k+1 (X k+1 ) X k . (9)Again, the expected value here is approximated with Monte Carlo simulations.
+Rollouts Approximate Dynamic Programming SolutionRollouts is a technique for approximating the optimal cost-to-go [2].The approximate optimal cost-to-go is then used in equation ( 9) to select an action at each time step.The idea is to approximate the optimal cost-to-go at each possible next state with the cost-to-go that would be incurred if a heuristic were used for the remainder of the time horizon.This approach is closely related to policy iteration, a technique that can be used to solve for the optimal costs-to-go [2].Rollouts is guaranteed to lead to better cost results than are achieved by the raw heuristic that it uses.The approximations of the optimal costto-go are computed as needed during algorithm execution, which is appropriate for this problem because the state space is infinite.These approximations can make use of the latest traffic situation data, so this approach will be even more appropriate for more sophisticated versions of the sector configuration problem in which new traffic information enables more accurate predictions of future traffic and therefore future costs.More precisely, let µ heur (X k , d k+1 ) be a heuristic control policy such as the myopic heuristic suggested in sub-section 3.1.The optimal cost-to-go is approximated by assuming that this heuristic policy is used for the remainder of the time horizon:J k (X k ) ≈ E K-1 ∑ j=k g(X j , µ heur (X j , d j+1 ), X j+1 ) X k . (10)As with the dynamic programming solution via value iteration, the expected value is approximated with the average of H Monte Carlo simulations.The rollouts algorithm computes its approximate optimal cost-to-go according toJk (X k ) = 1 H H ∑ h=1 K-1 ∑ j=k g(X h j , µ heur (X h j , d j+1 ), X h j+1 ) . (11)Three techniques are used to speed up the computation of the approximate optimal cost-togo in equation (11).The first is to compute the cost-to-go incurred by the heuristic for some L time steps, rather than all the way until the end of the problem time horizon.This will hinder the performance of the algorithm because there may be a reason to select a control action that is not revealed until beyond the next L time steps.The second technique is to stop computing the approximate optimal cost-to-go for a configura-tion when the approximation already exceeds the smallest approximate optimal cost-to-go found so far.This technique will not adversely affect the algorithm's cost performance.The third method for speeding up computation is to reduce the number of Monte Carlo simulations used to approximate the expected value.Such Monte Carlo simulations are computationally cheap to produce using the workload distributions assumed for each sector at each time step (see sub-section 2.1.2),so this method is probably not helpful for this version of the sector configuration problem.However, some Monte Carlo simulations and workload metrics are computationally expensive to produce, so this method could become important in future work.4 Quantitative Analysis of the Algorithms
+Small Problem Instances from Current OperationsAreas of specialization typically contain six to eight sectors, and they make convenient small problem instances for studying the performance of the three proposed algorithms.They are also interesting problem instances to consider because historical sector configuration data is available, so the performance of the algorithm-generated configurations can be compared with the performance of the historical configurations.Finally, differences between the historical configurations and those selected by the algorithms can help reveal problems with the algorithms [20].A detailed comparison of this type is an opportunity for future research.For these experiments, historical air traffic data from three Thursdays in February of 2007 and the eight areas of specialization in Cleveland Air Route Traffic Control Center were used to construct 19 different problem instances.Figure 1 shows the sectors in one such area.Each of the eight areas considered for these problems contains six or seven sectors.The valid configurations for each day were limited to those that use control positions from the historical sector configurations on that day.Also, the number of required control positions at each time step was set to the number in the historical data.There were between 12 and 24 possible configurations for each problem instance.The number of configurations with the required number of control positions at each time step ranged between one and nine but averaged only about three.Each problem instance ran from 3:45 am to 10:45 pm local time.The time steps were 15 minutes long, but the algorithms did not usually change airspace configurations every 15 minutes due to the reconfiguration cost.For each of the 19 instances, 10,000 Monte Carlo runs were created to help determine how each algorithm would do under a variety of possible workload sample paths based on the recorded traffic sample path.These runs were generated using the independent distributions discussed in sub-section 2.1.2.The dynamic programming algorithm used a different set of 10,000 Monte Carlo simulations to compute expected values, while the heuristic and rollouts algorithms used only 100 such simulations in an attempt to increase their computational speed.The rollouts algorithm approximated the optimal cost-to-go by running the heuristic for four hours rather than for the entire remainder of the problem.Finally, workload was specified as the maximum number of aircraft in a control position during the time step divided by a control position-specific upper bound called the Monitor Alert Parameter (MAP) so that all workloads ranged between zero and about one.For some control positions, published MAP values are available in the Future ATM Concepts Evaluation Tool [3].If no published value was available, the MAP value was set to the largest of the MAP values of the sectors in the control position.The workload threshold returned by w(c, T ) was set to 0.9 for all control positions and traffic situations.In the single stage cost function, the α parameter was set to 10 and the β parameter was set to 1.This means that the workload cost of the workload equaling the threshold in a control position for one time step is equal to the reconfiguration cost of one new control position.Table 1 contains a summary of the parameters used for these analyses.3 graphically portrays the information in Table 2.Note that the compute time per time step is set to zero for the operational configurations because the actual compute time in operations is not known.The historical sector configurations perform relatively well on these small problems.On at least one problem instance they achieve the optimal cost, and on average the cost from the historical configurations is within about 22% of optimal.However, on one problem instance the historical sector configurations led to a cost that was more than double the optimal cost.The per-formance of the heuristic is similar to that of the historical configurations, but slightly better.The rollouts algorithm achieves a cost that is within 2% of optimal on average and never more than 16% from optimal on these 19 problem instances.The dynamic programming algorithm took about a tenth of a second per time step to select a configuration.It benefitted from the fact that all of the workload distributions were assumed to be fixed and independent.This meant that the dynamic programming algorithm only had to perform value iteration at the first time step, and then could re-use the optimal costs-to-go at all future time steps.In a more realistic problem formulation where new information becomes available over time and changes the distribution of future traffic and workload, the dynamic programming solution would have to perform value iteration at each time step, and it would therefore be slower.The heuristic algorithm computed a solution in about a hundredth of a second.The rollouts algo-  3 Mean compute time per time step and spread of cost results for each algorithm.The bottom of the vertical line is the lowest cost result, the bottom of the box is the 25 th percentile, the horizontal line is the median, the top of the box is the 75 th percentile, and the top of the vertical line is the maximum.rithm took about two-thirds of the time required by the dynamic programming solution per time step to select a configuration.The efforts to speed up the rollouts algorithm discussed in sub-section 3.3 approximately halved its computation time.
+Large Problem Instances from Possible Future OperationsA hypothetical future area of specialization consistent with the research of Mogford [31][32][33]  Three problem instances from the same three Thursdays in February of 2007 were created for this possible area.For these instances, there are 8,362 possible valid configurations.At each time step, the number of valid control actions ranged between 1 and 2,288 and averaged almost 500.The required number of control positions for each problem instance was set so that the total number of aircraft in the area divided by the number of control positions would not be larger than 10 air- craft.The other details relating to these instances are the same as for the smaller problem instances as described in sub-section 4.1, except that these simulations ran for one more time step.An exact dynamic programming solution was attempted for one of these problem instances but after 10 hours it had still not finished computing the optimal costs-to-go.Since it takes prohibitively long to compute the optimal solution with exact dynamic programming problem instances of this size, the cost results in table 3 are expressed in terms of a percentage improvement over the cost achieved by the heuristic.The rollouts approximate dynamic programming solution achieves a cost reduction of between 10% and 28% for these three problem instances, with an average cost reduction of more than 15%.Information and automation tools are being developed to enable larger areas of specialization [1,11,28,[31][32][33].If the heuristic performs better than configurations selected by a human supervisor in larger areas of specialization, as it does in current areas of specialization, then the rollouts solution would offer a cost improvement of 15% or more over configurations selected by a human supervisor in larger areas of specialization.This should be investigated in future research, as should the benefits over current operations of larger areas of specialization configured with the algorithms proposed here.The heuristic algorithm computes a solution for each time step in about two hundredths of a second on average, which is about twice as long as it took for the smaller problems in subsection 4.1.The rollouts algorithm takes on average 100 seconds to compute each next configuration.This should be acceptable because this computation would only need to complete within the 15-minute time step.
+ConclusionsA finite horizon airspace sector configuration problem was formulated.It considers workload costs, reconfiguration costs, and a constraint on the number of control positions at each time step.Three algorithms for this problem were proposed and evaluated.On small problem instances from current operations, an exact dynamic programming solution can be computed with value iteration.This solution gives the optimal cost value for the problem instances.Historical sector configurations and those generated by a myopic heuristic on average led to costs that were about 22% and 17% larger than the optimal cost, respectively.A rollouts approximate dynamic programming algorithm based on the myopic heuristic achieved costs within 2% of optimal, on average.For large problem instances based on possible future operations, the rollouts algorithm reduced the cost achieved by the heuristic by more than 15% on average with an acceptable computation time.
+Future WorkThere are several opportunities for extensions of this work.A more sophisticated measure of workload than aircraft count divided by control position monitor alert parameter should be used.A more detailed comparison of historical and algorithmically-generated configurations may reveal ways to improve the algorithms and their cost function, particularly with the help of airspace operations experts.The reconfiguration cost in particular may need further research and refinement because research on reconfiguration costs is still in its early stages [21,26,27].Furthermore, traffic and workload uncertainties should be modeled more realistically.Finally, the algorithms proposed here should be used to approximate the benefits of increasing the size of areas of specialization and thereby allowing more possible configurations.Fig. 22Fig. 2 Probability mass function for the 12:45 pm (15-minute lookahead) prediction of the maximum number of aircraft in sector ZOB38 in Cleveland Center between 1:00 pm and 1:15 pm local time on 22 February 2007.
+Fig.3Mean compute time per time step and spread of cost results for each algorithm.The bottom of the vertical line is the lowest cost result, the bottom of the box is the 25 th percentile, the horizontal line is the median, the top of the box is the 75 th percentile, and the top of the vertical line is the maximum.
+Fig. 44Fig. 4 The 11 sectors in a possible future area of Cleveland Air Route Traffic Control Center.
+Table 11Problem and Algorithm Parameters for Small Operational Problem InstancesParameterValueProblem start time3:45 am Eastern TimeProblem end time10:45 pm Eastern TimeTime step duration15 minutesK75L16H for dynamic programming10,000H for heuristic and rollouts100w(c, T )maximum aircraft count during time step monitor alert parameterw(c, T )0.9α10β1
+Table 22Cost and Computation Time Results for Small Operational Problem InstancesApproachFraction of Optimal Cost (g)Mean Compute TimeMinMeanMaxper Time Step [seconds]Dynamic Programming1.0001.0001.0000.095Historical1.0001.2172.174-Heuristic1.0001.1652.1000.012Rollouts1.0001.0141.1590.065Table 2 summarizes the cost and computationtime results for the Monte Carlo runs of these 19problem instances. The dynamic programmingapproach computes the optimal solution to theproblems, assuming that it uses enough MonteCarlo simulations to accurately approximate ex-pected values. The costs incurred by the otherapproaches are expressed as a fraction of the op-timal cost found by dynamic programming. Fig-ure
+Table 33Cost and Computation Time Results for Large Possible Future Problem InstancesApproachPercent Cost (g) ImprovementMean Compute Timeover Heuristicper Time StepMinMeanMax[seconds]Heuristic---0.021Rollouts10.83%17.87%27.50%97.0
+		
+		
+
+			
+AcknowledgementsThe authors thank Mark Evans for answering questions about the airspace sector configuration problem.
+			
+
+			
+Copyright StatementThe authors confirm that they, and/or their company or organization, hold copyright on all of the original material included in this paper.The authors also confirm that they have obtained permission, from the copyright holder of any third party material included in this paper, to publish it as part of their paper.The authors confirm that they give permission, or have obtained permission from the copyright holder of this paper, for the publication and distribution of this paper as part of the ICAS2010 proceedings or as individual off-prints from the proceedings.			
+			
+
+				
+
+
+	
+		Controller Workload Models for Generic High-Altitude Airspace
+		
+			MichaelBloem
+		
+		
+			PramodGupta
+		
+		
+			Chok-FungLai
+		
+		10.2514/6.2010-9004
+	
+	
+		10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		
+			American Institute of Aeronautics and Astronautics
+			March 2010
+		
+	
+	High altitude trajectory-based (generic) airspace update concept exploration and refine- ment. MITRE Center for Advanced Aviation System Development presentation, March 2010.
+
+
+
+	
+		Dynamic Programming and Suboptimal Control: A Survey from ADP to MPC*
+		
+			DimitriPBertsekas
+		
+		10.3166/ejc.11.310-334
+	
+	
+		European Journal of Control
+		European Journal of Control
+		0947-3580
+		
+			11
+			4-5
+			
+			2005
+			Elsevier BV
+			Nashua, NH
+		
+	
+	Bertsekas D. P. Dynamic Programming and Op- timal Control. Vol. I, Athena Scientific, Nashua, NH, 2005.
+
+
+
+	
+		FACET: Future ATM Concepts Evaluation Tool
+		
+			KarlDBilimoria
+		
+		
+			BanavarSridhar
+		
+		
+			ShonRGrabbe
+		
+		
+			GanoBChatterji
+		
+		
+			KapilSSheth
+		
+		10.2514/atcq.9.1.1
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			9
+			1
+			
+			2001
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Bilimoria K, Sridhar B, Chatterji G, Sheth K, and Grabbe S. FACET: Future ATM Concepts Evaluation Tool. Air Traffic Control Quarterly, Vol. 9, No 1, pp 1-20, 2001.
+
+
+
+	
+		Algorithms for Combining Airspace Sectors
+		
+			MichaelBloem
+		
+		
+			ParimalKopardekar
+		
+		
+			PramodGupta
+		
+		10.2514/atcq.17.3.245
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			17
+			3
+			
+			October 2009
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Bloem M, Gupta P, and Kopardekar P. Algo- rithms for combining airspace sectors. Air Traf- fic Control Quarterly, Vol. 17, No 3, October 2009.
+
+
+
+	
+		Combining Airspace Sectors for the Efficient Use of Air Traffic Control Resources
+		
+			MichaelBloem
+		
+		
+			ParimalKopardekar
+		
+		10.2514/6.2008-7222
+	
+	
+		AIAA Guidance, Navigation and Control Conference and Exhibit
+		Honolulu, HI
+		
+			American Institute of Aeronautics and Astronautics
+			August 2008
+		
+	
+	Bloem M and Kopardekar P. Combining airspace sectors for the efficient use of air traf- fic control resources. Proc. of AIAA Guidance, Navigation, and Control Conference and Ex- hibit, Honolulu, HI, August 2008.
+
+
+
+	
+		Measures for air traffic controller workload prediction
+		
+			GanoChatterji
+		
+		
+			BanavarSridhar
+		
+		10.2514/6.2001-5242
+	
+	
+		1st AIAA, Aircraft, Technology Integration, and Operations Forum
+		Los Angeles, CA
+		
+			American Institute of Aeronautics and Astronautics
+			October 2001
+		
+	
+	Chatterji G. B and Sridhar B. Measures for air traffic controller workload prediction. Proc. of AIAA Aircraft, Technology, Integration, and Operations Forum, Los Angeles, CA, October 2001.
+
+
+
+	
+		Genetic algorithms for partitioning air space
+		
+			DDelahaye
+		
+		
+			J-MAlliot
+		
+		
+			MSchoenauer
+		
+		
+			J-LFarges
+		
+		10.1109/caia.1994.323662
+	
+	
+		Proceedings of the Tenth Conference on Artificial Intelligence for Applications
+		the Tenth Conference on Artificial Intelligence for ApplicationsSan Diego, CA
+		
+			IEEE
+			March 1995
+		
+	
+	Delahaye D, Alliot J.-M, Schoenauer M, and Farges J.-L. Genetic algorithms for automatic regroupment of air traffic control sectors. Proc. of 4th Conference on Evolutionary Program- ming, San Diego, CA, March 1995.
+
+
+
+	
+		Genetic algorithms for air traffic control system
+		
+			DDelahaye
+		
+		
+			NDurand
+		
+		
+			J.-MAlliot
+		
+		
+			MSchoenauer
+		
+	
+	
+		Proc. of INFAUTOM
+		of INFAUTOM
+		
+			1996
+		
+	
+	Delahaye D, Durand N, Alliot J.-M, and Schoe- nauer M. Genetic algorithms for air traffic con- trol system. Proc. of INFAUTOM, 1996.
+
+
+
+	
+		ETLM support tool for dynamic airspace configuration
+		
+			MDorado
+		
+	
+	
+		NASA Dynamic Airspace Configuration Workshop, Moffett Field
+		CA
+		
+			2009
+		
+	
+	Dorado M. ETLM support tool for dy- namic airspace configuration. NASA Dy- namic Airspace Configuration Workshop, Mof- fett Field, CA 2009.
+
+
+
+	
+		A Method of Optimally Combining Sectors
+		
+			MichaelCDrew
+		
+		10.2514/6.2009-7057
+	
+	
+		9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO)
+		Hilton Head, SC
+		
+			American Institute of Aeronautics and Astronautics
+			September 2009
+		
+	
+	Drew M. C. A method of optimally combin- ing sectors. Proc. of AIAA Aviation Technology, Integration and Operations Conference, Hilton Head, SC, September 2009.
+
+
+
+	
+		An operational concept for mid-term high altitude trajectory-based airspace
+		
+			Faa Ato Planning
+		
+		
+			Research
+		
+		
+			Technology
+		
+	
+	
+		Federal Aviation Administration
+		Atlantic City, NJ
+		
+			August 2009
+		
+	
+	Technical report
+	FAA ATO Planning, Research, and Technology. An operational concept for mid-term high alti- tude trajectory-based airspace. Technical report, Federal Aviation Administration, Atlantic City, NJ, August 2009.
+
+
+
+	
+		An efficient airspace configuration forecast
+		
+			DGianazza
+		
+		
+			CAllignol
+		
+		
+			NSaporito
+		
+	
+	
+		Proc. of USA/Europe Air Traffic Management Research & Development Seminar
+		of USA/Europe Air Traffic Management Research & Development SeminarNapa, CA
+		
+			July 2009
+		
+	
+	Gianazza D, Allignol C, and Saporito N. An ef- ficient airspace configuration forecast. Proc. of USA/Europe Air Traffic Management Research & Development Seminar, Napa, CA, July 2009.
+
+
+
+	
+		Study of Pairwise Deconfliction Metrics to Analyze Air Traffic Complexity in Upper Class E Airspace
+		
+			DGianazza
+		
+		10.2514/6.2023-4103.vid
+	
+	
+		Proc. of USA/Europe Air Traffic Management Research & Development Seminar
+		of USA/Europe Air Traffic Management Research & Development SeminarBarcelona, Spain
+		
+			American Institute of Aeronautics and Astronautics (AIAA)
+			July 2007
+		
+	
+	Gianazza D. Airspace configuration using air traffic complexity metrics. Proc. of USA/Europe Air Traffic Management Research & Develop- ment Seminar, Barcelona, Spain, July 2007.
+
+
+
+	
+		Smoothed traffic complexity metrics for airspace configuration schedules
+		
+			DGianazza
+		
+	
+	
+		Proc. of 3rd International Conference on Research in Air Transportation
+		of 3rd International Conference on Research in Air TransportationFairfax, VA
+		
+			June 2008
+		
+	
+	Gianazza D. Smoothed traffic complexity met- rics for airspace configuration schedules. Proc. of 3rd International Conference on Research in Air Transportation, Fairfax, VA, June 2008.
+
+
+
+	
+		Forecasting workload and airspace configuration with neural networks and tree search methods
+		
+			DavidGianazza
+		
+		10.1016/j.artint.2010.03.001
+	
+	
+		Artificial Intelligence
+		Artificial Intelligence
+		0004-3702
+		
+			174
+			7-8
+			
+			2010
+			Elsevier BV
+		
+	
+	Gianazza D. Forecasting workload and airspace configurations with neural networks and tree search methods. Artificial Intelligence, 2010.
+
+
+
+	
+		Optimization of air traffic control sector configurations using tree search methods and genetic algorithms
+		
+			DGianazza
+		
+		
+			J-MAlliot
+		
+		10.1109/dasc.2002.1067912
+	
+	
+		Proceedings. The 21st Digital Avionics Systems Conference
+		The 21st Digital Avionics Systems Conference
+		
+			IEEE
+			October 2002
+		
+	
+	Gianazza D and Alliot J.-M. Optimization of air traffic control sector configurations using tree search methods and genetic algorithms. Proc. of AIAA/IEEE Digital Avionics Systems Confer- ence, October 2002.
+
+
+
+	
+		Optimization of air traffic control sector configurations using tree search methods and genetic algorithms
+		
+			DGianazza
+		
+		
+			J-MAlliot
+		
+		10.1109/dasc.2002.1067912
+	
+	
+		Proceedings. The 21st Digital Avionics Systems Conference
+		The 21st Digital Avionics Systems ConferenceLas Vegas, NV
+		
+			IEEE
+			June 2002
+		
+	
+	Gianazza D, Alliot J.-M, and Granger G. Op- timal combinations of air traffic control sectors using classical and stochastic methods. Proc. of International Conference on Artificial Intelli- gence, Las Vegas, NV, June 2002.
+
+
+
+	
+		Selection and Evaluation of Air Traffic Complexity Metrics
+		
+			DavidGianazza
+		
+		
+			KevinGuittet
+		
+		10.1109/dasc.2006.313710
+	
+	
+		2006 ieee/aiaa 25TH Digital Avionics Systems Conference
+		Belgrade, Serbia and Montenegro
+		
+			IEEE
+			June 2006
+		
+	
+	Gianazza D and Guittet K. Evaluation of air traffic complexity metrics using neural networks and sector status. Proc. of 2nd International Conference on Research in Air Transportation, Belgrade, Serbia and Montenegro, June 2006.
+
+
+
+	
+		Selection and Evaluation of Air Traffic Complexity Metrics
+		
+			DavidGianazza
+		
+		
+			KevinGuittet
+		
+		10.1109/dasc.2006.313710
+	
+	
+		2006 ieee/aiaa 25TH Digital Avionics Systems Conference
+		
+			IEEE
+			October 2006
+		
+	
+	Gianazza D and Guittet K. Selection and eval- uation of air traffic complexity metrics. Proc. of AIAA/IEEE Digital Avionics Systems Confer- ence, October 2006.
+
+
+
+	
+		An Investigation of the Operational Acceptability of Algorithm-Generated Sector Combinations
+		
+			PramodGupta
+		
+		
+			MichaelBloem
+		
+		
+			ParimalKopardekar
+		
+		10.2514/6.2009-7059
+	
+	
+		9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO)
+		Hilton Head, SC
+		
+			American Institute of Aeronautics and Astronautics
+			September 2009
+		
+	
+	Gupta P, Bloem M, and Kopardekar P. An investigation of the operational acceptability of algorithm-generated sector combinations. Proc. of AIAA Aviation Technology, Integration and Operations Conference, Hilton Head, SC, September 2009.
+
+
+
+	
+		Effect of Dynamic Sector Boundary Changes on Air Traffic Controllers
+		
+			JaewooJung
+		
+		
+			PaulLee
+		
+		
+			AngelaKessell
+		
+		
+			JeffreyHomola
+		
+		
+			ShannonZelinski
+		
+		10.2514/6.2010-8289
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		Toronto, Canada
+		
+			American Institute of Aeronautics and Astronautics
+			August 2010
+		
+	
+	Jung J, Lee P, Kessell A, Homola J, and Zelinkski S. Effect of dynamic sector boundary changes on air traffic controllers. Proc. of AIAA Guidance, Navigation, and Control Conference, Toronto, Canada, August 2010.
+
+
+
+	
+		Simplified dynamic density: A metric for dynamic airspace configuration and NextGen analysis
+		
+			AlexanderKlein
+		
+		
+			MarkDRodgers
+		
+		
+			KennethLeiden
+		
+		10.1109/dasc.2009.5347539
+	
+	
+		2009 IEEE/AIAA 28th Digital Avionics Systems Conference
+		St. Paul, MN
+		
+			IEEE
+			October 2008
+		
+	
+	Klein A, Rogers M. D, and Leiden K. Simplified dynamic density: a metric for dynamic airspace configuration and NEXTGEN analysis. Proc. of AIAA/IEEE Digital Avionics Systems Confer- ence, St. Paul, MN, October 2008.
+
+
+
+	
+		Dynamic density: measuring and predicting sector complexity [ATC]
+		
+			PKopardekar
+		
+		
+			SMagyarits
+		
+		10.1109/dasc.2002.1067920
+	
+	
+		Proceedings. The 21st Digital Avionics Systems Conference
+		The 21st Digital Avionics Systems ConferenceIrvine, CA
+		
+			IEEE
+			October 2002
+		
+	
+	Kopardekar P and Magyarits S. Dynamic den- sity: Measuring and predicting sector complex- ity. Proc. of AIAA/IEEE Digital Avionics Sys- tems Conference, Irvine, CA, October 2002.
+
+
+
+	
+		Measurement and prediction of dynamic density
+		
+			PKopardekar
+		
+		
+			SMagyarits
+		
+	
+	
+		Proc. of USA/Europe Air Traffic Management Research & Development Seminar
+		of USA/Europe Air Traffic Management Research & Development SeminarBudapest, Hungary
+		
+			2003
+		
+	
+	Kopardekar P and Magyarits S. Measurement and prediction of dynamic density. Proc. of USA/Europe Air Traffic Management Research & Development Seminar, Budapest, Hungary, 2003.
+
+
+
+	
+		Dynamic density: An air traffic management metric
+		
+			IVLaudeman
+		
+		
+			SheldenS GBranstrom
+		
+		
+			RBrasil
+		
+		
+			CL
+		
+		NASA/TM-1998-112226
+		
+			1998
+			NASA Ames Research Center
+		
+	
+	Technical Report
+	Laudeman I. V, Shelden S. G, Branstrom R, and Brasil C. L. Dynamic density: An air traffic management metric. Technical Report NASA/TM-1998-112226, NASA Ames Re- search Center, 1998.
+
+
+
+	
+		Sector design and boundary change considerations for flexible airspace
+		
+			LeeP UPrevot
+		
+		
+			THomola
+		
+		
+			JLee
+		
+		
+			HKessell
+		
+		
+			A
+		
+		
+			SmithN
+		
+	
+	
+		Proc. of AIAA Aviation Technology, Integration, and Operations Conference
+		of AIAA Aviation Technology, Integration, and Operations ConferenceFort Worth, TX
+		
+			September 2010
+		
+	
+	Lee P. U, Prevot T, Homola J, Lee H, Kessell A, and Smith N. Sector design and bound- ary change considerations for flexible airspace. Proc. of AIAA Aviation Technology, Integration, and Operations Conference, Fort Worth, TX, September 2010.
+
+
+
+	
+		Impact of airspace reconfiguration on controller workload and task performance
+		
+			LeeP UPrevot
+		
+		
+			THomola
+		
+		
+			JLee
+		
+		
+			HKessell
+		
+		
+			ABrasil
+		
+		
+			C
+		
+		
+			SmithN
+		
+	
+	
+		Proc. of Applied Human Factors and Ergonomics
+		of Applied Human Factors and ErgonomicsMiami, FL
+		
+			July 2010
+		
+	
+	Lee P. U, Prevot T, Homola J, Lee H, Kessell A, Brasil C, and Smith N. Impact of airspace reconfiguration on controller workload and task performance. Proc. of Applied Human Factors and Ergonomics, Miami, FL, July 2010.
+
+
+
+	
+		Kentucky Re-Entry Universal Payload System (KRUPS): Overview of flight test via high-altitude bal...
+		
+			KMLevin
+		
+		10.2514/6.2022-3729.vid
+		
+			2007
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Universal High Altitude Airspace (UHAA)
+	Levin K. M. Universal High Altitude Airspace (UHAA). MITRE Center for Advanced Avia- tion System Development presentation, Febru- ary 2007.
+
+
+
+	
+		Dynamic density and complexity metrics for realtime traffic flow management
+		
+			AMassalonis
+		
+		
+			MBCallaham
+		
+		
+			CRWanke
+		
+	
+	
+		Proc. of 5th USA
+		of 5th USABudapest, Hungary
+		
+			December 2003
+		
+	
+	Massalonis A, Callaham M. B, and Wanke C. R. Dynamic density and complexity metrics for re- altime traffic flow management. Proc. of 5th USA/Europe Air Traffic Management Research & Development Seminar, Budapest, Hungary, December 2003.
+
+
+
+	
+		Dynamic Airspace Configuration Management Based on Computational Geometry Techniques
+		
+			JoeMitchell
+		
+		
+			GirishkumarSabhnani
+		
+		
+			RobertHoffman
+		
+		
+			JimmyKrozel
+		
+		
+			ArashYousefi
+		
+		10.2514/6.2008-7225
+	
+	
+		AIAA Guidance, Navigation and Control Conference and Exhibit
+		Honolulu, HI
+		
+			American Institute of Aeronautics and Astronautics
+			August 2008
+		
+	
+	Mitchell J. S. B, Sabhnani G, Krozel J, Hoff- man B, and Yousefi A. Dynamic airspace con- figuration management based on computational geometry techniques. Proc. of AIAA Guidance, Navigation, and Control Conference and Ex- hibit, Honolulu, HI, August 2008.
+
+
+
+	
+		Generic airspace research phase 3 test plan
+		
+			RMogford
+		
+	
+	
+		NASA Ames Research Center test plan
+		
+			November 2009
+		
+	
+	Mogford R. Generic airspace research phase 3 test plan. NASA Ames Research Center test plan, November 2009.
+
+
+
+	
+		Flight awareness collaboration tool development
+		
+			RichardMogford
+		
+		
+			DanPeknik
+		
+		
+			AaronDuley
+		
+		
+			CodyEvans
+		
+		
+			LionelDelmo
+		
+		
+			ChristianAmalu
+		
+		10.1109/dasc.2016.7778038
+	
+	
+		2016 IEEE/AIAA 35th Digital Avionics Systems Conference (DASC)
+		Salt Lake City, UT
+		
+			IEEE
+			October 2010
+		
+	
+	Mogford R, Evans M, Gibson J, Miller J, Peknik D, Pfeiffer J, Preston W, Shih J, and West F. Generic airspace concepts and research. Proc. of AIAA/IEEE Digital Avionics Systems Confer- ence, Salt Lake City, UT, October 2010.
+
+
+
+	
+		
+			RHMogford
+		
+		Generic operations research phase 1 report
+		
+			February 2009
+		
+		
+			NASA Ames Research Center
+		
+	
+	Technical report
+	Mogford R. H. Generic operations research phase 1 report. Technical report, NASA Ames Research Center, February 2009.
+
+
+
+	
+		Geometric Algorithms for Dynamic Airspace Sectorization
+		
+			GSabhnani
+		
+		
+			May 2009
+		
+		
+			Stony Brook University
+		
+	
+	PhD thesis
+	Sabhnani G. Geometric Algorithms for Dy- namic Airspace Sectorization. PhD thesis, Stony Brook University, May 2009.
+
+
+
+	
+		Impact of Uncertainty on the Prediction of Airspace Complexity of Congested Sectors
+		
+			BanavarSridhar
+		
+		
+			DeepakKulkarni
+		
+		
+			KapilSheth
+		
+		10.2514/atcq.19.1.1
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			19
+			1
+			
+			December 1998
+			American Institute of Aeronautics and Astronautics (AIAA)
+			Orlando, FL
+		
+	
+	Sridhar B, Sheth K. S, and Grabbe S. Airspace complexity and its application in air traffic man- agement. Proc. of 2nd USA/Europe Air Traf- fic Management Research & Development Sem- inar, Orlando, FL, December 1998.
+
+
+
+	
+		Optimization of opening schemes
+		
+			CVerlhac
+		
+		
+			SManchon
+		
+	
+	
+		Proc. of 4th USA/Europe Air Traffic Management Research & Development Seminar
+		of 4th USA/Europe Air Traffic Management Research & Development SeminarSanta Fe, NM
+		
+			December 2001
+		
+	
+	Verlhac C and Manchon S. Optimization of opening schemes. Proc. of 4th USA/Europe Air Traffic Management Research & Development Seminar, Santa Fe, NM, December 2001.
+
+
+
+	
+		Probabilistic congestion management
+		
+			CWanke
+		
+		
+			LSong
+		
+		
+			SZobell
+		
+		
+			DGreenbaum
+		
+		
+			SMulgund
+		
+	
+	
+		Proc. of 6th USA/Europe Air Traffic Management Research & Development Seminar
+		of 6th USA/Europe Air Traffic Management Research & Development SeminarBaltimore, MD
+		
+			June 2005
+		
+	
+	Wanke C, Song L, Zobell S, Greenbaum D, and Mulgund S. Probabilistic congestion man- agement. Proc. of 6th USA/Europe Air Traf- fic Management Research & Development Sem- inar, Baltimore, MD, June 2005.
+
+
+
+	
+		Macroscopic workload model for estimating en-route sector capacity
+		
+			WelchJ D
+		
+		
+			MartinB DSridhar
+		
+		
+			B
+		
+	
+	
+		Proc. of 7th USA/Europe ATM Research and Development Seminar
+		of 7th USA/Europe ATM Research and Development SeminarBarcelona, Spain
+		
+			July 2007
+		
+	
+	Welch J. D, Martin B. D, and Sridhar B. Macro- scopic workload model for estimating en-route sector capacity. Proc. of 7th USA/Europe ATM Research and Development Seminar, Barcelona, Spain, July 2007.
+
+
+
+	
+		Airspace Sector Redesign Based on Voronoi Diagrams
+		
+			MinXue
+		
+		10.2514/6.2008-7223
+	
+	
+		AIAA Guidance, Navigation and Control Conference and Exhibit
+		
+			American Institute of Aeronautics and Astronautics
+			September 2008
+		
+	
+	Xue M. Airspace sector redesign based on Voronoi diagrams. AIAA Journal of Aerospace Computing, September 2008.
+
+
+				
+			
+		
+	

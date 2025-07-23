@@ -1,0 +1,593 @@
+
+	
+	
+		
+I. INTRODUCTIONCongested airspace contains more aircraft than can be safely and efficiently controlled by air traffic controllers.Congestion can be reduced by managing air traffic or airspace.Traffic Management Units tactically manage air traffic by delaying or rerouting flights to reduce congestion over the next hour.These delays or reroutes are costly for airspace users.Managing airspace, on the other hand, involves altering how responsibility for controlling aircraft is divided among controllers.Controller supervisors accomplish tactical airspace management by selecting sets of airspace volumes called sectors to be controlled by each controller team.Changes in the assignment of sectors to controller teams disrupt controller activities and can degrade safety and efficiency.Traffic Management Units and controller supervisors coordinate how to use air traffic and airspace management to reduce congestion.Since congestion, traffic management, and airspace management all induce difficulties for controllers or costs for airspace users, it is not always clear if or how traffic and airspace management should work together to reduce congestion.Procedures, tools, and algorithms have been proposed to assist with tactical air traffic and airspace management.A person called a Multi-Sector Planner could coordinate local traffic and airspace management [1].Procedures for human decision-makers to tactically coordinate air traffic and airspace management while using algorithm-suggested alterations to sector geometries have been investigated in recent human-inthe-loop simulations [2].The Airspace Restriction Planner is a tool that proposes and evaluates possible air traffic man-agement actions by solving an integer program [3], [4].More recently, the MaxWeight algorithm from queuing theory has been applied to tactical air traffic management [5].For tactical airspace management, algorithms based on myopic heuristics, integer programming, and dynamic programming have been proposed [6]- [8].Some research has investigated the coordination of air traffic and airspace management for strategic time horizons of an hour or more [9]- [11].However, most air traffic management algorithms assume that airspace will be held constant, and most airspace management algorithms do not consider how delayed or rerouted traffic will impact airspace quality.Furthermore, no publications have studied algorithms for coordinated air traffic and airspace management in the tactical timeframe of an hour or less.This paper is a preliminary investigation of algorithms for coordinated tactical air traffic and airspace management.These algorithms suggest air traffic and airspace controls to reduce congestion in a way that considers the cost of congestion, traffic management, and airspace management.The algorithms incorporate various degrees of coordination between air traffic and airspace management.The model and the problem statement are in Section II.Algorithms for solving this problem are specified in Section III.The experimental setup in Section IV is followed by the results in Section V. Opportunities for future work are discussed in Section VII before the conclusion in Section VI.
+II. PROBLEM STATEMENT
+A. Air Traffic and Airspace ModelA queuing network is used to model air traffic and airspace.Despite the simplicity of queuing models, they have proven proven themselves to be relatively accurate representations of air traffic [12]- [14].They also allow powerful controlled queuing techniques to be leveraged.While it is not trivial to translate control actions proposed by such techniques into implementable directives to aircraft [15], controlled queuing algorithms show promise for air traffic management [5], [16].For this study, air traffic is modeled with an Eulerian queuing model.Each queue represents aircraft with particular characteristics (such as the same destination airport) traversing part of the National Airspace System (such as a sector).Sectors are the atomic units of airspace and the sector configuration in use at each time step specifies how sectors and their associated queues are grouped into control positions.A control position is a set of sectors that are managed by a team of air traffic controllers.1) State: Time is discretized into time steps of length T .The system state X (k) = (Q(k), C(k)) at a time step k consists of the number of aircraft in each queue Q(k) and the sector configuration C(k).More precisely, Q(k) is a vector in which an element Q ij (k) denotes the number of aircraft passing between boundary i and boundary j at time kT .These boundaries can represent any location where traffic may be rerouted or delayed.Separate queues could be defined for flights bound for different destinations.The configuration state at time kT is C(k), a set of control positions.Each control position c is itself a set that contains one or more of the N sectors in the set of sectors S.2) Control: The control action at each time step also has two parts.The air traffic control implemented between time kT and time (k + 1)T is U (k).This control is also a vector with an element for each possible transition from one queue to another.Let U ijt (k) denote the number of aircraft in queue Q ij that are transitioned to queue Q jt during time step k.The airspace control action selects the configuration for the next time step.This action is denoted by u(k), and it is a set of control positions that will be in place by time (k + 1)T .The overall control action at time stepk is U(k) = (U (k), u(k)).3) Dynamics: The system dynamics for the air traffic state depend on the dynamics of the arrivals to each queue.Let A ij (k) be the number of exogenous arrivals passing through sector boundary i from outside the system on the way to sector boundary j during time interval [kT, (k + 1)T ).Then the dynamics of the number of aircraft in each queue areQ ij (k + 1) = Q ij (k) + A ij (k) + s∈I(i) U sij (k) -t∈O(j) U ijt (k),where I(i) is the set of all sector boundaries preceding boundary i, and O(j) is similarly the set of all sector boundaries following boundary j.With an appropriate B matrix, the dynamics of all the queues can be specified asQ(k + 1) = Q(k) + BU (k) + A(k).(1)The system dynamics for the airspace are simply C(k+1) = u(k).At each time step the configuration control specifies the configuration for the next time step.4) Constraints: Only those aircraft in each queue Q ij that would, in the absence of any traffic control, cross airspace boundary j during time step k (D ij (k)) can transition out of the queue.This is expressed by the inequalityt∈O(j) U ijt (k) ≤ D ij (k) ∀ i, j, t, k. The vector version of these constraints is C 1 U (k) ≤ D(k), where C 1 is a binary matrix.The numbers of transitioning aircraft can only be nonnegative integers: U (k) ∈ Z nU + ∀ k, where n U is the number of elements in the U (k) vector.For this research, the D ij (k) values will be specified by a random process as in Ref. [5].This random process is unique in that its expected value increases as the number of aircraft in the queue increases, but eventually saturates because of aircraft separation standards.Rate constraints may also restrict the number of aircraft that can cross a given sector boundary during a time step.Let C 2 be another binary matrix in which the 1 entries in each row identify the elements of U (k) that must be added up to determine the total number of aircraft transitioning across a particular boundary.Let R be a column vector in which each element expresses an upper bound on the number of aircraft that can traverse the boundary affiliated with the corresponding row of C 2 during a time step.Then the vector inequality capturing rate constraints isC 2 U (k) ≤ R.A valid configuration assigns each sector to exactly one control position, specifies only spatially contiguous control positions, and possibly meets other operational requirements [8].Let C be the set of all valid configurations, and let C p be the set of all valid configurations that contain p control positions.Due to staffing constraints, a prescribed number of control positions must be used at each time step.Let d(k) specify the time-varying number of control positions that must be used at each time step.The configuration control must meet the constraint that u(k) ∈ C d(k+1) (i.e. |u(k)| = d(k + 1)).
+B. Coordinated Tactical Air Traffic and Airspace Management ProblemThe coordinated tactical air traffic and airspace management problem (CTATAMP) is to find a control policy that minimizes the expected value of a weighted sum of congestion, traffic control, and airspace control costs over a finite time horizon, subject to the system dynamics and constraints specified in sub-section II-A.The CTATAMP is minimize π=(µ0,...,µK-1)E K-1 k=0 g(X (k), U(k), X (k + 1)) X (0) (2) subject to Q(k + 1) = Q(k) + BU (k) + A(k),(3)k = 0, . . . , K -1 C 1 U (k) ≤ D(k), k = 0, . . . , K -1 (4) C 2 U (k) ≤ R, k = 0, . . . , K -1 (5) U (k) ∈ Z nU + , k = 0, . . . , K -1 (6) C(k + 1) = u(k), k = 0, . . . , K -1 (7) u(k) ∈ C d(k+1) , k = 0, . . . , K -1 (8) X (0) = X 0 , (9)where π is a feedback control policy in which µ 0 , . . ., µ K-1 indicate what control action to take at each time step, given the state:U(k) = µ k (X (k)).Therefore, the problem does not require that open-loop control actions be specified for the K time steps.Problem data include the distributions for A(k) and D(k), the B, R, C 1 , and C 2 matrices, the scheduled number of control positions d(k), the set of sectors S, the sets of valid configurations C p , and a few other items required for the cost function and described later.The single time step cost function in the objective ( 2) is a weighted sum of congestion, traffic control, and airspace control costs:g(X (k), U(k), X (k + 1)) = β c g c (X (k)) (10) + β t g t (Q(k), U (k)) + β a g a (X (k), U(k), X (k + 1)).A cost function was designed to capture the most important cost-inducing quantities in simple functional forms.1) Congestion Cost: This cost penalizes instances when control positions contain more than the maximum number of aircraft that they can safely contain.Let Qc denote this capacity value for a control position c, and let QC be a vector containing the capacities for all the control positions in C.The congestion cost depends on the airspace configuration.The number of aircraft in a control position during a time step is a sum of the number of aircraft in the queues corresponding to sectors in that control position.Let E c be a binary row vector with a 1 corresponding to each sector that is in c.Similarly, let E C be a binary matrix with a row for each control position in C. Then E C Q is a vector in which each element contains the number of aircraft in the control positions in C when the number of aircraft in each queue is as specified in the vector Q.The congestion cost is a sum of the number of aircraft over the capacity in each control position:g c (X (k)) = 1 T E C(k) Q(k) -QC(k) + . (11)Here 1 is a column vector of ones and [a] + is equal to a when a ≥ 0 and equal to 0 otherwise.
+2) Traffic Control Cost:The traffic control cost penalizes airborne delay and reroutes.It is expressed asg t (Q(k), U (k)) = 1 T (D(k) -C 1 U (k)) + f T U (k). (12)The first term in this cost adds up all the flights that were able to transition out of a queue but were instead delayed in the air.The second term can impose a cost on rerouting flights.The f vector contains non-negative elements that impose a cost on control actions in U (k) that correspond to reroutes.3) Airspace Control Cost: Finally, the airspace control cost captures the operational cost of changing the airspace configuration.When the airspace configuration changes, controllers must brief each other on the airspace that is moving from one controller team to another, and the new team must gain awareness of the air traffic situation in the new airspace.During this approximately 5-minute transition, operations in the airspace may become inefficient and less safe.The airspace control cost isg a (X (k), U(k), X (k + 1)) = c∈C - E c Q(k) + c∈C + E c Q(k + 1). (13)The first term is the number of aircraft in control positions at the start of time step k that will not be used in the configuration that will be implemented at the start of time step k + 1 (the set C -).The second term is the number of aircraft in control positions at the start of time step k + 1 that were not used during time step k (the set C + ).These two terms approximate the number of aircraft that are controlled during or discussed in the briefing and handed off to another controller team during a transition, respectively, quantities shown in previous research to be correlated with airspace transition workload [17].It is possible to change configurations at any time step, but this cost incentivizes keeping the configuration constant.
+III. ALGORITHMSSome algorithms for solving the CTATAMP are developed by connecting a traffic control algorithm with an airspace control algorithm.
+A. Traffic Control Algorithms1) Null Traffic Control: One baseline option for traffic control is to not interfere with flights as they traverse the airspace, leaving any congestion problems to be solved by airspace control.This option consists of always selecting actions that myopically minimize the traffic control cost:Φ 0 (Q(k)) ∈ argmin U∈U(k) g t (Q(k), U ),(14)where U(k) is the set of traffic control vectors that satisfy constraints ( 4)-( 6).
+2) Projective Cone Scheduling Traffic Control:The Projective Cone Scheduling (PCS) algorithm maximizes throughput and is computationally efficient [18].It is a generalization of the MaxWeight algorithm, which has been applied to tactical air traffic management [5].For this research, PCS is modified to consider the impact of control actions on the number of aircraft over a congestion threshold in control positions rather than the total number of aircraft in single queues.This modification is suitable for the CTATAMP because the congestion cost only penalizes the number of aircraft over the capacity in each control position.The modified PCS algorithm is denoted by Φ PCS (Q(k), u(k)) and is specified as follows.1: Θ = argminU∈U(k) ∆(U, u(k), α(k)), G u(k) Π(Q(k), u(k)) 2: return U ∈ argmin U∈Θ g t (Q(k), U )In this algorithm α(k) is the expected number of arrivals in time step k.Furthermore, ∆(U, u, α) and Π(Q, u) are functions that output p × 1 vectors, where p is the number of control positions in u.Each element of the vector output by the Π(Q, u) function specifies, for a control position in airspace configuration u when the queue state is Q, the number of aircraft above a threshold that are in the control position:Π(Q, u) = [E u Q -( Qu -ǫ u )] + . (15)Here ǫ u is a nonnegative p × 1 vector with an entry for each control position in u.If ǫ c , the entry in ǫ u corresponding to control position c, is set to 0, then the PCS algorithm selects traffic control actions that reduce the aircraft in c when the aircraft count in c is over Qc , the capacity of c. Larger ǫ c values encourage the PCS algorithm to reduce the aircraft count in c before the count reaches Qc .The value ( Qcǫ c ) will be referred to as the PCS congestion threshold.The ∆(U, u, α) function is specified as∆(U, u, α) = max{E u (BU + α), -Π(Q, u)}.(16)Each entry in the vector output by ∆ specifies the amount that traffic control action U will increase the aircraft over capacity in a control position, assuming α arrivals in this time step.Finally, G u(k) is a positive-definite symmetric matrix with nonpositive off-diagonal elements that can be used to tune the performance of the PCS algorithm [18].From among the traffic control actions that minimize the inner product, an action with a minimal traffic control cost is selected by the modified PCS algorithm in step two.
+B. Airspace Control Algorithms 1) Null Airspace Control:The null airspace control Ψ 0 always uses a particular airspace configuration.When the required number of control positions changes, this algorithm selects a new airspace configuration that minimizes only the current airspace control cost, assuming that α aircraft arrive in each queue in the current time step.2) Approximate Dynamic Programming Airspace Control: A second airspace control algorithm is based on the rollouts technique for approximate dynamic programming (ADP) and is an extension of the algorithm presented in Ref. [8].This algorithm will select an airspace configuration that minimizes the certainty equivalent estimate of the sum of the current stage cost and an approximation of the optimal cost-to-go:Ψ ADP (X (k), Φ, Ψ) ∈ argmin u∈C d(k+1) {g(X (k), (Φ, u), E X (k + 1)) + Jk+1 (X (k + 1), Φ, Ψ)}. (17)Here Jk (X (k), Φ, Ψ) is a certainty equivalent estimate of the expected optimal cost-to-go from state X (k) at time step k [19].It is computed by simulating the system from time step k to k + L, using Φ and Ψ to make traffic and airspace control decisions, respectively.In this simulation the arrivals to the system in time step k are α(k) and D(k) is set to its expected value given the simulated queue state at time step k.The equation describing the approximate optimal cost-to-go isJk (X (k), Φ, Ψ) = k+L j=k g( X h (j), (Φ, Ψ), X h (j + 1)), (18)where X (j) is the value of the system state taken on at the j th time step in the simulation.Any traffic and airspace control algorithms can be used in the rollouts simulation.A variation on this algorithm accepts a fourth input that specifies the traffic control to be used when simulating time step k.
+C. Algorithms for the Coordinated Tactical Air Traffic and Airspace Management Problem1) Null Control: One algorithm that serves as a baseline will not attempt to manage congestion with traffic or airspace control.It uses the null airspace and null traffic control algorithms to independently select air traffic and airspace control actions.2) Independent PCS Traffic Control and ADP Airspace Control: A second algorithm will select traffic control actions with PCS and airspace control actions with the ADP controller, but without any coordination between the two.Most traffic control and airspace control algorithms developed in previous research do not explicitly consider the impact that they have on one another.Traffic control actions will be selected according to Φ PCS (Q(k), Ψ 0 ) and and the airspace control will be selected according to Ψ ADP (X (k), Φ 0 , Ψ 0 ).3) Iterative PCS Traffic Control and ADP Airspace Control: One way to address the issue of coordinating traffic and airspace control is to use an iterative approach [9], [11].Such an iterative algorithm is specified as follows.1: U 0 = Φ PCS (Q, C) 2: u 0 = Ψ ADP (X , Φ 0 , Ψ 0 , U 0 ) 3: for i = 1 to I max do 4: U i = Φ PCS (Q, u i-1 )5:u i = Ψ ADP (X , Φ 0 , Ψ 0 , U i ) 6: g i = g(X , (U i , u i ), (Q + BU i + α, u i )) 7: if |g i -g i-1 | ≤ δ then 8: return U = (U i , u i ) 9: end if 10: end for 11: return U = (U Imax , u Imax )Inputs to the iterative algorithm include the system state X = (Q, C) and the expected number of arrivals in a time step α.The algorithm outputs a traffic and airspace control pair U.The δ parameter specifies how much the cost must converge before a control is returned and the I max parameter specifies the maximum number of iterations.
+4) Coordinated PCS Traffic Control and ADP Airspace Control:A final algorithm will be referred to as the coordinated algorithm because it explicitly coordinates air traffic and airspace control by having the ADP airspace control approximate costs-to-go with the same traffic control algorithm that is used to control the system.It first selects an airspace control action according to u(k) = Ψ ADP (X (k), Φ PCS , Ψ 0 ).Then it selects a traffic control according toU (k) = Φ PCS (Q(k), u(k)).
+IV. EXPERIMENTAL SETUPA simple problem instance is developed to illustrate some of the characteristics of the proposed algorithms.These characteristics are more pronounced when congestion is more severe, so the problem involves severe congestion that would probably only be encountered in the tactical time horizon if some unforeseen weather induced a significant reduction in capacity or change in traffic flows.The traffic queues and sectors used for this simple problem instance are shown in Fig. 1.There are ten queues handling flows of traffic traveling right-to-left and left-to-right.The dashed rectangles indicate how queues are grouped into the six sectors that partition the airspace.The D(k) random process for each queue is an approximation of the process shown in Fig. 2 of Ref. [5], except for queues 1-4, which are assumed to be twice as long as the other queues.Their D(k) processes are modified as described in Ref. [5].Queues and flows at lower altitudes are shaded.The lowaltitude queues 2, 4, 6, and 8 lie below queues 1, 3, 5 and 10, and 7 and 9, respectively.These six sectors can be assigned to between three and five control positions in seven different ways.The control position capacities Qc are set to 10 for any control position containing just one of the the four sectors with queues 5 and 10, 7 and 9, 6, or 8.Control positions with two or more of these sectors have a capacity of 16.The capacity is 18 for control positions with queues 1 and 2 or 3 and 4, and these sectors cannot be in control positions with other queues.The arrival process to queues 5-7 is binomial with 10 trials and a time-varying probability of success that is different for each queue [20].The expected arrival rate for each queue is shown in Fig. 2, as is the required number of control positions.The values of various problem and algorithm parameters used in this instance are shown in Table I.The experiment was simulated in MATLAB.All minimizations were conducted by an exhaustive search over the set of feasible solutions.
+V. EXPERIMENTAL RESULTSAverage cost results broken down by cost type can be seen in the stacked bar chart in Fig. 3.The average total cost achieved by the coordinated algorithm is 18% and 9% lower than the costs achieved by the independent and iterative algorithms.The coordinated algorithm also achieves lower average congestion, traffic control, and airspace control costs than the iterative or independent algorithms.Similarly, the iterative algorithm achieves lower costs of all types than the independent algorithm.These results suggest that increased interaction and coordination between air traffic and airspace control can lead to better performance.As traffic arrival rates are decreased or control position capacities increased, the costs achieved by the independent, iterative, and coordinated algorithms converge.The null algorithm takes 0.02 seconds to compute a control action on average.The independent and coordinated algorithms take 0.4 seconds per time step, while the iterative algorithm takes 1 second per time step.
+VI. CONCLUSIONA queuing network model of air traffic and airspace is used to formulate the Coordinated Tactical Air Traffic and Airspace Management Problem (CTATAMP).This problem involves selecting tactical air traffic delays and reroutes and airspace sector configurations that reduce control position congestion.Algorithms for this problem are proposed by combining a traffic control algorithm based on Projective Cone Scheduling and an airspace control algorithm based on approximate dynamic programming.A new coordinated approach is proposed in which traffic is controlled with the modified PCS algorithm and the rollouts approximate dynamic programming algorithm for airspace control uses the same modified PCS traffic control as part of the heuristic that helps it approximate optimal costs-to-go.In Monte Carlo simulations of a simple problem instance, the coordinated algorithm achieves average total costs that are 18% and 9% lower than those achieved by the independent and iterative algorithms, respectively, as well as lower average congestion costs, traffic control costs, and airspace control costs.The coordinated and independent algorithms each compute solutions more than two times faster than the iterative algorithm.
+VII. FUTURE WORKA major remaining is to refine and tune the cost function used in this research.The coordinated algorithm should be run on a historical problem instance involving a weather event and with weather and traffic prediction uncertainties.Its performance should be compared to that of historical air traffic and airspace control actions.The computational efficiency of the modified PCS algorithm must be improved.Finally, an effort should be made to prove convergence, stability, or optimality results for the modified PCS and coordinated algorithms.Fig. 1 .1Fig. 1.The queueing network used in the simple problem instance.
+Fig. 2 .2Fig. 2. The (a) expected arrival rate into each queue and (b) required number of control positions at each time step.
+Fig. 3 .3Fig. 3. Average weighted congestion, traffic control, and airspace control costs achieved by each algorithm.
+Fig. 4 .4Fig. 4. Aircraft over capacity for each control position at each time step during one of the Monte Carlo simulations when using the (a) null, (b) independent, (c) iterative, and (d) coordinated algorithms.
+TABLE I PROBLEMIAND ALGORITHM PARAMETERS FOR SIMPLE PROBLEM INSTANCEParameterValueMonte Carlo simulations100T (time step duration in minutes)10K (time steps in problem instance)108N (number of sectors)6n U (dimension of traffic control vector)12βc (weight on congestion cost)1βt (weight on traffic control cost)1βa (weight on airspace control cost)1/3f i for queue 7 to 10 and queue 5 to 9 (reroute cost)1/2All other f i (reroute cost)0Gu (PCS weighting parameter matrix)I ∀ u ∈ Cǫ (parameter vector in PCS congestion threshold)0L (ADP rollout simulation duration)5δ (iterative algorithm convergence threshold)3Imax (iterative algorithm maximum number of iterations)5
+		
+		
+			
+
+				
+
+
+	
+		Managing demand and capacity using multi-sector planning and flexible airspace: Humanin-the-loop evaluation of NextGen
+		
+			PULee
+		
+		
+			NMSmith
+		
+		
+			TPrevot
+		
+		
+			JRHomola
+		
+	
+	
+		Proc. of International Congress of the Aeronautical Sciences
+		of International Congress of the Aeronautical SciencesNice, France
+		
+			September 2010
+		
+	
+	P. U. Lee, N. M. Smith, T. Prevot, and J. R. Homola, "Managing demand and capacity using multi-sector planning and flexible airspace: Human- in-the-loop evaluation of NextGen," in Proc. of International Congress of the Aeronautical Sciences, Nice, France, September 2010.
+
+
+
+	
+		Benefits and feasibility of the flexible airspace management concept: A human-in-the-loop evaluation of roles, procedures, and tools
+		
+			PULee
+		
+		
+			CBrasil
+		
+		
+			JHomola
+		
+		
+			AKessell
+		
+		
+			HLee
+		
+		
+			MMainini
+		
+		
+			TPrevot
+		
+	
+	
+		Proc. of USA/Europe Air Traffic Management Research & Development Seminar
+		of USA/Europe Air Traffic Management Research & Development SeminarBerlin, Germany
+		
+			June 2011
+		
+	
+	P. U. Lee, C. Brasil, J. Homola, A. Kessell, H. Lee, M. Mainini, and T. Prevot, "Benefits and feasibility of the flexible airspace management concept: A human-in-the-loop evaluation of roles, procedures, and tools," in Proc. of USA/Europe Air Traffic Management Research & Development Seminar, Berlin, Germany, June 2011.
+
+
+
+	
+		Airspace Restriction Planner for Sector Congestion Management
+		
+			ParimalKopardekar
+		
+		
+			SteveGreen
+		
+		10.2514/6.2005-7435
+	
+	
+		AIAA 5th ATIO and16th Lighter-Than-Air Sys Tech. and Balloon Systems Conferences
+		Baltimore, MD
+		
+			American Institute of Aeronautics and Astronautics
+			June 2005
+		
+	
+	P. Kopardekar and S. Green, "Managing sector congestion using Airspace Restriction Planner (ARP)," in Proc. of USA/Europe Air Traffic Management Research & Development Seminar, Baltimore, MD, June 2005.
+
+
+
+	
+		Algorithms for managing sector congestion using the Airspace Restriction Planner
+		
+			RJakobovits
+		
+		
+			PKopardekar
+		
+		
+			JBurke
+		
+		
+			RHoffman
+		
+	
+	
+		Proc. of USA/Europe Air Traffic Management Research & Development Seminar
+		of USA/Europe Air Traffic Management Research & Development SeminarBarcelona, Spain
+		
+			July 2007
+		
+	
+	R. Jakobovits, P. Kopardekar, J. Burke, and R. Hoffman, "Algorithms for managing sector congestion using the Airspace Restriction Planner," in Proc. of USA/Europe Air Traffic Management Research & Development Seminar, Barcelona, Spain, July 2007.
+
+
+
+	
+		Feedback Control of the National Airspace System
+		
+			JeromeLeNy
+		
+		
+			HamsaBalakrishnan
+		
+		10.2514/1.51203
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		Journal of Guidance, Control, and Dynamics
+		0731-5090
+		1533-3884
+		
+			34
+			3
+			
+			2010
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	J. L. Ny and H. Balakrishnan, "Feedback control of the National Airspace System," Journal of Guidance, Control, and Dynamics, De- cember 2010.
+
+
+
+	
+		Algorithms for Combining Airspace Sectors
+		
+			MichaelBloem
+		
+		
+			ParimalKopardekar
+		
+		
+			PramodGupta
+		
+		10.2514/atcq.17.3.245
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			17
+			3
+			
+			2009
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	M. Bloem, P. Gupta, and P. Kopardekar, "Algorithms for combining airspace sectors," Air Traffic Control Quarterly, vol. 17, no. 3, 2009.
+
+
+
+	
+		A Method of Optimally Combining Sectors
+		
+			MichaelCDrew
+		
+		10.2514/6.2009-7057
+	
+	
+		9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO)
+		Hilton Head, SC
+		
+			American Institute of Aeronautics and Astronautics
+			September 2009
+		
+	
+	M. C. Drew, "A method of optimally combining sectors," in Proc. of AIAA Aviation Technology, Integration and Operations Conference, Hilton Head, SC, September 2009.
+
+
+
+	
+		Algorithms for Combining Airspace Sectors
+		
+			MichaelBloem
+		
+		
+			ParimalKopardekar
+		
+		
+			PramodGupta
+		
+		10.2514/atcq.17.3.245
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			17
+			3
+			
+			September 2010
+			American Institute of Aeronautics and Astronautics (AIAA)
+			Nice, France
+		
+	
+	M. Bloem and P. Gupta, "Configuring airspace sectors with approximate dynamic programming," in Proc. of International Congress of the Aeronautical Sciences, Nice, France, September 2010.
+
+
+
+	
+		Effectiveness of Dynamic Airspace Configuration to Manage Airspace Capacity in Response to Highly Dynamic Changes in Traffic Demand and Weather Events
+		
+			ArashYousefi
+		
+		
+			BabakKhorrami
+		
+		
+			GirishkumarSabhnani
+		
+		
+			RobertHoffman
+		
+		
+			BertHackney
+		
+		10.2514/6.2010-9019
+	
+	
+		10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Fort Worth, TX
+		
+			American Institute of Aeronautics and Astronautics
+			September 2010
+		
+	
+	A. Yousefi, B. Khorrami, G. Sabhnani, R. Hoffman, and B. Hackney, "Effectiveness of dynamic airspace configuration to manage airspace capacity in response to highly dynamic changes in traffic demand and weather events," in Proc. of AIAA Aircraft Technology, Integration, and Operations Conference, Fort Worth, TX, September 2010.
+
+
+
+	
+		Interaction of Airspace Partitions and Traffic Flow Management Delay
+		
+			KeePalopo
+		
+		
+			GanoChatterji
+		
+		
+			Hak-TaeLee
+		
+		10.2514/6.2010-9295
+	
+	
+		10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Fort Worth, TX
+		
+			American Institute of Aeronautics and Astronautics
+			September 2010
+		
+	
+	K. Palopo, G. B. Chatterji, and H.-T. Lee, "Interaction of airspace partitions and traffic flow management delay," in Proc. of AIAA Aviation Technology, Integration, and Operations Conference, Fort Worth, TX, September 2010.
+
+
+
+	
+		Interaction of airspace partitions and traffic flow management delay with weather
+		
+			Hak-TaeLee
+		
+		
+			GanoBChatterji
+		
+		
+			KeePalopo
+		
+		10.1109/dasc.2011.6096055
+	
+	
+		2011 IEEE/AIAA 30th Digital Avionics Systems Conference
+		Seattle, WA
+		
+			IEEE
+			October 2011
+		
+	
+	H.-T. Lee, G. B. Chatterji, and K. Palopo, "Interaction of airspace partitions and traffic flow management delay in the presence of weather," in Proc. of AIAA/IEEE Digital Avionics Systems Conference, Seattle, WA, October 2011.
+
+
+
+	
+		Modeling air traffic management technologies with a queuing network model of the national airspace system
+		
+			DLong
+		
+		
+			DLee
+		
+		
+			JJohnson
+		
+		
+			EGaier
+		
+		
+			PKostuik
+		
+		CR-1999-208988
+	
+	
+		NASA Langley Research Center
+		
+			January 1999
+			Hampton, VA
+		
+	
+	Technical Report
+	D. Long, D. Lee, J. Johnson, E. Gaier, and P. Kostuik, "Modeling air traffic management technologies with a queuing network model of the national airspace system," NASA Langley Research Center, Hampton, VA, Technical Report CR-1999-208988, January 1999.
+
+
+
+	
+		Queueing Network Models of the National Airspace System
+		
+			MonishTandale
+		
+		
+			PadmanabhanMenon
+		
+		
+			JayRosenberger
+		
+		
+			KameshSubbarao
+		
+		
+			PrasenjitSengupta
+		
+		
+			VictorCheng
+		
+		10.2514/6.2008-8942
+	
+	
+		The 26th Congress of ICAS and 8th AIAA ATIO
+		Anchorage, AK
+		
+			American Institute of Aeronautics and Astronautics
+			October 2008
+		
+	
+	M. D. Tandale, P. K. Menon, V. H. L. Cheng, J. Rosenberger, and J. Thipphavong, "Queueing network models of the national airspace sys- tem," in Proc. of AIAA Aircraft Technology, Integration, and Operations Conference, Anchorage, AK, October 2008.
+
+
+
+	
+		Modernized National Airspace System Performance Analysis Capability (NASPAC) (ALTERNATE PAPER)
+		
+			JosephPost
+		
+		
+			JohnGulding
+		
+		
+			KimberlyNoonan
+		
+		
+			MichaelGraham
+		
+		
+			DanMurphy
+		
+		
+			JamesBonn
+		
+		10.2514/6.2008-8945
+	
+	
+		The 26th Congress of ICAS and 8th AIAA ATIO
+		Anchorage, AK
+		
+			American Institute of Aeronautics and Astronautics
+			September 2008
+		
+	
+	J. Post, J. Gulding, K. Noonan, D. Murphy, J. Bonn, and M. Graham, "The modernized National Airspace System Performance Analysis Ca- pability (NASPAC)," in Proc. of International Congress of the Aeronau- tical Sciences, Anchorage, AK, September 2008.
+
+
+
+	
+		Disaggregation Method for an Aggregate Traffic Flow Management Model
+		
+			DengfengSun
+		
+		
+			BanavarSridhar
+		
+		
+			ShonGrabbe
+		
+		10.2514/1.47469
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		Journal of Guidance, Control, and Dynamics
+		0731-5090
+		1533-3884
+		
+			33
+			3
+			
+			2010
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	D. Sun, B. Sridhar, and S. Grabbe, "A disaggregation method for an aggregate traffic flow management model," Journal of Guidance, Control, and Dynamics, 2010.
+
+
+
+	
+		Decentralized air traffic flow control using a communications network model
+		
+			GBChatterji
+		
+		
+			YZheng
+		
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		
+			2009
+		
+	
+	G. B. Chatterji and Y. Zheng, "Decentralized air traffic flow control using a communications network model," Journal of Guidance, Control, and Dynamics, 2009.
+
+
+
+	
+		Sector Design and Boundary Change Considerations for Flexible Airspace Management
+		
+			PaulLee
+		
+		
+			ThomasPrevot
+		
+		
+			JeffHomola
+		
+		
+			HwasooLee
+		
+		
+			AngelaKessell
+		
+		
+			NancySmith
+		
+		10.2514/6.2010-9376
+	
+	
+		10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Fort Worth, TX
+		
+			American Institute of Aeronautics and Astronautics
+			September 2010
+		
+	
+	P. U. Lee, T. Prevot, J. Homola, H. Lee, A. Kessell, and N. Smith, "Sec- tor design and boundary change considerations for flexible airspace," in Proc. of AIAA Aviation Technology, Integration, and Operations Conference, Fort Worth, TX, September 2010.
+
+
+
+	
+		Projective Cone Scheduling (PCS) Algorithms for Packet Switches of Maximal Throughput
+		
+			KRoss
+		
+		
+			NBambos
+		
+		10.1109/tnet.2008.2002557
+	
+	
+		IEEE/ACM Transactions on Networking
+		IEEE/ACM Trans. Networking
+		1063-6692
+		1558-2566
+		
+			17
+			3
+			
+			June 2009
+			Institute of Electrical and Electronics Engineers (IEEE)
+		
+	
+	K. Ross and N. Bambos, "Projective Cone Scheduling (PCS) algorithms for packet switches of maximal throughput," IEEE/ACM Transactions on Networking, vol. 17, no. 3, pp. 976-989, June 2009.
+
+
+
+	
+		Stable Optimal Control and Semicontractive Dynamic Programming
+		
+			DimitriPBertsekas
+		
+		10.1137/17m1122815
+	
+	
+		SIAM Journal on Control and Optimization
+		SIAM J. Control Optim.
+		0363-0129
+		1095-7138
+		
+			56
+			1
+			
+			2005
+			Society for Industrial & Applied Mathematics (SIAM)
+			Nashua, NH
+		
+	
+	D. P. Bertsekas, Dynamic Programming and Optimal Control. Nashua, NH: Athena Scientific, 2005, vol. I.
+
+
+
+	
+		Probabilistic congestion management
+		
+			CWanke
+		
+		
+			LSong
+		
+		
+			SZobell
+		
+		
+			DGreenbaum
+		
+		
+			SMulgund
+		
+	
+	
+		Proc. of 6th USA
+		of 6th USABaltimore, MD
+		
+			June 2005
+		
+	
+	C. Wanke, L. Song, S. Zobell, D. Greenbaum, and S. Mulgund, "Proba- bilistic congestion management," in Proc. of 6th USA/Europe Air Traffic Management Research & Development Seminar, Baltimore, MD, June 2005.
+
+
+				
+			
+		
+	

@@ -1,0 +1,1171 @@
+
+	
+	
+		
+I. IntroductionIn the concepts of unmanned aircraft system traffic management (UTM) 1 and urban air mobility (UAM), 2 aerial vehicles are envisioned to operate much closer to each other in low-altitude airspace than in conventional high-altitude air traffic system.Because of the complex environment (wind, terrain, etc.), the high-density and low-altitude operations not only impose challenges to the vehicle design, such as quiet electric engines, long endurance and safe battery, and fault-tolerant control system, but also bring difficulties into the development of a safe yet efficient low-altitude air traffic system, such as communication, navigation, separation definitions, collision avoidance algorithms/protocols, flight planning and scheduling, risk/safety assessment, and emergency plans.In United States, it took more than 50 years (from 1960 to 2015) for the number of commercial manned aircraft 3 to increase from 2,135 to 6,876 and for the annual fatal accident rate to decrease from 30 per million departures to less than 0.5 per million departures. 4 However, for small unmanned aerial vehicles (UAVs), it only took one year for the number of registered users to reach 626,000 with estimated 1.1 million drones. 5t's unlikely that stakeholders will have decades to evolve the traffic system and mitigate all challenges without significantly impeding the growth of UTM and UAM operations.Previous work 6 evaluated existing tools [7][8][9][10][11] and suggested that a fast-time simulation evaluation capability is needed to study the high-density and low-altitude air traffic system.The Flexible engine for Fast-time evaluation of Flight environments (Fe 3 or Fe-cubed) is such a simulation tool developed at NASA to provide the capability of statistically analyzing the high-density and low-altitude traffic system.With this capability, stakeholders can study the impacts of critical components (such as wind, surveillance, communication, collision avoidace, traffic rules, energy consumption, etc.) in the lowaltitude high-density traffic system, gain insights and help define requirements, policies, and protocols for a safe and efficient traffic system, and assess operational risks and optimize flight schedules.To achieve these goals, Fe 3 is designed to have: 1) the capability of Monte Carlo simulations to support statistical or uncertainty evaluations; 2) high-performance computation ability to finish such simulations in a limited time frame; 3) generalized and high-fidelity models for trajectory calculation of various aerial vehicles, including multi-copter, fixed-wing, and hybrid aerial vehicles; 4) generalized models to accommodate different collision avoidance methods/traffic rules/policies/protocols for comparison; 5) the capability to incorporate low altitude wind models; and 6) the capability to incorporate accurate communication and sensor models.This paper provides an introduction to the Fe 3 simulator including its architecture, build-in models, and sample applications.It starts from the general architecture, and then various models used in the simulator are described.Performance data for the Fe 3 is also presented.Finally sample studies are demonstrated.
+II. Fe 3 ArchitectureA conceptual architecture of Fe 3 's core simulation engine is presented in Fig. 1.It is composed of two main functions: trajectory generation and collision avoidance.The details of these two functions are described in the subsections.Databases that are involved are vehicle model parameters, communication and sensor models, terrain, airspace constraints, and avoidance logic/rules.Inputs to Fe 3 include flight plans, wind/weather, and geo-fence data.The simulation configuration input data, which isn't shown in this figure, defines simulation related parameters, such as the number of Monte Carlo simulations, temperature and humidity, the type of avoidance algorithm, and, if needed, it also provide the opportunity of overwriting some vehicle or device model parameters for research purposes.[14][15]
+A. Trajectory ModelsTo keep the fidelity at a high level, 6-DOF vehicle trajectory models are implemented in the simulator.To minimize the number of models and optimize the computational performance, vehicle models are categorized into several types, such as the quad-rotor, fixed-wing, and hybrid.Autonomous controllers are included to form complete trajectory models.As an example, Eqns. 1, 2, 3, and 4 present the generalized multi-copter model for vehicle trajectory (in the inertial frame), forces (in the body frame), kinematics (in the body frame), and the moments (in the body frame), respectively. 16x, t, and h are vehicle North, East, and altitude coordinates in the inertial frame.u, v, and w are vehicle speeds in the body frame.φ, θ, and ψ are the vehicle's roll, pitch, and yaw angles, respectively.And p, q, and r are the angular rates.(F x , F y , F z ) are body axis aerodynamic forces and (M φ , M θ , M ψ ) are body axis moments.J x , J y , and J z are the moments of inertia about the principle axes in the body frame.   ẋ ẏ ḣ   =    cθcψ sφsθcψ -cφsψ cφsθcψ + sφsψ cθsψ sφsθsψ + cφcψ cφsθsψ -sφcψ sθ -sφcθ -cφcθ       u v w   (1)   u v ẇ   =    rv -qw pw -ru qu -pv    +    -gsinθ gcosθsinφ gcosθcosφ    + 1 m    F x F y F z   (2)   φ θ ψ   =    1 sinφtanθ cosφtanθ 0 cosφ -sinφ 0 sinφ cosθ cosφ cosθ       p q r   (3)   ṗ q ṙ   =    Jy-Jz Jx qr Jz-Jx Jy pr Jx-Jy Jz pq    +    1 Jx M φ 1 Jy M θ 1 Jz M ψ   (4)For multi-copters, the forces include: aerodynamic drags caused by vehicle's motion and wind, motorgenerated forces that are always in z-direction of the body frame, and the gravity force, which aligns with the z-direction of the inertial frame.The force produced by a motor can be expressed as simple as a function of the motor rotational speed 16, 17 as in Eqn. 5, where k f is a thrust coefficient for a given motor.A more sophisticated quadratic model for a fixed-pitch motor, according to Meyer's work, 18 can be written as Eqn.6, where v 1 is the free stream velocity and C T,i are thrust coefficients.Wind tunnel tests were typically conducted to identified the thrust coefficients for small UAVs. 19,20 t should be noted that these coefficients are proportional to air density as well.F motor = k f • ω 2(5)F motor = C T,0 ω 2 + C T,1 v 1 ω±C T,2 v 1 2(6)The drag forces are usually written as Eqn. 7, where R b i is the rotation matrix from the inertial frame to the vehicle body frame.The v i w is the wind vector in the Earth frame and the v i is essencially [ ẋ ẏ ḣ].The C d contains drag coefficients that are obtained in wind tunnel tests as well.F drag = -C d • R b i • v i -v i w •( v i -v i w )(7)Eqns. 8 and 9 present a sample outer loop controller associated with the multi-copter using the small angle assumption, which transfers the desired way points (x d , y d , and h d ) to the vehicle attitude commands (roll φ and pitch θ in this case).ẍd ÿd = k p (x d -x) + k d ( ẋd -ẋ) k p (y d -y) + k d ( ẏd -ẏ)(8)φ d θ d = m F z -sinψ -cosψ cosψ -sinψ -1 ẍd ÿd(9)
+B. Energy Consumption ModelsFrom mechanical perspective, in the case of rotational motion, the analogous calculation for power can be simplified as the product of torque multiplied by the rotational speed 21 as shown in Eqn. 10, where k m is assumed to be a coefficient between motor rotational speed and motor-generated torque.P motor = τ •ω = k m • ω 3(10)A more sophisticated model for a DC motor power consumption is calculated as a product of the voltage V in and current I as shown in Eqn.11.Eqn. 12 shows the expressions for the current, 22 where µ, α M , β M , R A , and k t are motor specific parameters, and ω is the motor rotational speed.P motor = V in • I(11)I = x x + x 2 x + µα M R A , x x = µV in β M -k t ω 2R A .(12)It is noted that, for a given motor, both models show that the consumed energy is mainly a function of the motor's rotational speed, which is driven by the desired thrust and moments.Apparently, even with the same required thrust and moments, different atmospheric conditions, such as wind and air density, result in different rotational speeds, and therefore yield different energy consumptions.
+C. Collision Avoidance ModelsMany collision avoidance algorithms have been developed in past decades, 10,[23][24][25][26] such as the potential field (PF) method, 24 the horizontal vector turn (HVT) method, 25 the model predictive control (MPC) method, the protocol-based methods 10,26,27 and the Partially Observable Markov Decision Process(POMDP) method. 28he inputs are typically ownship's position, speed, and intent, and intruder's position, speed, and intent, although some many require information from multiple intruders.The outputs are typically desired way points and/or control commands at next time step.In order to generalize collision avoidance algorithms, slightly different from Albaker's grouping, 29 the avoidance algorithms are categorized to three types in this simulator: trajectory-projection (TP) based, off-line table (OT) based, and force field (FF) based.
+Figure 2. Trajectory Projection Based Collision Avoidance AlgorithmA trajectory projection based method (shown in Fig. 2) is defined as a method that predicts intruder's trajectory based on intruder's current states (such as position and velocity) and ranks/identifies resolution(s) with predefined maneuver options and rules.Sample trajectory projection methods are the Detect and Avoid Alerting Logic for Unmanned Systems (DAIDALUS), 27 the Generic Resolution Advisor and Conflict  Evaluator (GRACE), 30 and the Auto-Resolver in the Advanced Airspace Concept (AAC). 31The HVT can be treated as a special case of the trajectory projection based method with a unique closed form resolution.The off-line table based method uses predefined tables that are usually empirically generated and abandons the trajectory prediction function.Once the intruder's states (positions and velocities) are received, this group of methods will search their off-line tables and identify the best resolution maneuver(s) (as shown in Fig. 3).Sample off-line table based methods are ACAS-Xu, 32 POMDP, 28 and the Fuzzy-logic based method. 10orce field based methods usually use attractive forces (to stay on original path or to follow original destination) and repulsive forces (to avoid potential conflicts) to yield the control command for the next move of the ownship.The weights of different forces are tuned offline to balance the trade-offs among different forces.Sample methods are the potential field method 33 and velocity obstacle method.The communication and detection capability faces a great challenge in the low-altitude high-density UTM-like operation.The power requirement for the communication is restricted by the vehicle power and size.High transmission power increases the communication channel load and the signal interference, and essentially reduces the signal reception probability.Since the high-density operation leaves a limited space for vehicles to avoid the potential conflicts and the accuracy and update frequency of the intruder's states greatly affect the conflict avoidance algorithm's performance, the communication and detection capability plays a critical role in the analysis of the UTM-type traffic system.Trying not to congest the existing Automatic Dependent Surveillance-Broadcast (ADS-B) channel used for conventional aviation, 35 researchers explored alternative communication devices for the UTM operations 36 such as Dedicated Short Range Communications(DSRC) 37 and L-band Digital Aeronautical Communications System (LDACS). 38Regardless the differences, the reception probability models of various communication devices are normally functions of transmission power and communication density/channel load in a open space for a given orientation.For instance, for DSRC, both the mathematical model 39 and empirical model 40 show that the reception probability model of the DSRC is a function of transmission power, which follows the general Nakagami model, 41 and communication density, which is a product of transmission frequency, vehicle density, and transmission power, for a given message size.Fig. 5 shows a sample reception probability at various communication densities when the message size is 200 bytes.For on-board sensors, researchers are testing and studying devices like Light Detection and Ranging (LIDAR) 22 and Echodyne radar. 42In the simulator, these sensors are assumed to follow Gaussian or Markov probability models for measurements like azimuth angle, elevation angle, detected distance, positions, and velocities with experimentally validated mean, standard deviations, and tau (if applicable).
+E. Wind modelsThe High Resolution Rapid Refresh (HRRR) wind model 43 generated by National Oceanic and Atmospheric Administration (NOAA) provides wind information at the low-altitude airspace with great spatial and temporal resolutions.The HRRR wind data covers two altitudes at 10m and 80m.The spatial resolution is 3 km by 3km and its temporal resolution is 15 minutes.Although there exist many other wind model products like the California State University Mobile Atmospheric Profiling System (CSU-MAPS), 44 the wind model in Fe 3 is defined as a spatially discretized database with turbulence intensity/uncertainty associated with every location.The wind condition at each location is defined as a statistical distribution with an empirical mean and deviation/intensity.At low altitude, typical relationship between the turbulence intensity σ w and the wind speed at 20 feet W 20 follows Eqn.13: 45 σ w = 0.1W 20 (13)Since the expected flight times for most UTM and UAM operations are less than one hour, the temporal variation wasn't considered at current stage.
+III. ImplementationTo meet the demanding computational performance requirements of Monte Carlo simulations of the traffic system, Fe 3 is highly-parallelized using the CUDA programming language on graphics processing units (GPUs).It is deployed on the Amazon Web Service (AWS) cloud for scalability needs such that the number of GPU instances can be dynamically deployed based on simulation needs.
+A. Cloud ArchitectureFigure 6 provides the cloud architecture for Fe 3 .The EC2 web instance handles the web UI and final notification.The AWS SQS is used to maintain two queues for auto scaling and notification, respectively.Fe 3 engine is deployed on AWS GPU instance(s), where the number of instances is determined by the auto scaling.As described previously, three input files are fed into the simulator via the web-based user input interface: flight plan/schedule, wind data, and simulation configuration.Once these inputs are submitted, a job is formed and pushed into the job request queue and waits to be assigned to the next available GPU instances with deployed Fe 3 engine.When the job is done, a notification response will be pushed into the notification queue and the simulation results are stored.The user will then receive the notification and check the results via Fe 3 web-based interface and visualization tool or directly download the final data for further investigation.
+B. Web-based output metricsWeb-based output and visualization are implemented to facilitate post analysis.Figures 7 and8 present sample output tables of the metrics that are computed and shown by the simulator after each run.Fig. 7 shows the summary of the overall statistics using metrics like the probability of loss of separation, extra flight distance, number of alerts, trajectory mean deviation, etc.And Fig. 8 provides detailed statistics at the simulation level.With this web-based out interface, users can select any simulation of interest on this table and visualize the playback of this specific simulation.
+C. Computational performanceTo show the computing capability of Fe 3 , Table 1 lists sample running times under different scenarios with various combinations of the number of Monte Carlo simulations and the number of small UAVs involved simultaneously.It shows that with 6-DOF trajectory models and various wind conditions, Fe 3 were able to
+IV. ExperimentsThis section presents studies to show how the Fe 3 simulation capability can be used to support the system analysis of the new traffic system.In the following experiments, a 6-DOF quad-rotor model with a proportional derivative controller is used as the the small UAV's model.The DSRC reception probability model (shown in Fig. 5) is assumed as the communication method between vehicles.A well-clear violation (WCV) is arbitrarily defined, where the modified horizontal distance (HMOD) is 10 meters and the modified tau (TMOD) is set to zero second.The trajectory projection (TP) based conflict avoidance algorithm is used in the experiments running at an update rate of 2 Hz.In the avoidance algorithm, extra buffers of 10 meters and 25 seconds are added to HMOD and TMOD, respectively.In each traffic scenario, flights are designed to cross from one side to the opposite side for a given area randomly to create conflict traffic scenarios.
+A. Pairwise encountersLike in most conflict avoidance algorithm studies, an experiment of sets of pairwise encounters is presented to examine the performance of the avoidance algorithm.In this experiment, a range of relative headings at the Closest Point of Approach (CPA) and a range of vehicle speeds for both ownship and intruder were tested.There were a total of 1,714 encounter scenarios in these experiments with various combinations of relative headings and vehicle speeds.Nominal trajectory duration was set to 120 seconds.Scenarios did not include wind.Also perfect communication and navigation were assumed.The results show that no WCV happened in this experiment, which means this TP collision avoidance algorithm resolved all the conflicts and the algorithm works well in pairwise encounter scenarios.To further investigate the algorithm, separation-deviation measurement are shown in Fig. 9, where the horizontal axis is the mean deviation from the original desired path and the vertical axis is the product of the WCV and the inverse CPA distance.Figure 9 shows all values on the vertical axis are less than 1 since conflicts were resolved and CPA distances are larger than WCV.
+B. Communication capabilityIn this section, three communication transmission ranges, 300, 600 and 1,000 meters, and two models, "deterministic" and "probabilistic" were investigated.The "deterministic" model assumes 100% reception within the given range, whereas the "probabilistic" model assumes that the reception probability within the range follows the general Nakagami model shown in Fig. 5. Fig. 10 presents a sample of system safety analysis using the average count of loss of separation (LOS) at various communication capabilities and traffic densities.In this figure, solid curves represent the cases with deterministic models and dashed curves are the cases using probabilistic models.The vertical bars denote the stand deviations σ of the loss of separation counts at different traffic density levels over thousands of Monte Carlo simulations.First, it is noticed that although the conflict avoidance worked perfectly in the pairwise scenarios where the traffic density is low, it has difficulty when the density gets high due to secondary and consequential conflicts.This shows that verifying conflict avoidance algorithms in low density and high density operational environments may be different.Second, with the experimental setup, the overall safe capacity "bottleneck" is formed at 20 vehicles per nmi 2 .In the deterministic cases, loss of separation does not happen until the traffic density reaches about 30 vehicles per nmi 2 .With the probabilistic model, loss of separation happens at a lower traffic density level and the safe capacity upper bound is reduced to 20 vehicles per nmi 2 , which is mainly caused by the reduced accuracy/update rate due to the probabilistic models.Third, in the deterministic cases, with an increased transmission range of 600 meters (shown as the magenta solid curve), the safety capacity upper bound is increased to 35 vehicles per nmi 2 .Mixed situations observed at high density levels in deterministic cases might result from the local selection mechanism in the It is also noted that the loss of separation count is not highly correlated with the traffic density.For instance, the loss of separation count is lower at 50 vehicles per nmi 2 when compared against lower traffic density levels.This indicates that traffic density might not be a good metric for measuring the complexity/safety of a high-density autonomous traffic system.The large range of standard deviation values associated with the probabilistic models further show low correlation between the traffic density and system safety.
+C. Wind uncertaintyFig. 11 shows examples with impact using the "600m" and "deterministic" communication model used in previous section.The black curve shows the "600m" and "deterministic" case without wind as in Fig. 10.The blue curve presents the case with average cross wind speed of 5 mps and turbulence intensity or standard deviation of 0.5 mps, and the magenta curve corresponds to a stronger wind condition.It is shown that introducing wind decreases the upper bound of traffic density for safe operations from ∼26 aircraft per nmi 2 to less than 15 aircraft per nmi 2 , which presents a great change from the system safety perspective.The most likely reason is that the wind reduced the accuracy of the trajectory prediction in the collision avoidance algorithm and essentially affected the avoidance algorithm's performance and the system safety measurement.
+D. Interaction with Manned AircraftThis section introduces two manned aircraft into the 20 aircraft scenario discussed earlier (corresponding to the case with ∼22 aircraft per nmi 2 ).There are three main differences for manned aircraft operations in this experiment.First, these manned aircraft have the right of the way, which means that it is the sUAV's responsibility to sense and avoid manned aircraft.Second, the WCV is set to 200 meters for manned aircraft (larger than the WCV defined for sUAV).Third, manned aircraft fly faster than the sUAVs.In this experiment, the manned aircraft are assumed to fly at 30 mps compared to 5-15 mps sUAV operations.Figure 12 shows the impact of the transmission power range.Increasing transmission power range clearly reduced the probability of loss of separation in this case.The probability of loss of separation decreased from 90.9% in the 300-meter case, to 21.9% in the 600-meter case, and to 0.4% in the 1,000-meter case.Recall that, in previous section, the finding was that increasing transmission power didn't improve the system safety metric, which is contrary to the finding in this scenario.The main cause is the large WCV and higher speeds of manned aircraft.
+V. SummaryThis work presented the Fe 3 simulator, a tool developed for evaluating low-altitude air traffic operations.The concept and architecture of the simulator were demonstrated.Various models were implemented in Fe 3 to incorporate core components in low-altitude high-density UTM or UAM-like operations.The webbased highly parallelized implementation using AWS was introduced and showed acceptable computational performance.Experiments using the simulator were presented to show studies on collision avoidance, communication, wind, and interaction with manned flights.It was shown that the collision avoidance performance might be different in a low-density environment from a high-density environment.The studies presented the impacts of several key factors, such as communication reception models, wind, vehicle speeds, well-clear violation definition, and the collision avoidance algorithm/rules.It is noted that the system analysis is complex as results may change with these factors.Therefore, substantial experiments with the Fe 3 simulator are necessary to gain conclusive insights.Future work will focus on comprehensive and systematic analysis of the low altiude high density air traffic system using the simultor.Figure 1 .1Figure 1.Architecture of Fe 3 's core simulation engine
+Figure 3 .3Figure 3. Offline Table Based Collision Avoidance Algorithm
+34
+Figure 4 .4Figure 4. Force Field Based Collision Avoidance Algorithm
+Figure 5 .5Figure 5. DSRC reception probability at various communication densities
+FigureFigure 6.Cloud Architecture
+Figure 7 .7Figure 7. Snapshot of Summary over all Monte Carlo Simulations
+Figure 8 .8Figure 8. Snapshot of metrics rom individual simulations
+Figure 9 .9Figure 9. Loss of separation at various communication capabilities and traffic densities
+Figure 10 .10Figure 10.Loss of separation at various communication capabilities and traffic densities
+Figure 11 .11Figure 11.Loss of separation at various wind conditions and traffic densities
+Figure 12 .12Figure 12.Loss of separation at various wind conditions and traffic densities
+
+Table Based Collision Avoidance Algorithm
+Table 1 .1Computational performance of Fe 3Number of Number of Traffic density Flight time Running timeMC simssUAVs( per nm 2 )(minute)(second)1,000103.87.710.21,0005019.08.754.71,00010038.19.8117.840500190.513.6366.440800304.913.5903.9401,000381.114.01,379.0
+		
+		
+			
+
+				
+
+
+	
+		Unmanned Aircraft System Traffic Management (UTM) Concept of Operations
+		
+			PKopardekar
+		
+		
+			JRios
+		
+		
+			TPrevot
+		
+		
+			MJohnson
+		
+		
+			JJung
+		
+		
+			JERobinson
+		
+	
+	
+		16th AIAA Aviation Technology, Integration, and Operations Conference
+		Washington, D.C.
+		
+			June 2016
+			
+		
+	
+	Kopardekar, P., Rios, J., Prevot, T., Johnson, M., Jung, J., and Robinson, J. E., "Unmanned Aircraft System Traf- fic Management (UTM) Concept of Operations," 16th AIAA Aviation Technology, Integration, and Operations Conference, Washington, D.C., 13-17 June 2016.
+
+
+
+	
+		Enabling Airspace Integration for High-Density On-Demand Mobility Operations
+		
+			EricRMueller
+		
+		
+			ParmialHKopardekar
+		
+		
+			KennethHGoodrich
+		
+		10.2514/6.2017-3086
+	
+	
+		17th AIAA Aviation Technology, Integration, and Operations Conference
+		Denver, Colorado
+		
+			American Institute of Aeronautics and Astronautics
+			2017. June 2017
+			
+		
+	
+	Mueller, E. Kopardekar, P. and Goodrich, K., "Enabling Airspace Integration for High-Density On-Demand Mobility Operations," AIAA Aviation 2017 , Denver, Colorado, 5-9 June 2017.
+
+
+
+	
+		Europe’s Other Democratic Deficit: National Authoritarianism in Europe’s Democratic Union
+		
+			RDanielKelemen
+		
+		10.1017/gov.2016.41
+		
+	
+	
+		Government and Opposition
+		Gov. & oppos.
+		0017-257X
+		1477-7053
+		
+			52
+			2
+			
+			2017. 2017
+			Cambridge University Press (CUP)
+		
+	
+	"Number of U.S. Aircraft, Vehicles, Vessels, and Other Conveyances," https://www.rita.dot.gov/bts/sites/rita.dot. gov.bts/files/publications/national_transportation_statistics/html/table_01_11.html, 2017, [online; accessed Octo- ber 2017].
+
+
+
+	
+		Unmanned Aircraft System Operations
+		10.1201/b11202-10
+		
+	
+	
+		Introduction to Unmanned Aircraft Systems
+		Statistical Summary of Commerical Jet Airplane Accidents
+		
+			CRC Press
+			2016. October 2017. 2016. October 2017
+			5
+			
+		
+	
+	Unmanned Aircraft Systems
+	4 "Statistical Summary of Commerical Jet Airplane Accidents, Worldwide Operations 1959-2016," http://www.boeing. com/resources/boeingdotcom/company/about_bca/pdf/statsum.pdf, 2016, [online; accessed October 2017]. 5 "Unmanned Aircraft Systems," https://www.faa.gov/data_research/aviation/aerospace_forecasts/media/ Unmanned_Aircraft_Systems.pdf, 2016, [online; accessed October 2017].
+
+
+
+	
+		Initial Study of An Effective Fast-time Simulation Platform for Unmanned Aircraft System Traffic Management
+		
+			MinXue
+		
+		
+			JosephRios
+		
+		10.2514/6.2017-3073
+	
+	
+		17th AIAA Aviation Technology, Integration, and Operations Conference
+		Denver, Colorado
+		
+			American Institute of Aeronautics and Astronautics
+			June 2017
+			
+		
+	
+	6 Xue, M. and Rios, J., "Initial Study of An Effective Fast-time Simulation Platform for Unmanned Aircraft System Traffic Management," 17th AIAA Aviation Technology, Integration, and Operations Conference, Denver, Colorado, 5-9 June 2017.
+
+
+
+	
+		Design of Center-TRACON Automation System
+		
+			HErzberger
+		
+		
+			TJDavis
+		
+		
+			SMGreen
+		
+	
+	
+		AGARD Meeting on Machine Intelligence in Air Traffic Management
+		Berlin, Germany
+		
+			May 1993
+			
+		
+	
+	Erzberger, H., Davis, T. J., and Green, S. M., "Design of Center-TRACON Automation System," AGARD Meeting on Machine Intelligence in Air Traffic Management, Berlin, Germany, 11-14 May 1993.
+
+
+
+	
+		FACET: Future ATM Concepts Evaluation Tool
+		
+			KarlDBilimoria
+		
+		
+			BanavarSridhar
+		
+		
+			ShonRGrabbe
+		
+		
+			GanoBChatterji
+		
+		
+			KapilSSheth
+		
+		10.2514/atcq.9.1.1
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			9
+			1
+			
+			
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Bilimoria, K., Sridhar, B., Chatterji, G., Sheth, K., and Grabbe, S., "FACET: Future ATM Concepts Evaluation Tool,"
+
+
+
+	
+		
+		
+			Usa/
+		
+	
+	
+		Europe Air Traffic Management R&D Seminar
+		
+			
+			June 2000
+			Napoli, Italy
+		
+	
+	USA/Europe Air Traffic Management R&D Seminar , Napoli, Italy, 13-16 June 2000.
+
+
+
+	
+		Fast-Time NAS Simulation System for Analysis of Advanced ATM Concepts
+		
+			DouglasSweet
+		
+		
+			VikramManikonda
+		
+		
+			JesseAronson
+		
+		
+			KarlinRoth
+		
+		
+			MatthewBlake
+		
+		10.2514/6.2002-4593
+	
+	
+		AIAA Modeling and Simulation Technologies Conference and Exhibit
+		Monterey, California
+		
+			American Institute of Aeronautics and Astronautics
+			August 2002
+			
+		
+	
+	Sweet, D. N., Manikonda, V., Aronson, J. S., Roth, K., and Blake, M., "Fast-time Simulation System For Analysis of Advanced Air Transportation Concepts," AIAA Modeling and Simulation Technologies Conference and Exhibit, Monterey, California, 5-8 August 2002.
+
+
+
+	
+		A Fuzzy Logic Approach for Low Altitude UAS Traffic Management (UTM)
+		
+			BrandonCook
+		
+		
+			KellyCohen
+		
+		
+			EladHKivelevitch
+		
+		10.2514/6.2016-1905
+	
+	
+		AIAA Infotech @ Aerospace
+		San Diego, California
+		
+			American Institute of Aeronautics and Astronautics
+			January 2016
+			
+		
+	
+	AIAA Science and Technology Forum and Exposition 2016
+	Cook, B., Cohen, K., and Kivelevitch, E., "A Fuzzy Logic Approach For Low Altitude UAS Traffic Management (UTM)," AIAA Science and Technology Forum and Exposition 2016 , San Diego, California, 4-8 January 2016.
+
+
+
+	
+		Simulation Comparison of Collision Avoidance Algorithms for Small Multi-Rotor Aircraft
+		
+			EricRMueller
+		
+		
+			MykelKochenderfer
+		
+		10.2514/6.2016-3674
+	
+	
+		AIAA Modeling and Simulation Technologies Conference
+		Washington, D.C.
+		
+			American Institute of Aeronautics and Astronautics
+			June 2016
+			
+		
+	
+	Mueller, E. and Kochenderfer, M. J., "Simulation Comparison of Collision Avoidance Algorithms for Multi-Rotor Air- craft," AIAA Modeling and Simulation Technologies Conference, Washington, D.C., 13-17 June 2016.
+
+
+
+	
+		Unmanned Aircraft System Navigation in the Urban Environment: A Systems Analysis
+		
+			MSanfourche
+		
+		
+			JDelaune
+		
+		
+			GLe Besnerais
+		
+		
+			HDe Plinval
+		
+		
+			JIsrael
+		
+		
+			PCornic
+		
+		
+			ATreil
+		
+		
+			YWatanabe
+		
+		
+			APlyer
+		
+		
+			JRAtkins
+		
+		
+			EM
+		
+	
+	
+		AIAA Journal of Aerospace Information Systems
+		
+			4
+			4
+			2012. 13 Rufa,. 2016
+		
+	
+	Aerospace Lab Journal
+	Sanfourche, M., Delaune, J., Le Besnerais, G., De Plinval, H., Israel, J., Cornic, P., Treil, A., Watanabe, Y., and Plyer, A., "Perception for UAV: Vision-Based Navigation and Environment Modeling," Aerospace Lab Journal, Vol. 4, 2012. 13 Rufa, J. R. and Atkins, E. M., "Unmanned Aircraft System Navigation in the Urban Environment: A Systems Analysis," AIAA Journal of Aerospace Information Systems, Vol. 13, No. 4, 2016.
+
+
+
+	
+		Vision-Aided Inertial Navigation for Small Unmanned Aerial Vehicles in GPS-Denied Environments
+		
+			TianmiaoWang
+		
+		
+			ChaoleiWang
+		
+		
+			JianhongLiang
+		
+		
+			YangChen
+		
+		
+			YichengZhang
+		
+		10.5772/56660
+	
+	
+		International Journal of Advanced Robotic Systems
+		International Journal of Advanced Robotic Systems
+		1729-8814
+		
+			10
+			6
+			276
+			2013
+			SAGE Publications
+		
+	
+	Wang, T., Wang, C., Liang, J., Chen, Y., and Zhang, Y., "Vision-Aided Inertial Navigation for Small Unmanned Aerial Vehicles in GPS-Denied Environments," International Journal of Advanced Robotic Systems, Vol. 10, No. 276, 2013. 15
+
+
+
+	
+		Vision-Aided Nonlinear Observer for Fixed-Wing Unmanned Aerial Vehicle Navigation
+		
+			JesperHosen
+		
+		
+			HåkonHHelgesen
+		
+		
+			LorenzoFusini
+		
+		
+			ThorIFossen
+		
+		
+			TorAJohansen
+		
+		10.2514/1.g000281
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		Journal of Guidance, Control, and Dynamics
+		0731-5090
+		1533-3884
+		
+			39
+			8
+			
+			2016
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Hosen, J., Helgesen, H. H., Fusini, L., Fossen, T. I., and Johansen, T. A., "Vision-Aided Nonlinear Observer for Fixed- Wing Unmanned Aerial Vehicle Navigation," AIAA Journal of Guidance, Control, and Dynamics, Vol. 39, No. 8, 2016. 16
+
+
+
+	
+		Quadrotor Dynamics and Control
+		
+			RWBeard
+		
+		
+			October 2008
+		
+	
+	Tech. rep.
+	Beard, R. W., "Quadrotor Dynamics and Control," Tech. rep., October 2008.
+
+
+
+	
+		Full control of a quadrotor
+		
+			SamirBouabdallah
+		
+		
+			RolandSiegwart
+		
+		10.1109/iros.2007.4399042
+	
+	
+		2007 IEEE/RSJ International Conference on Intelligent Robots and Systems
+		San Diego, CA
+		
+			IEEE
+			Oct 29 -Nov 2 2007
+		
+	
+	Bouabdallah, S. and Siegwart, R., "Full Control of a Quadrotor," Proceedings of the 2007 IEEE/RSJ International Conference on Intelligent Robots and Systems, San Diego, CA, Oct 29 -Nov 2 2007.
+
+
+
+	
+		Comprehensive Simulation of Quadrotor UAVs Using ROS and Gazebo
+		
+			JohannesMeyer
+		
+		
+			AlexanderSendobry
+		
+		
+			StefanKohlbrecher
+		
+		
+			UweKlingauf
+		
+		
+			OskarVon Stryk
+		
+		10.1007/978-3-642-34327-8_36
+	
+	
+		Simulation, Modeling, and Programming for Autonomous Robots
+		
+			Springer Berlin Heidelberg
+			2012
+			7628
+			
+		
+	
+	Meyer, J., Sendobry, A., Kohlbrecher, S., Klingauf, U., and O., S., "Comprehensive Simulation of Quadrotor UAVs using ROS and Gazebo," Simulation, Modeling, and Programming for Autonomous Robots, Vol. 7628, 2012.
+
+
+
+	
+		Wind Tunnel and Hover Performance Test Results for Multicopter UAS Vehicles
+		
+			CRRussell
+		
+		
+			JJung
+		
+		
+			GWillink
+		
+		
+			BGlasner
+		
+	
+	
+		American Helocipter Society 72nd Annual Forum
+		West Palm Beach, FL
+		
+			May 2016
+			
+		
+	
+	Russell, C. R., Jung, J., Willink, G., and Glasner, B., "Wind Tunnel and Hover Performance Test Results for Multicopter UAS Vehicles," American Helocipter Society 72nd Annual Forum, West Palm Beach, FL, 16-19 May 2016.
+
+
+
+	
+		High-Fidelity Multi-Rotor Unmanned Aircraft System (UAS) Simulation Development for Trajectory Prediction Under Off-Nominal Flight Dynamics
+		
+			JohnVFoster
+		
+		
+			DavidHartman
+		
+		10.2514/6.2017-3271
+	
+	
+		17th AIAA Aviation Technology, Integration, and Operations Conference
+		Denver, Colorado
+		
+			American Institute of Aeronautics and Astronautics
+			June 2017
+			
+		
+	
+	Foster, J. V. and Hartman, D. C., "High-Fidelity Multirotor Unmanned Aircraft System Simulation Development for Trajectory Prediction Under Off-Nominal Flight Dynamics," 17th AIAA Aviation Technology, Integration, and Operations Conference, Denver, Colorado, 5-9 June 2017.
+
+
+
+	
+		Toward Indoor Flying Robots
+		
+			DJiang
+		
+		
+			QChen
+		
+		
+			LDelgrossi
+		
+	
+	
+		IEEE International Conference on Intelligent Robots and Systems
+		Lausanne, Switzerland
+		
+			30 Sept. -4 Oct 2002
+		
+	
+	Jiang, D., Chen, Q., and Delgrossi, L., "Toward Indoor Flying Robots," IEEE International Conference on Intelligent Robots and Systems, Lausanne, Switzerland, 30 Sept. -4 Oct 2002.
+
+
+
+	
+		A Modeling, Simulation and Control Framework for Small Unmanned Multicopter Platforms in Urban Environments
+		
+			CoreyAIppolito
+		
+		
+			SebastianHening
+		
+		
+			ShankarSankararaman
+		
+		
+			VahramStepanyan
+		
+		10.2514/6.2018-1915
+	
+	
+		2018 AIAA Modeling and Simulation Technologies Conference
+		Kissimmee, Florida
+		
+			American Institute of Aeronautics and Astronautics
+			January 2018
+			
+		
+	
+	Ippolito, C. A., Krishnakumar, K., Hening, S., and Sankararaman, S., "A Modeling, Simulation and Control Framework for Small Unmanned Multicopter Platforms in Urban Environments," AIAA Modeling and Simulation Technologies Conference, Kissimmee, Florida, 8-12 January 2018.
+
+
+
+	
+		A review of conflict detection and resolution modeling methods
+		
+			JKKuchar
+		
+		
+			LCYang
+		
+		10.1109/6979.898217
+	
+	
+		IEEE Transactions on Intelligent Transportation Systems
+		IEEE Trans. Intell. Transport. Syst.
+		1524-9050
+		
+			1
+			4
+			
+			2000
+			Institute of Electrical and Electronics Engineers (IEEE)
+		
+	
+	Kuchar, J. K. and Yang, L. C., "A Review of Conflict Detection and Resolution Modeling Methods," IEEE Transactions On Intelligent Transportation Systems, Vol. 1, No. 4, 2000.
+
+
+
+	
+		Chain-based Collision Avoidance for UAS Sense-and-Avoid Systems
+		
+			LaithSahawneh
+		
+		
+			RandalWBeard
+		
+		
+			SharathAvadhanam
+		
+		
+			HeBai
+		
+		10.2514/6.2013-4995
+	
+	
+		AIAA Guidance, Navigation, and Control (GNC) Conference
+		Boston, MA
+		
+			American Institute of Aeronautics and Astronautics
+			August 2013
+			
+		
+	
+	Sahawneh, L. R. and Beard, R. W., "Chain-based Collision Avoidance for UAS Sense-and-Avoid Systems," AIAA Guid- ance, Navigation, and Control Conference, Boston, MA, 19-22 August 2013.
+
+
+
+	
+		NASA contract for charged particle spectrometer for manned space vehicle
+		
+			RBach
+		
+		
+			CFarrell
+		
+		
+			HErzberger
+		
+		10.1108/aeat.2009.12781dab.019
+		AR-2009-214573
+	
+	
+		Aircraft Engineering and Aerospace Technology
+		Aircraft Eng & Aerospace Tech
+		0002-2667
+		
+			81
+			4
+			2009
+			Emerald
+		
+	
+	Tech. Rep. Technical Report
+	Bach, R. Farrell, C. and Erzberger, H., "An Algorithm for Level-Aircraft Conflict Resolution," Tech. Rep. Technical Report, AR-2009-214573, NASA, 2009.
+
+
+
+	
+		Protocol-based Conflict Resolution for Finite Information Horizon
+		
+			IHwang
+		
+		
+			CTomlin
+		
+	
+	
+		Proceedings of the American Control Conference
+		the American Control ConferenceAnchorage, AK
+		
+			May 2002
+			
+		
+	
+	Hwang, I. and Tomlin, C., "Protocol-based Conflict Resolution for Finite Information Horizon," Proceedings of the American Control Conference, Anchorage, AK, 8-10 May 2002.
+
+
+
+	
+		DAIDALUS: Detect and Avoid Alerting Logic for Unmanned Systems
+		
+			CesarMunoz
+		
+		
+			AnthonyNarkawicz
+		
+		
+			GeorgeHagen
+		
+		
+			JasonUpchurch
+		
+		
+			AaronDutle
+		
+		
+			MariaConsiglio
+		
+		
+			JamesChamberlain
+		
+		10.1109/dasc.2015.7311421
+	
+	
+		2015 IEEE/AIAA 34th Digital Avionics Systems Conference (DASC)
+		Prague, Czech
+		
+			IEEE
+			October 2015
+			
+		
+	
+	Muoz, C., Narkawicz, A., Hagen, G., Upchurch, J., Dutle, A., and Consiglio, M., "DAIDALUS: Detect and Avoid Alerting Logic for Unmanned Systems," In Proceedings of the 34th Digital Avionics Systems Conference, Prague, Czech, 6-8 October 2015.
+
+
+
+	
+		Multi-Rotor Aircraft Collision Avoidance using Partially Observable Markov Decision Processes
+		
+			EricRMueller
+		
+		
+			MykelKochenderfer
+		
+		10.2514/6.2016-3673
+	
+	
+		AIAA Modeling and Simulation Technologies Conference
+		Washington, D.C.
+		
+			American Institute of Aeronautics and Astronautics
+			June 2016
+			
+		
+	
+	Mueller, E. and Kochenderfer, M. J., "Multi-Rotor Aircraft Collision Avoidance using Partially Observable Markov Decision Processes," AIAA Modeling and Simulation Technologies Conference, Washington, D.C., 13-17 June 2016.
+
+
+
+	
+		A survey of collision avoidance approaches for unmanned aerial vehicles
+		
+			BMAlbaker
+		
+		
+			NARahim
+		
+		10.1109/techpos.2009.5412074
+	
+	
+		2009 International Conference for Technical Postgraduates (TECHPOS)
+		
+			IEEE
+			2009
+			
+		
+	
+	Albaker, B. M. and Rahim, N. A., "A survey of collision avoidance approaches for unmanned aerial vehicles," Proc Int Conf Tech Postgraduates (TECHPOS), 2009, pp. 1-7.
+
+
+
+	
+		The Generic Resolution Advisor and Conflict Evaluator (GRACE) for Detect-And-Avoid (DAA) Systems
+		
+			MichaelAbramson
+		
+		
+			MohamadRefai
+		
+		
+			ConfesorSantiago
+		
+		10.2514/6.2017-4485
+	
+	
+		17th AIAA Aviation Technology, Integration, and Operations Conference
+		Denver, Colorado
+		
+			American Institute of Aeronautics and Astronautics
+			June 2017
+			
+		
+	
+	Abramson, M., Refai, M., and Santiago, C., "The Generic Resolution Advisor and Conflict Evaluator (GRACE) for Detect-And-Avoid (DAA)," 17th AIAA Aviation Technology, Integration, and Operations Conference, Denver, Colorado, 5-9 June 2017.
+
+
+
+	
+		Algorithm and operational concept for resolving short-range conflicts
+		
+			HErzberger
+		
+		
+			KRHeere
+		
+		10.1243/09544100jaero546
+	
+	
+		Proceedings of the Institution of Mechanical Engineers, Part G: Journal of Aerospace Engineering
+		Proceedings of the Institution of Mechanical Engineers, Part G: Journal of Aerospace Engineering
+		0954-4100
+		2041-3025
+		
+			224
+			2
+			
+			Sept. 2008
+			SAGE Publications
+			Anchorage AK
+		
+	
+	Erzberger, H. and Heere, K. R., "Algorithm and operational concept for resolving short-range conflicts," International Council of the Aeronautical Sciences, Anchorage AK, 14-19 Sept. 2008.
+
+
+
+	
+		A New Approach for Designing Safer Collision Avoidance Systems
+		
+			MykelJKochenderfer
+		
+		
+			JamesPChryssanthacopoulos
+		
+		
+			RolandEWeibel
+		
+		10.2514/atcq.20.1.27
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			20
+			1
+			
+			2012
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Kochenderfer, M., Chryssanthacopoulos, J. P., and Weibel, R. E., "A new approach for designing safer collision avoidance systems," Air Traffic Control Quarterly, Vol. 20, No. 1, 2012.
+
+
+
+	
+		Chain-based path planning for multiple UAVs
+		
+			MatthewArgyle
+		
+		
+			CalebChamberlain
+		
+		
+			RandyBeard
+		
+		10.1109/cdc.2011.6160936
+	
+	
+		IEEE Conference on Decision and Control and European Control Conference
+		Orlando, FL
+		
+			IEEE
+			December 2011
+			34
+		
+		
+			CDC-ECC
+		
+	
+	Argyle, M., Chamberlain, C., and Beard, R., "Chain-based path planning for multiple UAVs," 50th IEEE Conference on Decision and Control and European Control Conference (CDC-ECC), Orlando, FL, 12-15 December 2011. 34
+
+
+
+	
+		Three-Dimensional Velocity Obstacle Method for Uncoordinated Avoidance Maneuvers of Unmanned Aerial Vehicles
+		
+			YazdiIJenie
+		
+		
+			Erik-JanVan Kampen
+		
+		
+			CornelisCDe Visser
+		
+		
+			JoostEllerbroek
+		
+		
+			JaccoMHoekstra
+		
+		10.2514/1.g001715
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		Journal of Guidance, Control, and Dynamics
+		0731-5090
+		1533-3884
+		
+			39
+			10
+			
+			2016
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Jenie, Y. I., Kampen, E. V., Visser, C. C., Ellerbroek, J., and Hoekstra, J. M., "Three-Dimensional Velocity Obstacle Method for Uncoordinated Avoidance Maneuvers of Unmanned Aerial Vehicles," Journal of Guidance, Control, and Dynamics, Vol. 39, No. 10, 2016.
+
+
+
+	
+		Communicating with unmanned aerial swarm automatic dependent surveillance transponders
+		
+			SreejaNag
+		
+		
+			JaewooJung
+		
+		
+			KarishmaInamdar
+		
+		10.1109/icsens.2017.8234227
+	
+	
+		2017 IEEE SENSORS
+		Glasgow, UK
+		
+			IEEE
+			29 Oct. -1 Nov. 2017
+		
+	
+	Nag, S., Jung, J., and Inamdar, K., "Communicating with unmanned aerial swarm automatic dependent surveillance transponders," IEEE on SENSORS , Glasgow, UK, 29 Oct. -1 Nov. 2017.
+
+
+
+	
+		Small Unmanned Aerial System (UAS) Flight Testing of Enabling Vehicle Technologies for the UAS Traffic Management Project
+		
+			LJGlaab
+		
+		
+			CVDolph
+		
+		
+			SDYoung
+		
+		
+			NCCoffey
+		
+		
+			RGMcswain
+		
+		
+			MJLogan
+		
+		
+			DEHarper
+		
+		
+	
+	
+		L-band Digital Aeronautical Communications System(LDACS)
+		
+			April 2018. April 2006. April 2018
+			37
+			591
+		
+	
+	Tech. Rep. NASA TM-2018-219816
+	Vehicle Safety Communications Project -Final Report
+	Glaab, L. J., Dolph, C. V., Young, S. D., Coffey, N. C., McSwain, R. G., Logan, M. J., and Harper, D. E., "Small Unmanned Aerial System (UAS) Flight Testing of Enabling Vehicle Technologies for the UAS Traffic Management Project," Tech. Rep. NASA TM-2018-219816, April 2018. 37 "Vehicle Safety Communications Project -Final Report," Tech. Rep. DOT HS 810 591, April 2006. 38 "L-band Digital Aeronautical Communications System(LDACS)," http://www.ldacs.com/, [cited April 2018].
+
+
+
+	
+		Communication Density: A Channel Load Metric for Vehicular Communications Research
+		
+			DanielJiang
+		
+		
+			QiChen
+		
+		
+			LucaDelgrossi
+		
+		10.1109/mobhoc.2007.4428734
+	
+	
+		2007 IEEE Internatonal Conference on Mobile Adhoc and Sensor Systems
+		Pisa, Italy
+		
+			IEEE
+			October 2007
+			
+		
+	
+	39 Jiang, D., Chen, Q., and Delgrossi, L., "Communication Density: A Channel Load Metric for Vehicular Communications Research," IEEE International Conference on Mobile Adhoc and Sensor Systems (MASS), Pisa, Italy, 8-11 October 2007.
+
+
+
+	
+		An Empirical Model for Probability of Packet Reception in Vehicular Ad Hoc Networks
+		
+			MoritzKillat
+		
+		
+			HannesHartenstein
+		
+		10.1155/2009/721301
+	
+	
+		EURASIP Journal on Wireless Communications and Networking
+		J Wireless Com Network
+		1687-1499
+		
+			2009
+			1
+			2009
+			Springer Science and Business Media LLC
+		
+	
+	Killat, M. and Hartenstein, H., "An Empirical Model for Probability of Packet Reception in Vehicular Ad Hoc Networks," EURASIP Journal on Wireless Communications and Networking Volume, 2009.
+
+
+
+	
+		Design of 5.9 ghz dsrc-based vehicular safety communication
+		
+			DanielJiang
+		
+		
+			VikasTaliwal
+		
+		
+			AndreasMeier
+		
+		
+			WielandHolfelder
+		
+		
+			RalfHerrtwich
+		
+		10.1109/wc-m.2006.250356
+		
+	
+	
+		IEEE Wireless Communications
+		IEEE Wireless Commun.
+		1536-1284
+		
+			13
+			5
+			
+			2007. April 2018
+			Institute of Electrical and Electronics Engineers (IEEE)
+		
+	
+	Jiang, D., Taliwal, V., Meier, A., Hofelder, W., and Herrtwich, R., "Design of 5.9 Ghz DSRC-based Vehicular Safety Communication," IEEE Wireless Communiations, Vol. 13, No. 5, 2007. 42 "Texas A&M UAS Center Tests New UAS Technology To Improve Sky Safety," https://echodyne.com/texas-am-uas- center-tests-new-uas-technology-to-improve-sky-safety/, [cited April 2018].
+
+
+
+	
+		
+			SSWeygandt
+		
+		
+			TGSmirnova
+		
+		
+			SGBenjamin
+		
+		
+			KJBrundage
+		
+		
+			SRSahm
+		
+		
+			CRAlexander
+		
+		
+			BESchwartz
+		
+		The High Resolution Rapid Refresh (HRRR): An Hourly Updated Convection Resolving Model Utilizing Radar Reflectivity Assimilation from the RUC/RR," 23rd Conf. on Weather Analysis and Forecasting/19th Conference on Numerical Weather Prediction
+		Omaha, NE
+		
+			June 2009
+			
+		
+	
+	Weygandt, S. S., Smirnova, T. G., Benjamin, S. G., Brundage, K. J., Sahm, S. R., Alexander, C. R., and Schwartz, B. E., "The High Resolution Rapid Refresh (HRRR): An Hourly Updated Convection Resolving Model Utilizing Radar Reflectivity Assimilation from the RUC/RR," 23rd Conf. on Weather Analysis and Forecasting/19th Conference on Numerical Weather Prediction, Omaha, NE, 1-5 June 2009.
+
+
+
+	
+		The California State University Mobile Atmospheric Profiling System: A Facility for Research and Education in Boundary Layer Meteorology
+		
+			CraigBClements
+		
+		
+			AndrewJOliphant
+		
+		10.1175/bams-d-13-00179.1
+		
+	
+	
+		Bulletin of the American Meteorological Society
+		1520-0477
+		
+			95
+			11
+			
+			2014. April 2018
+			American Meteorological Society
+		
+	
+	Continuous gusts. cited
+	Clements, C. B. and Oliphant, A. J., "The California State University Mobile Atmospheric Profiling System: A Facility for Research and Education in Boundary Layer Meteorology," Bulletin of the American Meteorological Society, Vol. 95, 2014. 45 "Continuous gusts," https://en.wikipedia.org/wiki/Continuous gusts, [cited April 2018].
+
+
+				
+			
+		
+	

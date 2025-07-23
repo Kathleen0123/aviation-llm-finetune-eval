@@ -1,0 +1,786 @@
+
+	
+	
+		
+I. IntroductionIn anticipation of the increase in total number of operations conducted by Unmanned Aircraft Systems (UASs) at low-altitude for numerous applications including infrastructure inspection and goods delivery, NASA has developed the UAS Traffic Management (UTM) project to research prototype technologies that enable safe, efficient low-altitude operations.In the UTM concept, UAS operators are expected to submit flight plans in four-dimensions (4D) [20].Since UTM is intended to manage numerous operations in real-time, a rapid method to generate UAS trajectories based on the submitted plans is needed to check feasibility in a timely manner.Optimal path planning is often used as the basis for aircraft trajectory generation [9,26,18].There are, in general, two approaches to solve the optimal path planning problem: indirect and direct.The indirect approach takes into account the vehicle dynamics as a constraint (in addition to other constraints such as obstacles or other vehicles) over the search space.Either the Pontryagin approach or Bellman's dynamic programming is used to solve the optimal control problem where the former results in a nonlinear two-point boundary value problem, and the later, a first-order nonlinear partial differential equation known as Hamilton-Jacobi-Bellman or HJB.Both of these approaches can be formulated with stochasticity; that is, the underlying plant model is a stochastic differential equation (for example, a stochastic wind vector field is modeled) and the search is over the resultant stochastic solutions (or Ito processes).The direct approach typically does not make use of the vehicle dynamics and treats the problem as a black box, often relying on heuristics.Typical examples in this category include particle swarm optimization and genetic algorithm search methods [22,5].In the context of minimum-time optimal trajectories there have been a number of results in the absence of wind [23,7,9], in the presence of a wind-field [17,15,16,27,11], and in the scheduling of arrivals for multiple aircraft [18].Many of these references exploit the fact that the optimal trajectories (in the scenarios considered) are Dubins paths exhibiting bang-bang control behavior [8,6].In some cases analytical solution are obtained and the algorithms are suitable for real-time application and can be embedded in a higher-level optimization routine, an approach used in [18] to manage collision avoidance.While minimum-time trajectories exhibit advantageous properties, other problem formulations that do not give rise to Dubins paths are also of importance.This is particularly true in the context of UTM where clients supply 4D way-point information describing the intended flight plan.Since way-point arrival times are specified, fixed-time optimal control problem formulations are needed.However, unlike minimum-time solutions, this problem formulation has not been solved analytically to date.This paper presents a semi-analytical solution using an elliptic integral formulation to rapidly assess the feasibility of a requested trajectory given a uniform wind-field.A wind-frame transformation similar to that presented in [16] is used.This paper is organized as follows.Section II describes background and motivation in detail, and discusses the weather forecast model used in the paper.In Section III, the semi-analytical solution is formulated and discussed.In Section IV, the main results including simulations are presented.The paper is concluded in Section V.
+II. Background and MotivationDriven by recent technological developments in low-cost sensing, control, and computation, interest in the deployment of UASs (Unmanned Airspace Systems) for civilian purposes and their integration into the National Airspace (NAS) has been on the rise.Emerging market opportunities and the relatively low total cost to build a UAS have spawned a number of business ventures backed by investors seeking to capitalize this untapped market opportunity.The most recent projections suggest the UAS global market will grow to $91 billion by 2024 [2] with the United States accounting for 65% of the total.While a majority of the total will continue to be driven by military need [4], significant growth is expected in the civilian sector.Recent acquisitions by Google, Facebook, and Amazon suggest there is keen interest in strategic positioning as this market, technology, and regulations mature.While it is anticipated that part of the existing ATM infrastructure for controlled airspace and the lessons learned since its inception in 1958 a can and will be used, there are significant differences which may result in much of the system being built from the ground up.Although primary differences will stem from Increasingly Autonomous (IA) capabilities, behavior and the associated implications in manned-unmanned interaction [3], another distinguishing feature is expected to arise from the diversity of UAS systems.This diversity is primarily driven by the low-cost and rapid development cycle to conceptualize, test, and deploy a new system for a given application or market need.In addition, significant improvements in air-frame, power subsystems, sensors, and information technologies, are expected over the next decade [28].The diverse vehicle types, configurations, operational objectives, range, and endurance pose significant challenges for traffic management systems that expect a certain type of behavior and characteristics.Quadrotors behave fundamentally different than fixed-wing UAVs in their dynamics and interaction with the environment (wind, for example).With the myriad of UAS behaviors and dynamics, there is a need to develop methods that can rapidly integrate and regulate the diverse trajectories entering the airspace.Geo-fencing [25,19,24] is an emerging concept for UAS operation which will be critical for capacity optimization and safety assurance.It is currently being explored by Amazon to ensure drones that stray off course are deactivated for safety [1] and is a central component in the UTM system.Despite these emerging concepts and technologies, there is a critical need to address trajectory feasibility for multiple clients that intend to access the airspace for various operations.It is envisioned that operators will specify trajectories in terms of a sequence of 4D way-points (three spatial, one temporal).Given this information the UAS management system must either accept or reject the intended plan based on several assessments or metrics that include (1) collision prediction (2) separation assurance, (3) capacity management and (4) feasibility.This paper addresses the fourth item under the following assumptions 1. Client provides a 4D flight plan (see below for details) 2. A vehicle performance database and web-server provides vehicle specific characteristics 3. A weather forecast database and web-server provides wind data over the duration of the submitted flight plan A. High-Level Summary Fig. 1 provides an overview of the current process implemented by UTM.A client that intends to access airspace managed by UTM submits a flight plan to consisting of a sequence of 4d way-points (see equation (1) below).The process of accepting this plan and associated constraint checking can be divided into three phases: Authentication/Registration, Static Constraint Checking, and Dynamic Constraint Checking.Authentication/Registration: In the first step of the process, UTM checks authentication/registration information by performing the following: :• Check whether the client has the appropriate credentials to submit a flight plan to UTM.• Check whether the vehicle submitted by the client has been registered with UTM.Registration involves obtaining a valid UVIN (UTM Vehicle Identification Number) that links the vehicle to (a) owner information and (b) vehicle performance data stored in the UTM vehicles database.This performance data is used for the proposed algorithm in this paper.Static Constraint Checking: Once the the client has been authenticated and associated UVINS have been validated, UTM then performs the following static b constraint checks.• Check whether the flight plan intersects with airports.• Check whether the flight plan intersects with class b,c, and d air-spaces.• Check whether the flight plan intersects with national parks.The static data which is stored as PostGIS polygon objects in the database is pre-loaded and intersections checks can be rapidly performed.Dynamics Constraint Checking: Once the static constraint checks are passed, dynamic c constraint checks are performed:• Check whether the flight plan intersects with existing (accepted) flight plans.This is the database labeled operations in Fig. 1.• Check whether the flight plan is feasible given weather prediction, vehicle performance data, and 4D way-point data.The temporal component indicates expected arrival time at each way-point and enables UTM to free unused space after those way-points are no longer relevant to the operation.In general, collections of way-points are enclosed by 3 dimensional bounding volumes that include several buffers relating to conformance and safety.A region (3 dimensional bounding volume) is released to the system (made available for other client submissions) when the reported positions indicate the UAS is no longer utilizing that region and has moved on to other regions of the flight plan.In order to plan efficiently, these unoccupied regions are considered to be free during the flight plan submission process.This means that UTM has to have some level of assurance that a client will in fact be able to reach a given way-point by the submitted arrival time and move on the the next one in a timely manner.It is therefore critical to have tools that can aid UTM to assess the feasibility of the plan in this regard.The proposed algorithm assesses feasibility by determining if at each way-point arrival time the simulated trajectory is within a prescribed distance from the waypoint.If the position of the aircraft exceeds this distance at any of the way-points along the flight path, a rejection is recommended.
+B. Integration with WeatherWind data over the course of the flight plan is needed and in this section we provide a brief description of our efforts to integrate real-time wind information into the current framework.The National Oceanic and Atmospheric Administration (NOAA) National Center for Environmental Prediction (NCEP) provides several forecast products available for download pertaining to different aspects of weather information.Each product differs based on the following: variables predicted, forecast horizon, spatial and temporal granularity, forecast grid, underlying prediction model, and model run frequency.We utilize NOAA's High Resolution Rapid Refresh (HRRR) [29], which offers the highest spatio-temporal resolution data compared to the other products.The HRRR model runs once every hour providing a 15 hour forecast with a temporal resolution of 15 minutes.The grid over the US has a spatial resolution of 3 km.In addition, the HRRR forecast provides a 0-hr ahead forecast based on inputs from various sensor measurements during every model run which we treat as the ground truth during model validation.The variables used include wind velocity components at 10m and 80m.Given the submitted flight plan, the proposed algorithm extracts the wind information from HRRR and assumes it to be constant over the 3km by 3km spatial grid elements.We do not interpolate over the spatial dimensions; future research will include this in the algorithm.
+III. Problem FormulationClients intending to access the airspace will be required to provide data to enable UTM (Unmanned Aerial Traffic Management) to manage operations.This data include characteristics of the vehicle such as mass, maximum velocity, maximum turn rate, maximum rotational rate, maximum flight time duration, intended 4D trajectory, etc.It is anticipated that these requirements will evolve as the UTM system is developed and refined and as clients better understand vehicle capabilities and limitations within the constraints of UTM.Currently the UTM project is collecting vehicle data and storing it in a relational database for rapid access.The use of 4D trajectory information has been explored in the context of current ATM operations and its potential benefits including reduced flight time, fuel/cost savings, and decreased emissions.A recent study [20] leveraged 4D trajectory data to flight test Controlled Time of Arrival (CTA) algorithms to optimize scheduling.The potential benefits of 4D trajectory based operations for UAS [21] can extend far beyond this including the ability to adaptively reconfigure geo-fences in order to optimize an objective which may change over time and space.We do not discuss details further in this paper.In this paper it is assumed that a client provides a set N + 1 4D-way points [10] given by: 4D Way-pointsd = {(φ i , λ i , h i , T i )} N i=0 (1)whereT 0 < T 1 • • • < T N +1 .In (1), T 0 denotes the take-off time, T i (for i > 0) denotes an arrival time d , φ i denotes latitude in decimal degrees, λ i denotes longitude in decimal degrees, and h i denotes altitude in meters.It is assumed that the latter three quantities are defined with respect to the WGS-84 ellipsoid [30].We will also assume there exists a wind forecast denoted by W (t, φ, λ, h) where the temporal domain covers the interval [t 0 , t N ].For example, NOAA's (National Oceanic and Atmospheric Administration) HRRR (High-Resolution Rapid Refresh) products can provide a 15 hour forecast horizon with a spatial and temporal resolution of 3km and 15 minute resolution, respectively.Optimization algorithms require the wind-field to be known along any trajectory during the search phase.This can be accomplished by defining a sufficiently large bounding box and embedding an interpolation algorithm in the optimization routine.Since we consider only constant wind-fields and wind interpolation schemes are beyond scope, we will assume at any tuple (φ i , λ i , h i , T i ) we have a corresponding W i = W (φ i , λ i , h i , T i ) which is simply obtained from the nearest grid point in the HRRR database.
+A. Transformation to Cartesian Coordinate SystemIn this paper, analysis is performed in a Cartesian coordinate system which is a reasonable assumption provided that maximum operating distances are not too large.The client's initial takeoff point is assumed to be at (φ 0 , λ 0 , h 0 ) at time T 0 and is used as the origin of a local Cartesian coordinate system.The remaining submitted way-points(φ i , λ i , h i , T i ) Ni=1 can be transformed as follows:Step 1: Convert to ECEF (Earth-Centered Earth-Fixed).d Typically, arrival times are provided by clients in GMT or GPS time.It is assumed that these times are converted to seconds relative to a defined time stamp.For our simulations, we typically utilize UNIX time which is the number of seconds that have elapsed since 1/1/1970, midnight UTC.Compute for i ∈ [0, N ] the following [12]:x i = a cos(λ i ) 1 + (1 -e 2 ) tan 2 (φ i ) + h i cos(λ i ) cos(φ i ) y i = a sin(λ i ) 1 + (1 -e 2 ) tan 2 (φ i ) + h i sin(λ i ) cos(φ i ) z i = a(1 -e 2 ) sin(φ i )1 -e 2 sin 2 (φ i )+ h i sin(φ i )(2)Step 2: Perform the rotations to NED (North-East-Down)  N i E i D i   =   -sin(φ 0 ) cos(λ 0 ) -sin(φ 0 ) sin(λ 0 ) cos(φ 0 ) -sin(λ 0 ) cos(λ 0 ) 0 -cos(φ 0 ) cos(λ 0 ) -cos(φ 0 ) sin(λ 0 ) -sin(φ 0 )     x i -x 0 y i -y 0 z i -z 0  (3)We now relabel as follows:X i d = E i and Y i d = N i . It is assumed D i = D = constor level flight through the flight operation.Dropping altitude from this point on, we take as our way-point data the following set of triples:(X i , Y i , T i ) N i=0 .
+B. Lateral Aircraft Kinematic Model with WindGiven the N + 1 triples (X i , Y i , T i ) N i=0 we identify a segment j ∈ [1, N ] by a set of two adjacent way-points.That is,segment j d = {(X i , Y i , Ψ i )} i=j-1,j(4)For each segment, we consider the following well-posed dynamic system:                   d dT X (j) = V j cos(Ψ (j) ) + W xj d dT Y (j) = V j cos(Ψ (j) ) + W yj d dT Ψ (j) = U j X (j) (T j-1 ) = X (j) 0 , Y (j) (T j-1 ) = Y (j) 0 , Ψ (j) (T j-1 ) = Ψ (j) 0(5)In addition, the quantities V j , W xj , and W yj are assumed to be known e and constant over the interval [T j-1 , T j ].For completeness, we define the variables below and identify the associated units                           T [s]is the timeX (j) [m] is a lateral position coordinate on segment j Y (j) [m] is a lateral position coordinate on segment j V j [m/s]is the magnitude of the velocity vector of the aircraft on segment jΨ (j) [rad] is the heading angle on segment j W xj [m/s]is the velocity component of the wind in the X-direction on segment j W yj [m/s] is the velocity component of the wind in the Y -direction on segment jAssume that the bank angle limits of the aircraft impose the following control constraintsU j (T ) ∈ [U minj , U maxj ] ∀T ≥ T 0(7)e V j is assumed to be provided by the client and the pair (Wx j , Wy j ) is estimated from an API call to the HRRR web-server provided that the interval [T j-1 , T j ] is contained in the current prediction window given by [T 0 , T 0 + L f orecast ] where L f orecast is the length in seconds of the forecast window.For HRRR we have L f orecast = 54000 [s].If the interval falls outside the forecast window, either wind is not included in the analysis or a different weather product must be used.For each segment consider the following cost functionalJ j [U ] = Tj Tj-1 1 2 R j U 2 j (s)ds + G j ( X(T j )); j ∈ [1, N ](8)whereG j ( X) d = 1 2 C fj (X -X f dj ) 2 + (Y -Y f dj ) 2(9)and X d = (X, Y, Ψ).X f dj and Y f dj represent a desired terminal position for segment j.A terminal constraint on the angle is given by Ψ (j) (T j )d = Ψ (j)f for each j ∈ [1, N ] -in the simulations the terminal angles are chosen based on the wind conditions and adjacent way-points.The cost function in (8) seeks to minimize 1. the load factor of the aircraft 2. the cost on the final position at the client supplied arrival time Our problem can now be stated as follows: Given1. N + 1 triples (X i , Y i , T i ) N i=0 2. Wind data: (W xj , W yj ) 3. Velocity data: V j 4. Cost parameter data: (R j , C fj , X f dj , Y f dj , Ψ fj )find U j that minimizes (8) and the corresponding solution to (5).Given the optimal control, U j , we formally express a (vector) solution to (5) on interval [T j-1 , T j ] byX (j) (T ; T j-1 , X (j) 0 , U j )whereX (j) 0 =    X (j) 0 Y (j) 0 Ψ (j) 0   Since the solution from one segment must connect with the solution from the next we imposeX (j) 0 = X (j-1) (T j-1 ; T j-2 , X (j-1) 0 , U j-1 ) j ∈ [2, N ]The above, together withX (1) 0 d = X 0 Y (1) 0 d = Y 0 Ψ (1) 0 d = Ψ 0completes the dynamic system formulation in (5)Non-Dimensionalization: On each segment j let us define:t j . .= T T nj x(j) . .= X (j) D nj ȳ(j) . .= Y (j) D nj ψ(j) . .= Ψ (j) v j . .= V j T nj D nj u j . .= T nj U j u minj . .= T nj U maxj u maxj . .= T nj U minj(10)where T nj [s] and D nj [m] denote, respectively, the temporal and spatial non-dimensionalizing constants.For this problem, we take them as:D nj d = (X j-1 -X f dj ) 2 + (Y j-1 -Y f dj ) 2 T nj d = D nj V j(11)Further definet 0j . .= T j-1 T nj t fj . .= T j T nj x(j) 0 . .= X (j) 0 D nj ȳ(j) 0 . .= Y (j) 0 D nj ψ(j) 0 . .= Ψ (j) 0 xfdj . .= X f dj D nj ȳfdj . .= Y f dj D nj ψfj . .= Ψ fj w xj . .= W xj T nj D nj w yj . .= W yj T nj D nj(12)The overbar notation is used to indicate non-dimensionalized, pre-wind transformed coordinates.Using (10) and ( 12), the dynamics in (5) become where we have used the relation             ẋ(j) = v j cos( ψ(j) ) + w xj ẏ(j) = v j sin( ψ(j) ) + w yj ψ(j) = u j x(j) (t 0j ) = x(j) 0 , ȳ(j) (t 0j ) = ȳ(j) , ψ(j) (t 0j ) = ψ(j) 0(13d dt j = T nj d dT .Transformation into wind coordinates: Definex (j) d = x(j) -w xj t j y (j) d = ȳ(j) -w yj t j ψ (j) d = ψ(j)(14)Further definex (j) 0 d = x(j) 0 -w xj t 0j y (j) 0 d = ȳ(j) 0 -w yj t 0j ψ (j) 0 d = ψ(j) 0 x f dj d = xfdj -w xj t fj y f dj d = ȳfdj -w yj t fj ψ (j) f d = ψ(j) f(15)Using ( 14) and ( 15), our dynamic system in (13) becomes           ẋ(j) = v j cos(ψ (j) ) ẏ(j) = v j sin(ψ (j) ) ψ(j) = u j x (j) (t 0j ) = x (j) 0 , y (j) (t 0j ) = y (j) 0 , ψ (j) (t 0 ) = ψ (j) 0(16)The cost functional in (8) in the wind-transformed coordinate system becomesJ[u j ] = t f j t0 j 1 2 u 2 j (τ )dτ + g j ( x (j) (t fj ))(17)whereg j ( x) d = 1 2 c fj (x -x f dj ) 2 + (y -y f dj ) 2(18)where x d = (x, y, ψ) andc fj d = C fj D 2 nj R j d = T nj(19)R j was chosen, without loss of generality, to be T nj in order to simplify the non-dimensionalized, wind-transformed cost functional.This is valid, since we have appended to the other terms coefficients that can be tuned.Details of the elliptic integral solution are provided in the appendix.
+IV. Main ResultsIn this section, we present the main results where a client submits a flight plan to UTM as depicted in Fig. 1.We briefly discuss the process and note that much of this infrastructure has already been built and tested as a prototype.When a client registers with UTM, a unique identification number, termed UVIN, is assigned to each vehicle the client operates.Each UVIN is linked to another identifier in the vehicles database (see Fig. 1) so that vehicle performance information can be pulled rapidly.Once this information is accessed, the system then considers the flight plan (sequence of 4D way-points as shown in ( 1)) together with the HRRR forecast.We note that the time in which this analysis is made is important since the current HRRR forecast model only has a 15 hour horizon.If the plan (all or part) falls outside of this window, no wind information is used.At each way-point we generate an error metric based on the distance between the position of the aircraft at the client supplied time of arrival (TOA) and the way-point.If, at any way-point, this metric exceeds a pre-specified threshold (see dark circles in figures below), a rejection recommendation is given.If no threshold is exceeded over the entire flight plan, an acceptance recommendation is given.Prior to running the algorithm, the model is non-dimensionalized (see equations ( 10)-( 15)) so that all parameters are of order 1.This is particularly helpful since we expect UASs entering the airspace will span a wide variety of configurations, performance characteristics, and operational capabilities.Performing this step allows the same optimization algorithm to be used on all types of vehicles in the same class with no changes needed to the initialization method and tuning parameters.The takeoff location of the simulation is NASA Crow's Landing airport located in Crows Landing, CA (Lon=-121.109836058,Lat=37.4080581975)which is a flat, agricultural area.This location was chosen since it was the site of UTM's first demonstration conducted in August of 2015.In all of the simulations below, we assume the client has registered a Dragon Eye with the specifications shown in Table 1.
+A. Simulation ResultsIn the the following two simulation runs we assume UTM pulls from the vehicles database the client's UAS information (see Table 1).For both simulations the client submits the following way-point data: On the left-hand side of Fig. 2 (labeled A), the simulation utilizes the cruise velocity in Table 1.Due to the winds (W x = -2.5 [m/s] and W y = -2.5 [m/s]), the vehicle is not able to make the way-points at the specified arrival times which are indicated in white rectangles.However, optimizing, in addition, over the velocities (min and max velocities in Table 1), we find the specified arrival times are feasible as shown on the right hand-side of the figure (labeled B).λ 0 = -The optimization results are summarized in Table 2.
+Way-point
+Example 2:In this simulation, wind data was extracted from the NOAA HRRR model over the time period starting at 2016-06-19T00:00:00Z and ending at 2016-06-24T23:59:59Z. As before the location was NASA Crows Landing, CA.We simulated 24 trajectories each day where the ith trajectory wind-condition was taken at the the ith hour of that day.For each day (24 simulation runs), we computed the mean trajectory and the corresponding standard deviations about the mean.Then bounding trajectories at two standard deviations from the mean were constructed.These standard .Client provides waypoint information including the arrival times at each waypoint.The trajectory estimator then generates an expected trajectory given waypoints and vehicle data at cruise velocity.In addition, optimization is performed over the range of velocities specified in Table 1 in order to determine feasibility of the submited flight plan.deviation generated trajectories could serve as metrics for geo-fencing given a wind forecast.The results are shown in Fig. 3.Note that the regions in Fig. 3., were generated with both accepted trajectories and rejected ones.Table 3 depicts the accept/reject breakdown for each day.In addition, we compute the maximum (magnitude), mean, and standard deviation wind velocity statistics as shown in the last column.The day that had the highest rejection rate also had the largest maximum wind velocity.
+V. ConclusionsThis paper presented an algorithm to rapidly assess trajectory feasibility for a kinematic model of a fixed-wing UAS in the presence of a uniform wind field.The trajectory is estimated based on way-point data provided by the client including fixed arrival times.Feasibility was determined by a distance error metric at each way-point.Future work includes extending the approach to multi-rotor vehicles and removing the uniform wind-field velocity assumption.In addition, we plan to incorporate a probabilistic treatment of the wind-field forecast and its impact on trajectory feasibility.A. Appendix
+A. Elliptic Integral FormulationIn the following, we only outline the mechanics of the algorithm and do not present any rigorous existence and convergence proofs.This will be addressed in a subsequent paper.We continue on with equations ( 16) and ( 17) dropping the explicit dependence on the flight segment j for clarity.First, we state the relevant Pontryagin Theorem [14] for a general well-posed nonlinear system.Consider the following dynamical system do be controlled:ẋ = f (t, x, u) x(t 0 ) = x 0 (23) defined on t ∈ [t 0 , t f ], where f ∈ C(R + × R n × R m ; R n ), f x ∈ C(R + × R n × R m ; R n×n) and u : [t 0 , t f ] → U is a bounded, measurable mapping, where U is a compact subset of R m .We refer to U as the control range where for each time, t, the control applied u(t) ∈ U .Let the cost function be given by:J[u] d = t f t0 L(s, x(s), u(s))ds + g(x(t f ))(24)H(τ, x, u * , p) = p T f (t, x, u * ) -L(t, x, u * )(25)and p satisfies       ṗ = - ∂H ∂x p(t f ) = - ∂g ∂x(t f )(26)2. H(τ, x, u * , p) is constant along the optimal trajectory.In the current problem we haveL(•, •, •) = 1 2 u 2(27)andf (t, x, u) =   v cos(ψ) v sin(ψ) u  (28)Equation ( 25) results inu * =      u max if p 3 (t) ≥ u max p 3 (t) if p 3 (t) ∈ (u min , u max ) u min if p 3 (t) ≤ u min(29)Substituting f in (28) and L in (49) into H in (26), the co-state dynamics become:p 1 = const p 2 = const p 3 = p 1 y -p 2 x + b (30)where b is an unknown integration constant.Using (18) in (26) we obtain the co-state terminal conditions:p 1 (t f ) = -c gp (x(t f ) -x f d ) p 2 (t f ) = -c gp (y(t f ) -y f d )(31)whereθ 0 = φ 0 -π θ f = φ f -π(44)Multiplying both sides of the differential equation in (43) by θ (τ ) we obtain:θ (τ ) = ± 2(C + cos(θ))(45)We will now consider the following four cases based on initial and final positions of θ and also the initial velocity, θ (τ 0 ).        CaseIn all of the cases above, we will assume the existence of turning-points.That is, there exists a τ 1 ≥ τ 0 such that θ (τ 1 ) = 0. Using (45), we haveC = -cos(θ 1 ) = -cos(θ 2 )(47)where θ 1 ∈ (0, π) denotes the positive turning point and θ 2 = -θ 1 ∈ (-π, 0) denotes the negative turning point.It follows that θ 2 ≤ θ 0 < θ f ≤ θ 1 in case 1.a, for example.Separating variables in (45)dτ = ± dθ 2(C + cos(θ))(48)DefineL(θ) d = 1 √ 2 θ1 θ dη C + cos(η)(49)and consider the change in variablesin η 2 = C + 1 2 sin(β)(50)Noting that1 2 cos(η/2)dη = C + 1 2 cos(β)dβ C + cos(η) = √ 2 C + 1 2 cos(β) (49) becomes L(θ) = β(θ1) β(θ) dβ 1 -k 2 sin 2 (β)(51)wherek d = C + 1 2(52)and β(θ) satisfiessin θ 2 = C + 1 2 sin(β(θ))(53)Using (47), we can write (53) assin(β(θ)) = sin(θ/2) sin(θ 1 /2) ∈ [-1, 1](54)where we have usedC + 1 2 = 1 -cos(θ 1 ) 2 = sin(θ 1 /2)Hence, if follows that β(θ) ∈ [-π/2, π/2] and β(θ 1 ) = π/2.We finally write L(θ) asL(θ) = π 2 β(θ) dβ 1 -k 2 sin 2 (β) = π 2 0 dβ 1 -k 2 sin 2 (β) - β(θ) 0 dβ 1 -k 2 sin 2 (β) = K(k) -F (β(θ), k)(55)where we have used the complete and incomplete elliptic integrals defined in (67) and (66), respectively.Note thatF (β(θ 1 ), k) = K(k) F (β(θ 2 ), k) = -K(k) F (β(-θ), k) = -F (β(θ), k)(56)We now define the time it takes the pendulum to swing between two positions.Let θ 2 ≤ θ i < θ j ≤ θ 1 .Defineτ ij d = 1 √ 2 θj θi dη C + cos(η) = L(θ i ) -L(θ j ) = F (β(θ j ), k) -F (β(θ i ), k)(57)τ ij = -τ ji represents the time it takes the pendulum to traverse from θ i to θ j without any change in sign of the derivative.A full swing from one turning point to the other is given byτ 21 = -τ 12 = 2K(k)(58)We are now equipped to solve the four cases defined in (46).Denote a solution to (43) through initial data (τ 0 , θ 0 , θ 0 ) by θ(•; τ 0 , θ 0 , θ 0 ).Our goal is this: given the triple (θ 0 , θ f , τ f ) obtained from the original problem statement, define the mappingτ + f : Z + × [0, 1] → (τ 0 , ∞)(59)written as τ + f (n, k) where 1.θ 0 ≥ 0 2. θ(τ + f (n, k); τ 0 , θ 0 , θ 0 ) = θ f3. there exists a monotonically-increasing, real-valued sequence {τ i } ⊂ (τ 0 , τ + f (n, k)) whereθ(τ i , τ 0 , θ 0 , θ 0 ) = θ f for each i ∈ [1, n -1].Similarly we define the mappingτ - f : Z + × [0, 1] → (τ 0 , ∞)(60)written as τ - f (n, k) where1. θ 0 < 0 2. θ(τ + f (n, k); τ 0 , θ 0 , θ 0 ) = θ f3. there exists a monotonically increasing real-valued sequence {τ i } ⊂ (τ 0 , τ - f (n, k)) whereθ(τ i , τ 0 , θ 0 , θ 0 ) = θ f for each i ∈ [1, n -1].Note that τ + f and τ - f will also be functions of θ 0 and θ f .However, these parameters represent known (and fixed) quantities determined by the initial data of the original problem in (8).We term the conditions θ 0 < θ f and θ 0 ≥ θ f branches of the solution method as opposed to the conditions θ 0 ≥ 0 and θ 0 < 0 which we regard as cases that must always be explored.Lastly, we remind the reader that we do not prove existence and other important properties of these functions here.To illustrate the computation, consider Case 1.a in (46): Case 1.a: θ 0 < θ f and θ (τ 0 ) > 0:We depict the (forward) time evolution of the pendulum swings in Fig. 4. The swing intervals are shown in the table below swing interval final time1 [τ 0 , τ 0 + τ 0f ] τ f = τ 0 + F (β(θ f ), k) -F (β(θ 0 ), k) 2 [τ 0 + τ 0f , τ 0 + τ 0f + 2τ f 1 ] τ f = τ 0 -F (β(θ f ), k) -F (β(θ 0 ), k) + 2K(k) 3 [τ 0 + τ 0f + 2τ f 1 , τ 0 + τ 0f + 2τ f 1 + 2τ 2f ] τ f = τ 0 + F (β(θ f ), k) -F (β(θ 0 ), k) + 4K(k) . . . . . . . . .It follows that τ + f (n, k) for branch θ 0 < θ f must satisfy:τ + f (n, k) = τ 0 + (-1) n+1 F (β(θ f ), k) -F (β(θ 0 ), k) + (2n -2)K(k)(61)The remaining cases can be computed similarly and are summarized below: has n swings before hitting θ f at time τ f .Similarly, for each (n, k) ∈ {n, k} -, the solution with initial velocity ofθ 0 = -2(2k 2 -1 + cos(θ 0 ))has n swings before hitting θ f at time τ f .Hence, to summarize, we have found a finite set of initial velocities that satisfy, after transforming back to the original variables) the boundary value problem in (32).Note, that this assumes knowledge of x(t f ) and y(t f ) in (31).Thus, we have found for any x(t f ) and y(t f ), the evolution of the heading angle which satisfies the initial and final constraints.This part is now a finite set search to obtain the one that yields the closest final position to the guess x(t f ) and y(t f ).The final step is an outer loop search over the x(t f ) and y(t f ) space which can be accomplished by a gradient descent since we know the evolution of ψ analytically for each of these points.
+B. Elliptic Integral DefinitionsIn this section we define the relevant elliptic integrals used above.A detailed presentation of elliptic integral theory and its applications can be found in [13].The incomplete elliptic integral is defined as follows:The complete elliptic integral is given byK(k) d = π 2 0 dη 1 -k 2 sin 2 (η) = F π 2 , k(67)Figure 1 .1Figure 1.Overview of the flight plan submission process and various constraint checking stages.
+22 )22121.109836058 φ 0 = 37.4080581975 T 0 = 12:00:00 UTC (20) λ 0 = -121.107141112φ 0 = 37.4793800136 T 0 = 12:06:36 UTC (21) λ 0 = -121.064055396φ 0 = 37.5413568948 T 0 = 12:13:09 UTC (Example 1:
+Figure 22Figure2.Client provides waypoint information including the arrival times at each waypoint.The trajectory estimator then generates an expected trajectory given waypoints and vehicle data at cruise velocity.In addition, optimization is performed over the range of velocities specified in Table1in order to determine feasibility of the submited flight plan.
+Figure 3 .3Figure 3. Simulation using wind data from 2016-06-19T00:00:00Z to 2016-06-24T23:59:59Z at NASA Crows Landing, CA.For each day we compute the mean trajectory and two bounding trajectories (shown in dark blue) based on the standard deviation.
+1.a: θ 0 < θ f and θ (τ 0 ) > 0 Case 1.b: θ 0 < θ f and θ (τ 0 ) < 0 Case 2.a: θ 0 > θ f and θ (τ 0 ) > 0 Case 2.a: θ 0 > θ f and θ (τ 0 ) < 0
+1 .Figure 4 .) 3 .143Figure 4. Case 1.a.Pendulum evolution
+F( 1 - 1 -11s 2 )(1 -k 2 s 2 ) (65)where α ∈ [0, π 2 ] and k 2 ∈ [0, 1].Let s = sin(η).Then (65) becomesF (α, k) k 2 sin 2 (η)
+For= 1 -= 1 -11fixed k, F (•, k) : [0, π/2] → R. Define its inverse as follows:sin(α) = sn(F (α, k), k) sn 2 (y, k) dn(y, k) d k 2 sn 2 (y, k) (69)It can be verified that sn(0, k) = 0 cn(0, k) = 1 dn(0, k) = 1 (70)
+Following the United Airlines Douglas DC-7 and Trans World Airlines Lockheed L-1049 collision over the Grand Canyon in 1956, the Federal Aviation Act of 1958 was passed creating what is now known as the FAA.AuthenticationRegistrationAirportsAirspacesNational ParksClient submits ight planValidate ClientStatic Constraint CheckDynamicAccept or RejectConstraintCheckOperationsVehicles DBWeathera
+Table 1 .1Estimates for vehicle parameters of the Dragon Eye we currently operate.Values may be different depending on the configuration and vehicle modifications.Max Velocity20.11 m/sMin Velocity8.9 m/sCruise Velocity 15.64 m/sMax Turn Rate 0.28 rad/s
+Table 2 .2Optimization results for Example 1.Arrival TimeNominal Vel. Optimal Vel. Feasible?112:08:26 UTC15.64 [m/s]18.62 [m/s]yes212:16:48 UTC15.64 [m/s]19.17 [m/s]yes
+Table 3 .3Accept and reject results for flights submitted in Example 2.where L(•, •, •) and φ(•) are, respectively, the running and terminal costs.Suppose that the control, u * , is a local minimum of J[•].Then 1. u * (τ ) is a local maximum of H(τ, x, u * , p) for every τ ∈ [t 0 , t f ] where
+			b  In this context, static means that the intersection checks do not involve a temporal component.2 of 19 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on August 18, 2016 | http://arc.aiaa.org| DOI: 10.2514/6.2016-3149
+			c In this context, dynamics means that the intersection checks involve a temporal dimension.3 of 19 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on August 18, 2016 | http://arc.aiaa.org| DOI: 10.2514/6.2016-3149
+			of 19 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on August 18, 2016 | http://arc.aiaa.org| DOI: 10.2514/6.2016-3149
+			of 19 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on August 18, 2016 | http://arc.aiaa.org| DOI: 10.2514/6.2016-3149
+			of 19 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on August 18, 2016 | http://arc.aiaa.org| DOI: 10.2514/6.2016-3149
+			Downloaded by NASA AMES RESEARCH CENTER on August 18, 2016 | http://arc.aiaa.org| DOI: 10.2514/6.2016-3149
+			of 19 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on August 18, 2016 | http://arc.aiaa.org| DOI: 10.2514/6.2016-3149
+			of 19 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on August 18, 2016 | http://arc.aiaa.org| DOI: 10.2514/6.2016-3149
+			of 19 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on August 18, 2016 | http://arc.aiaa.org| DOI: 10.2514/6.2016-3149
+			American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on August 18, 2016 | http://arc.aiaa.org| DOI: 10.2514/6.2016-3149
+		
+		
+
+			
+AcknowledgmentsThe authors would like to thank the UTM team for helpful discussion and advice regarding the content and simulations presented in the paper.
+			
+
+			
+Note that we do not have any information regarding p 3 (t f ) since we have specified ψ(t f ).Differentiating the ψ equation in (16) and using the optimal control law, we obtain:where we recall that ψ f is specified and t f is fixed.The above can be succinctly written aswhereNote thatand, by the chain rule,DefineIt follows that (33) becomeswhere the prime notation indicates differentiation with respect to τ and			
+			
+
+				
+
+
+	
+		Voltage References
+		
+			A BReferences
+		
+		10.1109/9780470547038.ch3
+	
+	
+		Voltage References
+		
+			IEEE
+			
+		
+	
+	A B References
+
+
+
+	
+		Google purchases manufacturer of solar-powered drones
+		10.1063/pt.5.027849
+		
+	
+	
+		Physics Today
+		Phys. Today
+		1945-0699
+		
+			july 11. 2014
+			AIP Publishing
+		
+	
+	Amazon seeks ok for testing of 50-mph drones, usa today, july 11, 2014. http://www.usatoday.com/story/ money/business/2014/07/10/amazon-drones/12505605/.
+
+
+
+	
+		UAV market to top $13 billion by 2014
+		10.1108/aeat.2006.12778baf.009
+		
+	
+	
+		Aircraft Engineering and Aerospace Technology
+		0002-2667
+		
+			78
+			2
+			
+			Emerald
+		
+	
+	Teal group predicts worldwide uav market will total $91 billion in its 2014 uav market profile and fore- cast. http://tealgroup.com/index.php/about-teal-group-corporation/press-releases/
+
+
+
+	
+		The Teal
+		10.5040/9781472597670
+		
+			
+			Poyser
+		
+		
+			TEAL GROUP
+		
+	
+	-2014-uav-press-release. TEAL GROUP.
+
+
+
+	
+		Autonomy Research for Civil Aviation
+		
+			CA R CAviation
+		
+		
+			AS EBoard
+		
+		
+			DE PSciences
+		
+		
+			NRCouncil
+		
+		10.17226/18815
+	
+	
+		Toward a New Era of Flight
+		
+			National Academies Press
+			2014
+		
+	
+	C.A.R.C. Aviation, A.S.E. Board, D.E.P. Sciences, and N.R. Council. Autonomy Research for Civil Aviation:: Toward a New Era of Flight. National Academies Press, 2014.
+
+
+
+	
+		A Review of Unmanned Aircraft System (UAS) Applications for Agriculture
+		
+			Ma Bedford
+		
+		10.13031/aim.20152189593
+	
+	
+		2015 ASABE International Meeting
+		
+			American Society of Agricultural and Biological Engineers
+			2015-2035
+		
+	
+	MA Bedford. Unmanned aircraft system (uas) service demand 2015-2035.
+
+
+
+	
+		Survey of numerical methods for trajectory optimization
+		
+			TJohn
+		
+		
+			Betts
+		
+	
+	
+		Journal of guidance, control, and dynamics
+		
+			21
+			2
+			
+			1998
+		
+	
+	John T Betts. Survey of numerical methods for trajectory optimization. Journal of guidance, control, and dynamics, 21(2):193-207, 1998.
+
+
+
+	
+		Shortest paths of bounded curvature in the plane
+		
+			Jean-DanielBoissonnat
+		
+		
+			Andr�C�r�zo
+		
+		
+			JulietteLeblond
+		
+		10.1007/bf01258291
+	
+	
+		Journal of Intelligent & Robotic Systems
+		J Intell Robot Syst
+		0921-0296
+		1573-0409
+		
+			11
+			1-2
+			
+			1994
+			Springer Science and Business Media LLC
+		
+	
+	Jean-Daniel Boissonnat, André Cérézo, and Juliette Leblond. Shortest paths of bounded curvature in the plane. Journal of Intelligent and Robotic Systems, 11(1-2):5-20, 1994.
+
+
+
+	
+		Departure trajectory synthesis and the intercept problem
+		
+			AMichael
+		
+		
+			GLBolender
+		
+		
+			Slater
+		
+	
+	
+		National Aeronautics and Space Administration
+		
+			1997
+		
+	
+	Michael A Bolender and GL Slater. Departure trajectory synthesis and the intercept problem. National Aeronautics and Space Administration, 1997.
+
+
+
+	
+		On curves of minimal length with a constraint on average curvature, and with prescribed initial and terminal positions and tangents
+		
+			ELester
+		
+		
+			Dubins
+		
+	
+	
+		American Journal of mathematics
+		
+			79
+			3
+			
+			1957
+		
+	
+	Lester E Dubins. On curves of minimal length with a constraint on average curvature, and with prescribed initial and terminal positions and tangents. American Journal of mathematics, 79(3):497-516, 1957.
+
+
+
+	
+		Optimum horizontal guidance techniques for aircraft
+		
+			HeinzErzberger
+		
+		
+			HomerQLee
+		
+		10.2514/3.44235
+	
+	
+		Journal of Aircraft
+		Journal of Aircraft
+		0021-8669
+		1533-3868
+		
+			8
+			2
+			
+			1971
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Heinz Erzberger and Homer Q Lee. Optimum horizontal guidance techniques for aircraft. Journal of Aircraft, 8(2):95-101, 1971.
+
+
+
+	
+		Algorithms for control of arrival and departure traffic in terminal airspace
+		
+			HeinzErzberger
+		
+		
+			TasosNikoleris
+		
+		
+			RussellAPaielli
+		
+		
+			Yung-ChengChu
+		
+		10.1177/0954410016629499
+	
+	
+		Proceedings of the Institution of Mechanical Engineers, Part G: Journal of Aerospace Engineering
+		Proceedings of the Institution of Mechanical Engineers, Part G: Journal of Aerospace Engineering
+		0954-4100
+		2041-3025
+		
+			230
+			9
+			
+			
+			SAGE Publications
+		
+	
+	Heinz Erzberger, Tasos Nikoleris, Russell A Paielli, and Yung-Cheng Chu. Algorithms for control of arrival and departure traffic in terminal airspace.
+
+
+
+	
+		Neighboring optimal aircraft guidance in winds
+		
+			ArthurEMatthew R Jardin
+		
+		
+			Bryson
+		
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		
+			24
+			4
+			
+			2001
+		
+	
+	Matthew R Jardin and Arthur E Bryson. Neighboring optimal aircraft guidance in winds. Journal of Guidance, Control, and Dynamics, 24(4):710-715, 2001.
+
+
+
+	
+		Understanding GPS: principles and applications
+		
+			ElliottKaplan
+		
+		
+			ChristopherHegarty
+		
+		
+			2005
+		
+	
+	Artech house
+	Elliott Kaplan and Christopher Hegarty. Understanding GPS: principles and applications. Artech house, 2005.
+
+
+
+	
+		Jacobi’s Elliptic Functions
+		
+			DerekFLawden
+		
+		10.1007/978-1-4757-3980-0_2
+	
+	
+		Elliptic Functions and Applications
+		New York
+		
+			Springer New York
+			2013
+			
+		
+	
+	D.F. Lawden. Elliptic Functions and Applications. Applied Mathematical Sciences. Springer New York, 2013.
+
+
+
+	
+		Calculus of Variations and Optimal Control Theory
+		
+			DanielLiberzon
+		
+		10.1515/9781400842643
+		
+			2012
+			Princeton University Press
+		
+	
+	D. Liberzon. Calculus of Variations and Optimal Control Theory: A Concise Introduction. Princeton University Press, 2012.
+
+
+
+	
+		Path planning and control for multiple point surveillance by an unmanned aircraft in wind
+		
+			GTimothy
+		
+		
+			J KarlMcgee
+		
+		
+			Hedrick
+		
+	
+	
+		American Control Conference
+		
+			IEEE
+			2006. 2006
+			6
+		
+	
+	Timothy G McGee and J Karl Hedrick. Path planning and control for multiple point surveillance by an unmanned aircraft in wind. In American Control Conference, 2006, pages 6-pp. IEEE, 2006.
+
+
+
+	
+		Optimal path planning with a kinematic airplane model
+		
+			GTimothy
+		
+		
+			J KarlMcgee
+		
+		
+			Hedrick
+		
+	
+	
+		Journal of guidance, control, and dynamics
+		
+			30
+			2
+			
+			2007
+		
+	
+	Timothy G McGee and J Karl Hedrick. Optimal path planning with a kinematic airplane model. Journal of guidance, control, and dynamics, 30(2):629-633, 2007.
+
+
+
+	
+		Optimal path planning in a constant wind with a bounded turning rate
+		
+			StephenTimothy G Mcgee
+		
+		
+			KarlSpry
+		
+		
+			Hedrick
+		
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		Reston, VA
+		
+			2005
+			
+		
+	
+	Timothy G McGee, Stephen Spry, and J Karl Hedrick. Optimal path planning in a constant wind with a bounded turning rate. In AIAA Guidance, Navigation, and Control Conference and Exhibit, pages 1-11. Reston, VA, 2005.
+
+
+
+	
+		Merging of Air Traffic Flows
+		
+			AndreMichelin
+		
+		
+			MosheIdan
+		
+		
+			JasonLSpeyer
+		
+		10.2514/1.51134
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		Journal of Guidance, Control, and Dynamics
+		0731-5090
+		1533-3884
+		
+			34
+			1
+			
+			2011
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Andre Michelin, Moshe Idan, and Jason L Speyer. Merging of air traffic flows. Journal of Guidance Control and Dynamics, 34(1):13-28, 2011.
+
+
+
+	
+		Automated geo-fence boundary configuration and activation
+		
+			GAMorgan
+		
+		
+			SGSchwarz
+		
+	
+	
+		US Patent
+		
+			8
+			329
+			September 13 2011
+		
+	
+	G.A. Morgan and S.G. Schwarz. Automated geo-fence boundary configuration and activation, September 13 2011. US Patent 8,018,329.
+
+
+
+	
+		Initial 4d trajectory management concept evaluation
+		
+			PierreLaurence H Mutuel
+		
+		
+			Neri
+		
+		
+			Paricaud
+		
+	
+	
+		10th USA/Europe Air Traffic Management Research and Development Seminar
+		
+			2013
+			
+		
+	
+	Laurence H Mutuel, Pierre Neri, and E Paricaud. Initial 4d trajectory management concept evaluation. In 10th USA/Europe Air Traffic Management Research and Development Seminar, pages 1-10, 2013.
+
+
+
+	
+		Research & Development Roadmap for Next-Generation Appliances
+		
+			WilliamGoetzler
+		
+		
+			TimothySutherland
+		
+		
+			KevinFoley
+		
+		10.2172/1219985
+		
+			2012
+			Office of Scientific and Technical Information (OSTI)
+		
+	
+	United States. Next Generation Air Transportation System Joint Planning & Development Office. Next Generation Unmanned Aircraft Systems Research, Development and Demonstration Roadmap. 2012.
+
+
+
+	
+		Flight trajectory optimization through genetic algorithms for lateral and vertical integrated navigation
+		
+			RobertoSalvador
+		
+		
+			FélixPatrón
+		
+		
+			RuxandraMihaela
+		
+		
+			Botez
+		
+	
+	
+		Journal of Aerospace Information Systems
+		
+			12
+			8
+			
+			2015
+		
+	
+	Roberto Salvador Félix Patrón and Ruxandra Mihaela Botez. Flight trajectory optimization through genetic algorithms for lateral and vertical integrated navigation. Journal of Aerospace Information Systems, 12(8):533-544, 2015.
+
+
+
+	
+		Optimal horizontal guidance law for aircraft in the terminal area
+		
+			ThomasPecsvaradi
+		
+		10.1109/tac.1972.1100160
+	
+	
+		IEEE Transactions on Automatic Control
+		IEEE Trans. Automat. Contr.
+		0018-9286
+		
+			17
+			6
+			
+			1972
+			Institute of Electrical and Electronics Engineers (IEEE)
+		
+	
+	Thomas Pecsvaradi. Optimal horizontal guidance law for aircraft in the terminal area. Automatic Control, IEEE Transactions on, 17(6):763-772, 1972.
+
+
+
+	
+		Simple low cost autopilot system for uavs
+		
+			VelappaVeera Ragavan
+		
+		
+			CheeGanapathy
+		
+		
+			Aiying
+		
+	
+	
+		Intelligent Robotics and Applications
+		
+			Springer
+			2011
+			
+		
+	
+	S Veera Ragavan, Velappa Ganapathy, and Chee Aiying. Simple low cost autopilot system for uavs. In Intelligent Robotics and Applications, pages 324-334. Springer, 2011.
+
+
+
+	
+		
+			Troy A Rule
+		
+		Airspace in an age of drones
+		
+			2014
+		
+	
+	Troy A Rule. Airspace in an age of drones. 2014.
+
+
+
+	
+		Unmanned Aerial Vehicle Path Following for Target Observation in Wind
+		
+			RolfRysdyk
+		
+		10.2514/1.19101
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		Journal of Guidance, Control, and Dynamics
+		0731-5090
+		1533-3884
+		
+			29
+			5
+			
+			2006
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Rolf Rysdyk. Unmanned aerial vehicle path following for target observation in wind. Journal of guidance, control, and dynamics, 29(5):1092-1100, 2006.
+
+
+
+	
+		Minimum-Time Path Planning for Unmanned Aerial Vehicles in Steady Uniform Winds
+		
+			LaszloTechy
+		
+		
+			CraigAWoolsey
+		
+		10.2514/1.44580
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		Journal of Guidance, Control, and Dynamics
+		0731-5090
+		1533-3884
+		
+			32
+			6
+			
+			2009
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Laszlo Techy and Craig A Woolsey. Minimum-time path planning for unmanned aerial vehicles in steady uniform winds. Journal of guidance, control, and dynamics, 32(6):1736-1746, 2009.
+
+
+
+	
+		Unmanned Aircraft Systems (UAS) research and future analysis
+		
+			ChrisAWargo
+		
+		
+			GaryCChurch
+		
+		
+			JasonGlaneueski
+		
+		
+			MarkStrout
+		
+		10.1109/aero.2014.6836448
+	
+	
+		2014 IEEE Aerospace Conference
+		
+			IEEE
+			2014. 2014
+			
+		
+	
+	Chris A Wargo, Gary C Church, Jason Glaneueski, and Mark Strout. Unmanned aircraft systems (uas) research and future analysis. In Aerospace Conference, 2014 IEEE, pages 1-16. IEEE, 2014.
+
+
+
+	
+		The high resolution rapid refresh (hrrr): an hourly updated convection resolving model utilizing radar reflectivity assimilation from the ruc/rr
+		
+			Stephen S Weygandt
+		
+		
+			Smirnova
+		
+		
+			Sg Benjamin
+		
+		
+			Kj Brundage
+		
+		
+			Sahm
+		
+		
+			Alexander
+		
+		
+			Schwartz
+		
+	
+	
+		Preprints, 23rd Conf. on Weather Analysis and Forecasting/19th Conf. on Numerical Weather Prediction
+		Omaha, NE
+		
+			Amer. Meteor. Soc. A
+			2009
+			15
+		
+	
+	Stephen S Weygandt, TG Smirnova, SG Benjamin, KJ Brundage, SR Sahm, CR Alexander, and BE Schwartz. The high resolution rapid refresh (hrrr): an hourly updated convection resolving model utilizing radar reflectivity assimilation from the ruc/rr. In Preprints, 23rd Conf. on Weather Analysis and Forecasting/19th Conf. on Numerical Weather Prediction, Omaha, NE, Amer. Meteor. Soc. A, volume 15, 2009.
+
+
+
+	
+		World geodetic system
+		
+			Wikipedia
+		
+		
+			July-2004
+			22
+		
+	
+	Wikipedia. World geodetic system. [Online; accessed 22-July-2004].
+
+
+				
+			
+		
+	

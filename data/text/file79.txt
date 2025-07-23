@@ -1,0 +1,426 @@
+
+	
+	
+		
+I. INTRODUCTIONInverse reinforcement learning (IRL) attempts to use demonstrations of "expert" decision making in a Markov decision process (MDP) to infer a reward function and corresponding policy that are in some sense consistent with the expert demonstrations [1].Several IRL approaches suffer from at least one of some common weaknesses [2].One such weakness is the imposition of assumptions about expert behavior in order to arrive at a well-posed problem.A second is that when the demonstration data is sub-optimal, it may be assigned probability zero by the inferred stochastic policy.A third is that, for certain assumed stochastic policy distributions, the most likely policy is not the one that achieves the largest objective value.A fourth is requiring the solution of a non-convex optimization problem.An approach that is free from these weaknesses is maximum causal entropy (MCE) IRL, proposed by Ziebart et al. [2]- [4].Given the illposed nature of the problem, MCE IRL proposes to infer the most uncertain stochastic policy that satisfies some statisticmatching constraints that capture the "structured, purposeful qualities" in the demonstration data [2].Furthermore, the MCE IRL approach can be interpreted as maximizing the causal likelihood of the demonstration data when a certain stochastic policy distribution is assumed, and it provides a worst-case prediction log-loss guarantee [2].However, as far as we know, MCE IRL has not been explored in the popular infinite discounted reward setting.MDPs with an infinite discounted reward objective have been utilized to model a range of problems in which there is no terminal state, including problems from finance and manufacturing [5].Discounting future rewards captures a preference for present rewards over future rewards, which arises naturally in many contexts, such as when one is concerned with the net present value of cash flows.For IRL there is an additional motivation for using a discounted objective: expert decision makers may be guided by such an objective because they find it easier to determine the impact of present actions on present rewards than on future rewards.A final limitation of many previous IRL algorithms, including the algorithms for MCE IRL proposed by Ziebart et al., is that they require knowledge of the state transition probabilities.In this paper, we extend MCE IRL to the popular infinite time horizon discounted reward setting by maximizing discounted future contributions to causal entropy subject to a discounted feature expectation matching constraint.This leads to the maximum discounted causal entropy (MDCE) IRL problem.Like MCE IRL, MDCE IRL is free from the four weaknesses that plague several other approaches to IRL, and it provides a worst-case prediction discounted logloss guarantee.By extending an existing algorithm for the finite time MCE IRL problem and techniques from dynamic programming and reinforcement learning, we specify three algorithms.One is an online algorithm that, unlike most IRL algorithms, does not require state transition probabilities.We demonstrate the behavior of these algorithms on an MDCE IRL problem instance based on a simple queuing network model inspired by problems in air traffic management.The remainder of this paper is structured as follows.We establish some preliminary definitions and assumptions in Section II.Then, we specify and describe the MDCE IRL problem in Section III.In Section IV, we derive parameterized soft Bellman policies that solve the MDCE IRL problem.We describe and prove characteristics of algorithms for the problem in Section V. Section VI contains a description and results of a computational experiment we performed to study and compare some algorithms for this problem.In Section VII, we finish the paper with conclusions.
+II. PRELIMINARY DEFINITIONS AND ASSUMPTIONS
+A. Markov Decision ProcessesA Markov decision process (MDP) is specified by a sixtuple: (S, A, P 0 , P, γ, R).The finite set of states is S and the finite set of actions available at each state is A. The distribution of the initial state s 0 is specified by P 0 .The state transition probabilities are captured by P : P (s t+1 |s t , a t ) is the probability of transitioning to state s t+1 when in state s t and selecting action a t .The reward function R : S × A → R specifies that R(s, a) is the reward achieved for selecting action a when in state s.A policy π specifies how to select actions in an MDP.Stationary policies do not depend on the time step.A stationary stochastic policy π : S → ∆(A) specifies a conditional distribution over actions.Sequences of states and actions in an MDP can also be interpreted as two interacting random processes: S 0:tf {S t } tf t=0 and A 0:tf {A t } tf t=0 .At each t, the random variable S t takes a value s t ∈ S and the the random variable A t takes a value a t ∈ A. The distributions of the random variables making up these random processes (and their interactions) are described by the distribution P 0 and the conditional distributions P and π.The discount factor γ ∈ (0, 1) helps define the expected infinite discounted reward objective E [∞ t=0 γ t R(S t , A t )] .In IRL problems, R is not given but rather inferred from demonstration data.An MDP but with unknown reward function is an MDP\R [6].
+B. Demonstration DataThe specification of an IRL problem includes demonstrations of expert decision making that can be used to infer a reward function and corresponding policy.We are given a data set D = (s d,t , a d,t ) tf t=0 D d=1 , where a d,t was generated by π E (s d,t ), the expert's policy evaluated at s d,t .
+C. Feature Expectation MatchingOne way to quantify the "structured, purposeful qualities" of expert actions is to study the expected value of a reward feature vector f : S × A → R K [2].For a given MDP, a feature expectation vector (FEV) f γ π ∈ R K for a policy π and a discount factor γ is defined as a d,t ).Assuming that the reward feature vector components measure quantities that direct expert decisions, we can find a π that shares the "purposeful qualities" of π E captured in the demonstration data by enforcing the feature expectation matching (FEM) constraint:f γ π E P0,P,π [ ∞ t=0 γ t f (S t , A t )] . We can use the demonstration data D to compute an estimate f γ π E of f γ π E : f γ π E = 1 D D d=1 tf t=0 γ t f (s d,t ,f γ π = f γ π E [2].
+D. Maximizing EntropyOne way to select from among probability distributions that satisfy some constraints is to pick the one that maximizes entropy.This distribution assigns probability to outcomes as evenly as possible, making it the "least committed" or "most uncertain" option [2].When given side information and selecting from among conditional probability distributions that satisfy constraints, the corresponding objective is to find the distribution that maximizes conditional entropy.In the finite time horizon IRL context, the side information is a sequence of visited states s 0:tf {s t } tf t=0 , and the distribution to be inferred is a stochastic policy π(a t |s 0:t , a 0:t-1 ) = Prob(a t |s 0:t , a 0:t-1 ), which can be simplified to π(a t |s t ) = Prob(a t |s t ) for an MDP.The conditional entropy is defined asH(A 0:tf |S 0:tf ) = E [-log Prob(A 0:tf |S 0:tf )] ,where Prob(a 0:tf |s 0:tf ) is the conditional probability.The conditional probability conditions on the entire set of side information (s 0:tf ): Prob(a 0:tf |s 0:tf ) = tf t=0 Prob(a t |s 0:tf , a 0:t-1 ).This is problematic because it leads to non-causal policies.Therefore, it is more appropriate to find a conditional distribution (stochastic policy) that maximizes causal entropyH(A 0:tf ||S 0:tf ) = E [-log Prob(A 0:tf ||S 0:tf )] ,where Prob(a 0:tf ||s 0:tf ) is the causally-conditioned probability Prob(a 0:tf ||s 0:tf ) = tf t=0 Prob(a t |s 0:t , a 0:t-1 ) [7].
+E. Discounted Causal EntropyAn issue with extending the notion of causal entropy to an infinite time horizon context is that causal entropy can be infinite.A related but finite quantity is discounted contributions to future causal entropy, or just discounted causal entropy, for some discount factor β ∈ (0, 1), which is defined as:H β (A 0:∞ ||S 0:∞ ) E P0,P,π ∞ t=0 -β t log π t (A t |S 0:t , A 0:t-1 ) .Discounted entropy has been employed in other contexts (e.g., control that is robust to model mis-specification [8]).
+III. MAXIMUM DISCOUNTED CAUSAL ENTROPY INVERSE REINFORCEMENT LEARNING PROBLEMThe maximum discounted causal entropy (MDCE) IRL problem ismaximize π H β (A 0:∞ ||S 0:∞ ) (1) subject to f γ π = f γ π E (2) π t (a t |s t ) ≥ 0 ∀a t , s t , t ≥ 0 (3) at∈A π t (a t |s t ) = 1 ∀s t , t ≥ 0.(4)The decision variables that make up the potentially nonstationary policy π are π t (a t |s t ) ∀s t ∈ S, a t ∈ A, t ≥ 0.The objective (1) is to maximize discounted causal entropy.Constraint ( 2) is the FEM constraint.Constraints ( 3) and ( 4) require that π be a valid stochastic policy.No constraint explicitly specifies that π be causally-conditioned (not dependent on future states).However, a causally-conditioned policy must factor as π(a 0:∞ ||s 0:∞ ) = ∞ t=0 π t (a t |s t ), so by using the factors π t (a t |s t ) as the decision variables, we force π to be causally-conditioned (see [2], Remark 5.7).While the MDCE IRL problem as specified in (1)-( 4) is non-convex, a mathematically-equivalent specification in which decision variables specify Prob(a 0:∞ ||s 0:∞ ) for each possible sequence of state-action pairs (s t , a t ) ∞ t=0 is convex (see [2], Definition 5.6 and Theorem 5.8).That convex problem has an infinite number of variables and constraints, but its dual is tractable when we enforce the causal-conditioning constraints by using the factors π t (a t |s t ) as the decision variables.Furthermore, when strong duality holds, a solution to the dual is also a solution to the primal, a property that will enable us to derive a tractable recursive solution specification.The sharp version of Slater's condition, which in this context is met when there is a non-deterministic policy that meets the FEM constraint, is sufficient for strong duality [9].Slater's condition is not restrictive because by definition there is a policy (π E ) that satisfies the FEM constraint (assuming f γ πE is a sufficiently accurate estimate of f γ πE ) [3].If needed, we can "loosen" the FEM constraint to ensure that there is a non-deterministic feasible policy.A solution to the MDCE IRL problem achieves a worstcase guarantee when predicting future expert actions.Theorem 1: A maximum discounted causal entropy policy minimizes the worst-case discounted log-loss of predictions of the actions taken by any other policyπ, sup π E P0,P,π [ ∞ t=0 -β t log π(A t |S t )] ,given that π achieves the FEM constraint (2).Proof: This follows from Theorem 5.10 of [2].
+IV. SOFT BELLMAN POLICIESBy investigating the dual problem mentioned in Section III, we can derive a parameterized and recursivelydefined stochastic policy that solves the MDCE IRL problem.Theorem 2: If the sharp version of Slater's condition holds, then a soft Bellman policy solves the MDCE IRL problem in eqs.( 1)-( 4).A soft Bellman policy has parameters θ ∈ R K and is defined recursively as:π soft t,θ (a t |s t ) = exp Q soft t,θ (s t , a t ) -V soft t,θ (s t ) ,(5)whereQ soft t,θ (s, a) = γ β t θ ⊤ f (s, a) + β s ′ ∈S P (s ′ |s, a)V soft t+1,θ (s ′ )(6)and This proof is very similar to that of Theorem 1 in [3].The θ parameters arise as dual variables corresponding to the FEM constraint (2).We use θ to denote the values that specify a soft Bellman policy that solves the MDCE IRL problem.V soft t,θ (s) = softmax a∈A Q soft t,θ (s, a) log a∈A exp(Q soft t,θ (s, a)) .(7In general, soft Bellman policies are non-stationary.Deriving non-stationary policies is generally intractable for infinite time horizon problems, so we will assume that β = γ when specifying algorithms in Section V.This assumption dictates that future contributions to causal entropy, of concern to the analyst, and future reward feature values, of concern to the expert, be discounted identically.We do not suspect that there is motivation for this assumption in many contexts, and so requiring this assumption is a weakness of this work.When β = γ, we will denote the resulting stationary soft Bellman policies, soft state-action values, and soft state values as π soft θ , Q soft θ , and V soft θ , respectively.We conjecture that maximizing per-time step average contributions to causal entropy while matching per-time step average feature vectors would lead to stationary soft Bellman policies that could be derived using adaptations of average cost dynamic programming techniques.Finally, we know that for the reward R(s, a) = θ⊤ f (s, a), the soft Bellman policy corresponding to θ achieves the largest objective value that can be achieved by any soft Bellman policy (see [2], Theorem 6.11).
+V. ALGORITHMSWhen strong duality holds for the MDCE IRL problem, we can solve the dual mentioned in the proof of Theorem 2 to find a θ that specifies a policy π soft θ that solves the MDCE IRL problem.In fact, this corresponds to finding maximum discounted causal likelihood estimates of the θ parameters when given D and assuming the soft Bellman policy form (see [2], Theorem 6.4).Furthermore, the dual problem is convex, so we can use gradient ascent techniques to solve it.The gradient is f γ π E -f γ π soft θ (see [3], Theorem 2).Therefore, a class of algorithms for the MDCE IRL problem is specified by: Require: MDP\R, f , D {MDCE IRL problem instance} Require: θ 0 ∈ R K {initial guess for θ} Require: α :Z + → R + {α(n) is the gradient step size} Require: N {maximum number of iterations} Require: ǫ ∈ R + {stopping criterion} 1: Compute f γ π E 2:for n = 0 to N doif δ FEM f γ π soft θn , f γ π E ≤ ǫ then 6:return θ n and π soft   2) is approximately met, since we defineθ n+1 = θ n + α(n) f γ π E -f γ π softδ FEM : R K × R K → R + as: δ FEM (f, f ′ ) max k |fk-f ′ k | |f ′ k |. This class of algorithms is an infinite time horizon generalization of algorithms specified by Ziebart in Chapter 9 of [2].In the remainder of this Section, we will describe three ways to derive π soft θ for a given θ (step 3) and three ways to then evaluate a policy by computing f γ π soft θ (step 4).
+A. Soft Bellman Policy DerivationWe propose three approaches for step 3 by extending techniques from dynamic programming and reinforcement learning.1) Soft Value Iteration: When P is known and |S| and |A| are not too large to prohibit repeated sums over states and actions, soft value iteration can be used to derive the soft Bellman policy.The soft Bellman operator corresponding to θ is defined asT soft θ (V )(s) softmax a∈A θ ⊤ f (s, a) + γ = T soft θ V soft θ, it is the unique optimal solution.As was the case for soft value iteration, this approach requires knowledge of P .This problem has |S| variables and |S| constraints, so it may require long computation times.Computation times could be reduced by solving for linear approximations of the soft value function while utilizing constraint sampling.3) Soft Q-Learning: When P is not known, we can learn Q soft θ while simulating the system by extending the wellknown Q-learning reinforcement algorithm to this context (see [5], sub-section 6.4).The update equation forQ soft is Q soft (s t , a t ) ← Q soft (s t , a t ) + η(t) θ ⊤ f (s t , a t ) +γ softmax at+1∈A Q soft (s t+1 , a t+1 ) -Q soft (s t , a t ) ,where η : Z + → R + is a step size parameter function.Theorem 5:If each Q soft (s, a) is updated infinitely often, ∞ t=0 η(t) = ∞, and ∞ t=0 η(t) 2 < ∞, then soft Q-learning converges to Q soft θ w.p. 1.Proof: This result can be proven using the same approach used by Melo to prove the convergence of Q-learning in [10].This proof depends on the fact that the soft Bellman operator for soft state-action values is a contraction mapping, which can be shown using the same approach as was used in the proof of Theorem 3.
+B. Policy EvaluationWhen evaluating a soft Bellman policy π soft θ in step 4, we are interested in computing its feature expectation vector f γ π soft θ .Two of the approaches described here are based on the observation that we can compute the k th component of f γ π soft θ by evaluating π soft θ in an MDP with reward function f k (s, a).The third approach uses Monte Carlo simulations.1) Dynamic Programming Operator: As proposed by Ziebart et al. for the finite time horizon context, we can repeatedly apply the regular (non-soft) dynamic programming operator (T ) defined for reward function f k (s, a) and policy π soft θ to compute the expected infinite discounted sum of reward feature k assuming we start in any given state [3].The inner product of this vector and P 0 yields the k th component of f γ π soft θ .This approach requires knowledge of P .
+2) Matrix Computations:We can also compute the expected infinite discounted sum of reward feature k, assuming we start in any given state and follow π soft θ , by solving a set of linear equations.Again, the inner product of the resulting vector and P 0 yields the k th component of f γ π soft θ .Although accurate, this approach requires knowledge of P and can require long computation times when |S| is large.3) Monte Carlo Simulations: Finally, we can use Monte Carlo simulations to estimate f γ π soft θ .This involves repeatedly initializing the MDP\R and then selecting actions as prescribed by π soft θ .Finally, the resulting data set of state-action pairs can be used to estimate f γ π soft θ .This approach does not require knowledge of P .
+VI. COMPUTATIONAL EXPERIMENT
+A. AlgorithmsWe selected three algorithms such that each policy derivation approach and each evaluation approach is used at least once, with the exception of the matrix computation approach, which is instead used in post-processing to illustrate properties of the other two policy evaluation approaches.The first algorithm (SoftVI-T) uses soft value iteration to derive soft Bellman policies and then the dynamic programming operator to evaluate them.The second (ConvOpt-T) uses convex optimization to derive soft Bellman policies and then the dynamic programming operator to evaluate them.The third (SoftQL-Sim) uses soft Q-learning to derive soft Bellman policies and then Monte Carlo simulations to evaluate them.Unlike the other two algorithms, SoftQL-Sim requires the ability to simulate the system but not the specification of P 0 and P .All of these algorithms were implemented by extending the PyMDPToolbox Python package 1 [11].The solutions to convex optimization problems required by ConvOpt-T were found using the CVXPY and CVXOPT Python packages [12], [13].Finally, relevant algorithm parameter values are specified in Table I.
+B. Problem InstanceWe evaluate these algorithms on a problem instance based on an MDP for a simple controlled queuing network.The MDP system model is inspired by controlled queuing network models of air traffic management problems [14]- [16], but it would need additional size and complexity to meaningfully represent a real-world problem.For such models we could approximate soft Bellman policies by extending techniques from approximate dynamic programming.The network, depicted in Fig. 1, consists of a sequence of two servers and corresponding buffers, and the control input determines whether a flight completing service in the first server transitions to the second buffer or is instead recirculated back into the first buffer.Recirculation represents actions taken to delay aircraft.Both buffers have finite capacities, and an arrival to a full buffer exits the network, an event that could model a flight being canceled, diverted, or rerouted.The system state at time step t is s(t) = [s(t) 0 , s(t) 1 , s(t) 2 , s(t) 3 ] ⊤ and it describes the number of flights in each buffer at the start of the time step (s(t) 0 and s(t) 1 ), as well as the number of flights attempting to enter each buffer during the previous time step that had to 1 NASA plans to release implementations of these algorithms in a patch for the PyMDPToolbox package.Contact the authors for details.s(t) 0 s(t) 1 λ 0 µ 0 (s(t) 0 ) µ 1 (s(t) 1 ) a(t) = 0 a(t) = 1 s0 s1 λ 1Fig. 1.Controlled queuing network exit the system (s(t) 2 and s(t) 3 for flights encountering a full buffer 0 and buffer 1, respectively).The buffer capacities are s0 and s1 .The distribution P 0 is uniform.In each time step, a flight arrives at and joins the first buffer with probability λ 0 and at the second with probability λ 1 .Similarly, a flight completes service in the first server with probability µ 0 (s(t) 0 ) and the second with probability µ 1 (s(t) 1 ).These probabilities are monotonically nondecreasing functions of the number of flights in the corresponding buffer.For many air traffic management problems, flights modeled as in each buffer are in fact traversing a region of airspace, and service completion represents that a flight is ready to move to the next region of airspace.When more flights are in a region, there is a greater probability that one of them will be ready in a time step.The statedependent service completion probabilities are meant to capture this phenomenon [14].In this problem instance, µ 0 (s(t) 0 ) increases linearly from µ 0 when s(t) 0 = 1 to μ0 when s(t) 0 = s0 and similarly µ 0 (s(t) 0 ) increases linearly from µ 1 when s(t) 1 = 1 to μ1 when s(t) 1 = s1 .All of these probabilities are independent from each other and across time steps.The action a(t) = 0 indicates that a flight completing service at the first server will be routed onward, while a(t) = 1 indicates that it will be recirculated.We define an MDP based on this system by specifying a discount factor γ and reward function R(s, a) = θ ⊤ f (s, a) for f (s, a) = [s σ0 0 , s σ1 1 , s 2 , s 3 , a] ⊤ /f max , where f max is a 5 × 1 vector containing the maximum attainable value for each element in the vector in the numerator.We generate an MDCE IRL instance by deriving an expert policy and then simulating it to provide a demonstration data set.The expert policy is a Boltzmann policy for the MDP: π Boltzmann τ (a|s) ∝ Q ⋆ (s, a)/τ, where τ is the temperature parameter and Q ⋆ is the state-action value function that is optimal with respect to R(s, a) = θ ⊤ f (s, a).We use the expert policy to generate a test data set of the same size as the training data set.Table II shows the parameters we used for the instance.The Python code was run on a MacPro workstation with two 6-core Intel Xeon 2.66 GHz processors and 24 GB of RAM.
+C. ResultsTable III shows the results of the three algorithms for the MDCE IRL problem instance.The δ FEM "estimate" column is based on f γ π soft θ computed by each algorithm (using the dynamic programming operator or simulation), while the δ FEM "actual" column is based on f γ π soft θ computed by the accurate matrix computation approach.While SoftVI-T and ConvOpt-T estimate f γ π soft θ accurately, SoftQL-Sim terminates prematurely because it fails to do so.The discounted and average log-loss values achieved by SoftVI-T and ConvOpt-T are identical and lower than those achieved by SoftQL-Sim.Furthermore, the discounted and average log-loss values are nearly equal on the training and testing data sets, indicating that over-fitting is not an issue.Finally, SoftVI-T requires the shortest time to execute, followed by SoftQL-Sim and then ConvOpt-T.In fact, ConvOpt-T requires more than 200 times longer than SoftVI-T.
+VII. CONCLUSIONSThe maximum discounted causal entropy inverse reinforcement learning problem extends maximum causal entropy inverse reinforcement learning to the infinite time horizon discounted reward context.Many of the desirable theoretical properties of finite time horizon maximum causal entropy inverse reinforcement learning still hold after this extension.Soft Bellman policies specify a parameterized form for stochastic policies that solve the maximum discounted causal entropy inverse reinforcement learning problem.Assuming that the same discount factor is used to discount contributions to future causal entropy and future reward feature values, and also assuming some mild conditions that ensure strong duality, a class of algorithms based on gradient ascent will find optimal values of the soft Bellman policy parameters.One step in this class of algorithms requires that a soft Bellman policy be derived for an estimate of the policy parameters.Extensions of three algorithms from dynamic programming and reinforcement learning will find this unique soft Bellman policy.Another step in this class of algorithms requires that a reward feature expectation vector be computed for a soft Bellman policy.This step can be performed by applying policy evaluation techniques or via Monte Carlo simulations.We perform a computational experiment to illustrate properties of three algorithms in this class of algorithms.We define a problem instance based on a simple controlled queuing network model that is similar to models used in air traffic management research and then deploy the three algorithms on the instance.Two of these algorithms generate policies that achieve identical discounted and average loglosses when predicting expert actions.However, the algorithm that derives policies with an extension of value iteration executes more than 200 times faster than the algorithm that derives policies by solving a convex optimization problem.The third algorithm derives soft Bellman policies with an extension of Q-learning and evaluates them using Monte Carlo simulations, so it requires the ability to simulate the system but not a full specification of state transition probabilities.It terminates prematurely due to an inaccurate feature expectation vector estimate, and the resulting policy achieves higher discounted and average log-losses.θn 9 :9end for 10: return θ N and π soft θN Here steps 5 and 6 allow the algorithm to terminate when the FEM constraint (
+0, -1.0, -1.0, -1.0, -1.0] ⊤
+)Proof: As discussed in Section III, there is a mathematically equivalent and convex specification of the MDCE IRL problem in which decision variables specify Prob(a 0:∞ ||s 0:∞ ) for each possible sequence of stateaction pairs (s t , a t ) ∞ t=0 .Since we assume the sharp version of Slater's condition, strong duality holds.Therefore, if we write the Lagrangian of this specification of the problem with the factors π t (a t |s t ) as variables, differentiate it, and set it equal to zero, we arrive at a general θ-parameterized form for π t (a t |s t ): π t,θ (a t |s t ) = (s, a) + β s ′ ∈S P (s ′ |s, a) log Z s t+1,θ and Z st,θ = at∈A Z at|st,θ .By defining Q soft t,θ (s, a) log Z at|st,θ and V soft t,θ (s) log Z st,θ , we see that soft Bellman policies are of this general form.expγ βtθ ⊤ fZ a t |s t ,θ Z s t ,θ , where Z at|st,θ =
+		
+		
+			
+
+				
+
+
+	
+		A review of inverse reinforcement learning theory and recent advances
+		
+			ShaoZhifei
+		
+		
+			Er Meng Joo
+		
+		10.1109/cec.2012.6256507
+	
+	
+		2012 IEEE Congress on Evolutionary Computation
+		Brisbane, Australia
+		
+			IEEE
+			June 2012
+		
+	
+	S. Zhifei and E. M. Joo, "A review of inverse reinforcement learning theory and recent advances," in IEEE World Congress on Computa- tional Intelligence, Brisbane, Australia, June 2012.
+
+
+
+	
+		Modeling purposeful adaptive behavior with the principle of maximum causal entropy
+		
+			BDZiebart
+		
+		
+			2010
+		
+		
+			Carnegie Mellon University
+		
+	
+	Ph.D. dissertation
+	B. D. Ziebart, "Modeling purposeful adaptive behavior with the principle of maximum causal entropy," Ph.D. dissertation, Carnegie Mellon University, 2010.
+
+
+
+	
+		The Principle of Maximum Causal Entropy for Estimating Interacting Processes
+		
+			BrianDZiebart
+		
+		
+			JAndrewBagnell
+		
+		
+			AnindKDey
+		
+		10.1109/tit.2012.2234824
+	
+	
+		IEEE Transactions on Information Theory
+		IEEE Trans. Inform. Theory
+		0018-9448
+		1557-9654
+		
+			59
+			4
+			
+			2010
+			Institute of Electrical and Electronics Engineers (IEEE)
+			Haifa, Israel
+		
+	
+	B. D. Ziebart, J. A. Bagnell, and A. K. Dey, "Modeling interaction via the principle of maximum causal entropy," in Proc. of International Conference on Machine Learning, Haifa, Israel, 2010.
+
+
+
+	
+		The Principle of Maximum Causal Entropy for Estimating Interacting Processes
+		
+			BrianDZiebart
+		
+		
+			JAndrewBagnell
+		
+		
+			AnindKDey
+		
+		10.1109/tit.2012.2234824
+	
+	
+		IEEE Transactions on Information Theory
+		IEEE Trans. Inform. Theory
+		0018-9448
+		1557-9654
+		
+			59
+			4
+			
+			April 2013
+			Institute of Electrical and Electronics Engineers (IEEE)
+		
+	
+	--, "The principle of maximum causal entropy for estimating interacting processes," IEEE Trans. on Information Theory, vol. 59, no. 4, pp. 1966-1980, April 2013.
+
+
+
+	
+		Stable Optimal Control and Semicontractive Dynamic Programming
+		
+			DimitriPBertsekas
+		
+		10.1137/17m1122815
+	
+	
+		SIAM Journal on Control and Optimization
+		SIAM J. Control Optim.
+		0363-0129
+		1095-7138
+		
+			56
+			1
+			
+			2005
+			Society for Industrial & Applied Mathematics (SIAM)
+			Nashua, NH
+		
+	
+	D. P. Bertsekas, Dynamic Programming and Optimal Control. Nashua, NH: Athena Scientific, 2005, vol. 1.
+
+
+
+	
+		Apprenticeship learning via inverse reinforcement learning
+		
+			PieterAbbeel
+		
+		
+			AndrewYNg
+		
+		10.1145/1015330.1015430
+	
+	
+		Twenty-first international conference on Machine learning - ICML '04
+		Banff, Canada
+		
+			ACM Press
+			2004
+		
+	
+	P. Abbeel and A. Y. Ng, "Apprenticeship learning via inverse rein- forcement learning," in Proc. of International Conference on Machine Learning, Banff, Canada, 2004.
+
+
+
+	
+		E-collection of dissertations at the Swiss Federal Institute of Technology (ETH) Zurich
+		
+			GKramer
+		
+		10.1108/prog.2003.28037bab.008
+	
+	
+		Program
+		0033-0337
+		
+			37
+			2
+			1998
+			Emerald
+		
+		
+			Swiss Federal Institute of Technology, Zurich
+		
+	
+	PhD Dissertation
+	G. Kramer, "Directed information for channels with feedback," PhD Dissertation, Swiss Federal Institute of Technology, Zurich, 1998.
+
+
+
+	
+		Robust control and model misspecification
+		
+			LarsPeterHansen
+		
+		
+			ThomasJSargent
+		
+		
+			GauharTurmuhambetova
+		
+		
+			NoahWilliams
+		
+		10.1016/j.jet.2004.12.006
+	
+	
+		Journal of Economic Theory
+		Journal of Economic Theory
+		0022-0531
+		
+			128
+			1
+			
+			2006
+			Elsevier BV
+		
+	
+	L. P. Hansen, T. J. Sargent, G. Turmuhambetova, and N. Williams, "Robust control and model misspecification," Journal of Economic Theory, vol. 128, pp. 45-90, 2006.
+
+
+
+	
+		Convex Optimization
+		
+			StephenBoyd
+		
+		
+			LievenVandenberghe
+		
+		10.1017/cbo9780511804441
+	
+	
+		Convex Optimization
+		Cambridge, UK
+		
+			Cambridge University Press
+			2004
+		
+	
+	S. Boyd and L. Vandenberghe, Convex Optimization. Cambridge, UK: Cambridge University Press, 2004.
+
+
+
+	
+		Convergence of Q-learning with linear function approximation
+		
+			FranciscoSMelo
+		
+		
+			MIsabelRibeiro
+		
+		10.23919/ecc.2007.7068926
+		
+	
+	
+		2007 European Control Conference (ECC)
+		
+			IEEE
+			February 2007
+		
+	
+	F. S. Melo, "Convergence of Q-learning: A simple proof," http://users.isr.ist.utl.pt/˜mtjspaan/ readingGroup/ProofQlearning.pdf, February 2007.
+
+
+
+	
+		PyMDPToolbox: Markov decision process (MDP) toolbox for Python
+		
+			SCordwell
+		
+		
+		
+			2013
+		
+	
+	S. Cordwell, "PyMDPToolbox: Markov de- cision process (MDP) toolbox for Python," https://code.google.com/p/pymdptoolbox/, 2013.
+
+
+
+	
+		CVXPY: A Python package for modeling convex optimization problems
+		
+			TT DRubira
+		
+		
+		
+			2013
+		
+	
+	T. T. D. Rubira, "CVXPY: A Python package for modeling convex op- timization problems," https://code.google.com/p/cvxpy/, 2013.
+
+
+
+	
+		Logarithmic barriers for sparse matrix cones
+		
+			MartinSAndersen
+		
+		
+			JoachimDahl
+		
+		
+			LievenVandenberghe
+		
+		10.1080/10556788.2012.684353
+		
+	
+	
+		Optimization Methods and Software
+		Optimization Methods and Software
+		1055-6788
+		1029-4937
+		
+			28
+			3
+			
+			2013
+			Informa UK Limited
+		
+	
+	M. Andersen, J. Dahl, and L. Vandenberghe, "CVXOPT: Python software for convex optimization," http://cvxopt.org/, 2013.
+
+
+
+	
+		Feedback Control of the National Airspace System
+		
+			JeromeLeNy
+		
+		
+			HamsaBalakrishnan
+		
+		10.2514/1.51203
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		Journal of Guidance, Control, and Dynamics
+		0731-5090
+		1533-3884
+		
+			34
+			3
+			
+			December 2010
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	J. L. Ny and H. Balakrishnan, "Feedback control of the National Airspace System," AIAA Journal of Guidance, Control, and Dynamics, December 2010.
+
+
+
+	
+		Dynamic Queuing Network Model for Flow Contingency Management
+		
+			YanWan
+		
+		
+			ChristineTaylor
+		
+		
+			SandipRoy
+		
+		
+			CraigWanke
+		
+		
+			YiZhou
+		
+		10.1109/tits.2013.2260745
+	
+	
+		IEEE Transactions on Intelligent Transportation Systems
+		IEEE Trans. Intell. Transport. Syst.
+		1524-9050
+		1558-0016
+		
+			14
+			3
+			
+			2013
+			Institute of Electrical and Electronics Engineers (IEEE)
+		
+	
+	Y. Wan, C. Taylor, S. Roy, C. Wanke, and Y. Zhou, "Dynamic queuing network model for flow contingency management," IEEE Trans. on Intelligent Transportation Systems, 2013.
+
+
+
+	
+		Ground Delay Program Analytics with Behavioral Cloning and Inverse Reinforcement Learning
+		
+			MichaelJBloem
+		
+		
+			NicholasBambos
+		
+		10.2514/6.2014-2026
+	
+	
+		14th AIAA Aviation Technology, Integration, and Operations Conference
+		Atlanta, GA
+		
+			American Institute of Aeronautics and Astronautics
+			August 2014
+		
+	
+	M. Bloem and N. Bambos, "Ground Delay Program analytics with behavioral cloning and inverse reinforcement learning," in AIAA Aviation Technology, Integration, and Operations Conference, Atlanta, GA, August 2014.
+
+
+				
+			
+		
+	

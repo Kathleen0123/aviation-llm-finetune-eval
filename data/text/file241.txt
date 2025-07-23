@@ -1,0 +1,887 @@
+
+	
+	
+		
+IntroductionIncreasing the airport arrival rates is an important factor towards meeting the growing demand in air traffic.The concept of Very Closely Spaced Parallel Runway (VCSPR) operations is considered to be a crucial step for realizing significant increase in arrival throughput during poor weather conditions when instrument meteorological conditions apply.It aims to maximize the utilization in parallel runway systems that may be spaced as close as 750 ft apart, and thus increase the landing capacity at hub airports without significant increase to the airport footprint.Several operational concepts have been developed for simultaneous approaches [1][2][3].All of these concepts assume the aircraft are paired by air traffic controllers before their approach clearances are given.While there has been much research for arrival scheduling, the study by Kupfer [4] represents the only published work that specifically targeted simultaneous parallel approaches with lateral and staggered spacing of only a few seconds.Conducting research into paired arrival scheduling has other practical long-term applications as well.The insights gained from these studies could help extend the capabilities of new and improved tools for terminal area scheduling such as those currently under development [5].This paper presents an improved algorithm for finding aircraft pairs.This algorithm was developed, and tested, and used by air traffic controllers for a HITL simulation conducted recently at NASA Ames Research Center to study the role of air traffic control [6].The prototype development started with a Genetic Algorithm (GA) developed by Kupfer [4] as a starting point.Kupfer's algorithm was quite successful at finding pairs in the context of the simplified problem presented in [4].However, under the requirements of the HITL simulations and based on detailed evaluation during an initial pilot study, it became apparent that Kupfer's pairing algorithm did not perform very well under the new requirements and constraints and that the algorithm required several adjustments and enhancements.Some of these enhancements were related to the problem modeling, while others targeted specific performance characteristics.This paper presents the formulation of the new pair-scheduling problem, and chronicles enhancements implemented to make it suitable for use in the HITL simulations [6].Experimental results are presented and discussed, confirming the effectiveness of the resulting algorithm.The rest of this paper is organized as follows.First, some introductory background is presented describing the operational concept under investigation, the motivation for developing the pairing algorithm, and an overview of the previous body of related research.Next, the formulation of the pair-scheduling problem is presented, followed by a brief discussion of the computational complexity of the pair-scheduling problem.Next, the rationale for the solution methodology adopted in the current work is provided.This is followed by the description of various modifications, adjustments and enhancements to the problem modeling, exploration and solution space control, as well as performance optimization that were implemented to improve Kupfer's algorithm in order to construct a pairing algorithm that was suitable for a real-time HITL simulation.Experimental results from the HITL simulations as well as a large number of arrival scenarios generated to conduct stress testing on the resulting pairing algorithm are presented and discussed next.The paper ends with some concluding remarks, presenting a summary of the key contributions of this work, and providing some directions for further research.
+BackgroundThe Federal Aviation Administration (FAA) recognizes that significant capacity is lost when simultaneous operations performed under visual conditions are not operational under poor weather conditions.As a part of its NextGen plan [7], the FAA aims to reduce the minimum allowable spacing between runways used for simultaneous operations in poor visibility, currently 4300 ft., by implementing revised standards and improved technologies.Table 1 shows a partial listing of airports containing parallel runways with spacing below 4300 ft.All of these airports experience severe reduction in aircraft landing capacities under poor weather conditions when simultaneous approaches are not possible.Several concepts that address and could benefit from the revision of separation standards and technologies include Simultaneous Offset Instrument Approaches (SOIA) [8], Airborne Information Lateral System (AILS) [2] and Terminal Area Capacity Enhancing Concept (TACEC) [3].The role of the air traffic controllers during simultaneous approaches is different for each of the above concepts.However, all of these concepts assume that the air traffic controller will assign aircraft to pairs with the knowledge that they are properly equipped.There does not exist any formal tool or process by which pairing is done, in the current NAS.A recent study conducted at NASA Ames Research Center carried out HITL simulations to investigate the allocation of tasks under TACEC for air traffic controllers [6].This required an algorithm for pairing aircraft under different levels of automation in order to investigate the appropriate human/automation mix for the given task.The highest level of automation required a pairing algorithm that would suggest aircraft pairs to the controllers.This paper describes the problem formulation and the development of the pairing algorithm needed for these HITL simulations.In these simulations, finding and suggesting pairs was handled by automation while controllers handled the task of evaluating and accepting or rejecting the suggested pairs.Since the pairing problem is very much related to scheduling aircraft landing, a concise overview of previous related work in scheduling is provided next.Scheduling problems arise in numerous applications and as a result, they have been studied extensively in the literature.A general survey and classification of scheduling problems can be found in [9,10], while [11,12] present overview of the scheduling problems encountered in aircraft and airline scheduling.The aircraft arrival-scheduling problem has also been studied extensively.The idea of Constrained Position Shifts (CPS) was introduced in [13] as a means for improving the arrival sequence, while [14] presented a dynamic programming algorithm to optimize the aircraft arrival sequence and took advantage of CPS to increase efficiency.Other heuristics and approaches using genetic algorithms [15][16][17][18][19], dynamic programming [20,21], mixedinteger linear programming with linear relaxations [22][23][24], branch and bound techniques [22,35] or a combination of the above have also been applied to the arrival-scheduling problem.The arrival scheduling problems are often broadly categorized into static [23] (offline) and dynamic (online) [17], depending on whether or not complete knowledge about the set of aircraft that are going to land is available ahead of time.In this paper, the focus is on the static case.Another classification of the arrival scheduling problems is into single vs. multiple runway landing.While much of the previous research on scheduling arrival landing focused on single runway, there have been several studies including [22,26,27] that discuss the multiple runway case or extend their single runway approaches to the multiple runway condition.The scheduling problem for simultaneous landing of aircraft to very closely parallel runways is markedly different and more constrained than that of scheduling for independent landing to multiple runways.This problem was formulated recently in [4] and solved exactly using a mixed integer linear programming (MILP) formulation.As is often the case, the running time achieved using the proposed MILP formulation is prohibitively long, making the approach unsuitable for real-time application.Therefore, a heuristic technique based on genetic algorithm [28] fortified with a greedy heuristic was also presented in [4].In this paper, the greedily enhanced genetic algorithm of Kupfer [4] was adopted as the base implementation.Then, using new requirements and feedback received during an initial pilot study, several enhancements were made to create a pairing algorithm suitable for real-time HITL simulation conducted in [6].
+Concept DescriptionThe concept investigated in the current study is TACEC [3], developed collaboratively by Raytheon and NASA Ames Research Center.The TACEC system allows multiple aircraft to fly in close formations during the final approach to enable simultaneous instrument approaches for landing aircraft on very closely spaced parallel runways that are as close as 750 ft apart.This would increase the landing capacity of the airports with closely spaced parallel runways during low visibility conditions, achieving arrival rates comparable to visual approach operations.
+Figure 1. Approach Pattern for Aircraft PairThe process involves pairing aircraft around 30 minutes before the aircraft arrives at the terminal boundary.As shown in Figure 1, the actual coupling for the approach is intended to occur 12 nm from the runway threshold.After this coupling point, the coupled aircraft converge over a 10nm distance at a 6° angle.For the last 2nm prior to the runway threshold, the paired aircraft would fly on parallel flight path segments.The following aircraft in a pair must be flying within a safe zone, which is defined by a Lower Pairing Boundary (LPB) and an Upper Pairing Boundary (UPB) behind the lead aircraft.The LPB is defined to minimize the risk of collision in case of a blunder by the lead aircraft, while the UPB is defined in order for the follower aircraft to avoid its encounter with the wake vortex of the lead aircraft.In this study, the LPB and UPB are set to 5s and 25s behind the lead aircraft, respectively.Figure 2 demonstrates the notions of LPB and UPB and the safe zone.The pairing algorithm is instructed to schedule the pairs in order for the follower aircraft to be situated in the middle of the safe zone.The concept assumes Differential Global Positioning System (DGPS), augmented ADS-B, 4-dimensional flight management system (4D-FMS), wind detection sensors onboard the aircraft, and cockpit automation that are not extant in today's NAS.
+Figure 2. Safe Zone for PairingTo ensure safe operation, a minimum separation is maintained between landing aircraft that do not belong to the same pair.This separation is determined based on the wake separation category of the aircraft involved.The following four categories are recognized: Small (S), Light (L), B757 (7), and Heavy (H), in accordance with [4].The enforced wake separation in seconds for various combinations is provided in a wake separation matrix as shown in Table 2. Another important prerequisite for the HITL simulations was a careful redesign of the airspace so that the arrival traffic can safely follow their prescribed 4D trajectories from their respective arrival streams [6].This involved a split towards the end of the arrival streams to enable routing from each arrival stream to land an arriving aircraft on either of the two runways involved.The aerial view of the redesigned airspace used in this study, along with the geometry of the five arrival streams (Big Sur, Modesto, Oceanic, Point Reyes, Yosem) that were part of the HITL simulations are shown in Figure 3 in the vicinity of runways 28L and 28R at San Francisco airport (SFO).The flying direction of the arrival aircraft is shown using yellow arrows before the split points and using pink arrows after the split points along the arrival streams.The final portion of the paths starting from the coupling point and ending on the runways is shown in light green.This portion corresponds to the approach patterns of an aircraft pair illustrated in Figure 1.The set of arriving aircraft to be scheduled is denoted by A={a 1 , a 2 , …, a n }, where a i = (eta N,i , [eta EL,i , eta LL,i ], [eta ER,i, eta LR,i ], w i , s i , g i ) is the record for aircraft i. eta N,i is the nominal estimated time of arrival (ETA) of aircraft i at the coupling point.[eta EL,i , eta LL,i ] and [eta ER,i, eta LR,i ] are the early and late ETA of aircraft i at the left and right coupling points, respectively.w i ∈ {S, L, 7, H}, s i ∈ M, and g i are the wake category, the arrival stream, and the pair-group category for aircraft i, respectively.The wake separation matrix W is a 4x4 wake matrix as shown in Table 2, where entry w ij is the required safe separation between non-paired aircraft of types i and j, with i, j ∈ {S, L, 7, H} and i is ahead of j.The target separation window between the scheduled times of arrival (STAs) of two aircraft to be paired is denoted as t p .For the purpose of this study, t p = 15 seconds, and we use the wake separation matrix given in Table 2.A scheduling solution consists of a Scheduled Time of Arrival STA i at the coupling point and a runway assignment r i for a (maximal) subset of A. A feasible scheduling solution is one in which a set of constraints are satisfied.Several classes of constraints are defined and need to be enforced.These include temporal constraints, sequencing constraints, separation constraints, pair-group constraints, and runway assignment constraints.A temporal constraint places a restriction on the acceptable range for the STA values of the aircraft being scheduled for landing.In our context, the STA for an aircraft should lie within the ETA time window at the coupling point for its target runway.A sequencing constraint places a restriction on the aircraft arrival sequence for the runways.In other words, it limits the acceptable order for the arrival aircraft as they pass through their respective coupling points.In our study, no overtaking is allowed among aircraft arriving from the same stream.Hence, within each arrival stream, the order of STA values for arriving aircraft to the two runways should correspond to the order of the aircraft's nominal ETA values at the coupling point.A separation constraint defines the minimum safe distance among the aircraft as they fly through the airspace.In our context, the wake separation matrix and the wake categories of the arriving aircraft define the separation constraints.The separation between arriving and non-arriving aircraft is a complication that is not considered in the current study and could be a subject of future research.However, part of the requirements for redesigning the airspace and the arrival trajectories was to minimize the potential occurrence of separation conflicts between arriving and non-arriving aircraft.Pair-group constraints impose restrictions on the set of aircraft that could be paired.This is included to enable additional level of control on which aircraft should not be paired with each other.Factors such as aircraft weight and speed profile may be used to derive the pair grouping.Two aircraft may be paired only if they belong to the same pair group.Runway assignment constraints are the rules that define the desired or legal runway assignment for the arriving aircraft.We distinguish between single aircraft runway assignment rules, and paired aircraft runway assignment rules.The set of runway assignment rules R is the union of the set of single aircraft runway assignment rules (R 1 ) and the set of paired aircraft runway assignment rules(R 2 ), that is R = R 1 ∪R 2 , with R 1 ={(m, y) | m ∈ M, y ∈ Y} and R 2 ={((m 1 , y 1 ), (m 2 , y 2 )) | m 1 , m 2 ∈ M and y 1 , y 2 ∈ Y}.A single aircraft runway assignment rule (m, y) ∈ R 1 indicates that a single aircraft arriving from stream m should be scheduled to arrive at runway y, while an aircraft-pair runway assignment rule ((m 1 , y 1 ), (m 2 , y 2 )) ∈ R 2 indicates that two arrival aircraft that are going to be paired with the leader arriving from stream m 1 and the following aircraft arriving from stream m 2 should be assigned to runways y 1 and y 2 respectively.Also, it should be noted that when in conflict, a paired aircraft runway assignment rule overrides a single aircraft runway assignment rule.The runway assignment rules in use for the HITL simulations conducted in [6] will be presented later in the paper.The Pair-Scheduling Problem (PSP) for landing single and paired aircraft to closely spaced parallel runways can be formulated as follws: PSP Instance: A tuple of the form (A, W, t p , R), where A={a 1 , a 2 , …, a n } is a set of aircraft records, W is a 4x4 wake separation matrix, t p is the pairing window or the target separation window between two paired aircraft as they cross their respective coupling points, and R is the set of runway assignment rules.PSP Objective: To find a feasible scheduling solution of a maximal subset of A subject to the temporal, sequencing, separation, pair-group, and runway assignment constraints.To develop a pairing algorithm for solving PSP, and use it in the HITL simulations of [6], we started from the prototype provided in [4].Then we made several enhancements that addressed some of the shortcomings based on new requirements and feedback received during an initial pilot study to make the approach suitable for use in real-time HITL simulations.
+Notes on Computational ComplexityOne of the key questions in studying any problem is whether or not there exists an efficient algorithm that solves the problem optimally.Answering this question in general is not an easy task.A branch of computer science commonly referred to as computational complexity is devoted to studying this matter, where problems are classified into different computational classes.As discussed earlier, the PSP problem defined earlier belongs to a general class of problems known as Scheduling problems.Many of the scheduling problems belong to the NP-hard class of problems.Hence, finding a general solution strategy that solves an arbitrary instance of these problems optimally in a reasonable amount of time is generally considered a hopeless pursuit [9,29].It is not clear whether the PSP problem defined earlier belongs to the class of NP-hard problems or not.Presenting a proof about the computational complexity of PSP requires rigorous mathematical exposition, and is beyond the scope of this paper.However, some evidence is provided that suggest PSP might belong to the NP-hard class of problems.In particular, there exist two closely related aircraft scheduling problems that are known to be NP-hard.These are the aircraft landing problem, which was studied by Beasley et al. [23], and the problem of parallel aircraft landing with sequence-dependent separation requirements.These problems were reported to be NP-hard in [23] and [30], respectively.It should be noted that during the course of this research while attempting to adopt a solution strategy, the set of requirements, constraints, and control parameters that define a feasible scheduling solution were in a constant state of flux.These requirements underwent several rounds of adjustments as various issues and limitations surfaced.Given the evidence that PSP might belong to the NP-hard class of problems, suggested that the best course of action might be to seek algorithmic solutions that are practical, adaptable, and can produce feasible scheduling results very efficiently.This required a solution strategy that would be flexible enough to be adjusted as the requirements and constraints were being stabilized.On the other hand, we needed a prototype that could be developed in parallel and integrated into the system for conducting the real-time HITL simulations that were planned [6].The availability of Kupfer's recent prototype [4] and its implementation based on the genetic and evolutionary algorithms [31][32][33] provided a very suitable candidate.The underlying genetic algorithm that was used to solve the problem could be adjusted and enhanced to suit the needs of the new problem with relative ease.These adjustments and enhancements will be explained in the following section.
+Developing the Pairing AlgorithmThis section describes the enhancements made to the initial basic implementation of Kupfer [4], the concerns that each enhancement was intended to address, and the significance of each of these enhancements.A brief overview of Kupfer's GAbased algorithm is presented first.This would set the stage for the later discussion where we explain the enhancements and adjustments that were made to make it suitable for real-time HITL simulations.Kupfer's algorithm consists of three main steps.In the first step, an initial population of feasible scheduling solutions is created.The next step is the optimization phase comprised of a fixed number of iterations.During each iteration in the optimization phase, the current population of feasible solutions undergoes one generation of evolutionary optimization, followed by a greedy step to further optimize each resulting solution.In the final phase, the best solution encountered so far is reported.Of particular interest in the discussions that follow are two components of the algorithm.These are the initialization algorithm and the objective function.The initialization algorithm is responsible for seeding the genetic algorithm with its initial pool of feasible scheduling solutions.The objective function is used to determine the relative merit of a given scheduling solution and operates by associating a cost value to each candidate scheduling solution.
+Problem Modeling EnhancementsThe first set of enhancements made to Kupfer's greedy GA approach was applied at the problem modeling level.These adjustments intended to extend Kupfer's approach to fit the requirements of the PSP problem formulation.These enhancements included the following: i) implementing the Oceanic arrival stream, and ii) extending the algorithm to enable different ETA windows for each aircraft at the left and right coupling points.
+Improved Solution Space ControlThe next set of enhancements made to Kupfer's greedily enhanced GA approach was applied to enable better and more granular control over the feasible solution space.These enhancements are explained next.
+Runway Assignment and Hard Pairing RulesA major undertaking while developing the pairing algorithm was to ensure that the pairing and runway assignment rules are properly implemented and followed.These rules were iteratively defined after several rounds of discussion among the researchers and subject matter experts.The final set of pairing rules adopted for this research can be expressed as the union of single aircraft runway assignment rules R 1 and the paired aircraft runway assignment rules R 2 as listed below:R = R 1 ∪ R 2 R 1 = { (big_sur, l), (modesto, r), (oceanic, l),(point_reyes, l), (yosem, r)} R 2 = { ((point_reyes, l), (oceanic, r)), ((point_reyes, l), (big_sur, r)), ((oceanic, l), (big_sur, r)),
+((yosem, l),( modesto, r))}The above rules can be explained as follows.The rules in R 1 indicate that single aircrafts arriving from Big Sur, Oceanic, and Point Reyes stream are by default assigned to the left runway, while those arriving from Modesto and Yosem streams are by default assigned to the right runway.The rules in R 2 indicate how the rules in R 1 are over-ridden when aircrafts are paired.For example, the first rule ((point_reyes, l), (oceanic, r)) indicates that for an aircraft-pair arriving from the two arrival streams Point Reyes and Oceanic, the applicable runway assignment rule would be for the aircraft arriving from Point Reyes to land on the left runway and for the aircraft arriving from Oceanic to land on the right runway.
+Soft Rules and PreferencesIn addition to the above set of hard rules, there were some soft rules based on controller preferences.For example, it was desirable not to pair aircraft that are by default destined to the same runway, when a more or less equivalent choice existed.As an example, unless no better solution existed, it would be desirable to avoid pairing two aircraft approaching from Modesto and Yosem arrival streams.Doing so would involve a change in the runway assignment, requiring manual intervention and coordination that would lead to an increase in controller and pilot workload.Such soft rules were handled by lowering the weight assigned to a less desirable pair, in the objective function that guided the genetic algorithm during the search process.
+Manual Override and Forbidden PairsAnother important feedback received during initial pilot study of the system, was the need to allow manual override by the air traffic controllers on the pairing solution.From the beginning, the controllers had the option not to accept a suggested pair, giving them the final say in the creation of pairs.However, there was a need to communicate an undesirable pair to the pairing algorithm so that the same undesirable pair would not be suggested over and over again.This was implemented by maintaining a list of forbidden pairs.A forbidden pair is a pair of aircraft with designated leader and follower, which the pairing algorithm should not produce.Once the controllers identify a pair as forbidden, the pairing algorithm would add it to its list of forbidden pairs.These pairs would no longer show up as candidate pairs in the future.To implement this during the optimization, the forbidden pairs list was consulted during the creation of the initial population seed, during the course of the optimization, and once again when reporting the pairing results.In order to gradually lead the exploration out of the undesirable portion of the search space, the objective function was used to discourage forbidden pairs from appearing in a solution by giving such pairs a much lower weight.To ensure no forbidden pairs would leak into the final pairing solution, a pruning of the pairing solution was done just before reporting the pairing result to the controllers.Implementing and honoring the forbidden pairs feature was considered a key requirement for the HITL simulations.However, an important metric for the evaluation of the pairing algorithm is the quality of the pairing results it can produce.The goal was to ensure the pairing results produced and presented to the controllers were of high quality, so that maximum percentage of the presented pairs were accepted, thus minimizing the need for the forbidden pair feature to be exercised.In the experimental results section we will show statistics on how often the forbidden pairs features were exercised during the HITL runs.
+Rewriting the Objective FunctionThe objective function was redesigned from scratch with all the requirements, including the new ones in mind.The revised objective function associated a cost to each scheduling solution evaluated during the course of optimization, and the genetic algorithm was setup to find the scheduling solution of minimum cost.For a given scheduling solution, the following cost function was used: cost = a 0 + a 1 .P + a 2 .S + a 3 .maxSTA where P is the effective number of scheduled aircraft pairs, S is the number of scheduled aircraft singles, maxSTA is the largest STA among the scheduled aircraft, and a 0 , a 1 , a 2 , a 3 , are parameters used to shift and scale the cost factors appropriately.Among these, a 0 was chosen to shift the cost values to a meaningful range, and was not really significant, while a 1 , a 2 , a 3 , were selected in order to provide the relative significance for various cost factors.The values used for these parameters in our experiments were as follows: a 0 = 10,000 a 1 = 100 a 2 = 10 a 3 = 0.05 Recall from earlier discussion that certain pairs were undesirable, or forbidden.In order to allow a smooth search space exploration, an attenuation factor was used to reduce the contribution of the undesirable or forbidden pairs to P. The undesirable pairs were those involving aircraft that would require a change in their assigned runways.An attenuation factor of 0.8 was used to cut the contribution of such pairs to P by 20% as compared to a regular pair.For the forbidden pairs, an attenuation factor of 0.1 was used to make the contribution of such a pair to the objective function relatively insignificant.This would cause the algorithm to look harder for scheduling solutions that do not contain forbidden pairs.Note that we did not assign a negative cost factor to forbidden pairs, as this would cause interference with other cost factors.As a final assurance, any forbidden pairs were always filtered out of the pairing solution before reporting the list of aircraft pairs to the controllers.
+Improving the Effectiveness of Finding PairsAnother significant challenge that had to be overcome during the development phase of the pairing algorithm was to ensure that it could find and schedule as many aircraft pairs as possible.It was noticed, however, that for some relatively simple scenarios, the algorithm did not find pairs that were easily detected by simple visual inspection of the arrival streams.
+Identifying Root Causes of the ProblemCareful investigation suggested that the main contributor to this degraded performance was the algorithm used for selecting the initial population pool for the genetic algorithm.In particular, two aspects of the initialization algorithm needed improvement.The first was that the initial population was obtained by making repeated calls to a deterministic algorithm.This would result in the same exact scheduling solution to be returned upon each call, thus eliminating population diversity in the initial population pool.The lack of population diversity caused significant deterioration in the solution quality that is usually achievable within an acceptable number of generations of the genetic algorithm.The second issue with the initial population selection was that the algorithm did not explicitly seek to find solutions containing aircraft pairs.Instead, the algorithm simply settled for any feasible solution regardless of whether or not it contained any aircraft pairs.These two issues combined, often resulted in an initial pool of individual solutions consisting of multiple copies of the same exact feasible solution not containing any aircraft pairs.As a result, the initial population was often quite suboptimal and contained no diversity.This resulted in a significant impediment to the genetic algorithm's ability to escape from the local minima and find solutions of superior quality.
+New GA Initialization AlgorithmTo address the quality degradation issue and to boost the algorithm's ability in finding adequate number of aircraft pairs, a new and improved GA initialization algorithm was developed.The new approach still used the idea of calling the same (new) algorithm multiple times to produce the seed population for the genetic algorithm.However, special attention was given to two aspects of the algorithm, based on the root causes identified for degraded quality, as discussed earlier.First, the new algorithm was non-deterministic, producing different feasible solutions on consecutive calls.Secondly, the algorithm was explicitly designed to target finding feasible solutions that maximize the number of aircraft pairs.This was done using a very efficient greedy nondeterministic algorithm for solving the PSP problem that worked off of a partial schedule, which was constructively formed starting from an empty set.The key observation was that at any given moment in time, the set of choices for the next aircraft to be scheduled for landing is the set of aircraft leading the pack in each of the arrival streams.In other words, the algorithm would only need to focus on the first unscheduled aircraft on each arrival stream, arriving the coupling point.This observation was utilized to reduce the search space significantly.This was achieved by maintaining the set of arrival aircraft approaching on different streams using separate queues, and focusing on the first candidate in each queue when searching for the next aircraft to be scheduled.The non-determinism was achieved by selecting a random STA for the best candidate within the feasible range, while satisfying all the constraints.Since the focus was still among the first arriving aircraft from each arrival stream, this algorithm is a deterministic greedy pairing algorithm using the First Come First Served (FCFS) heuristic.The outline of the algorithm is given below:1. Create an empty Schedule.2. Create arrival stream queues, each sorted in the increasing order of the nominal ETA values.3. Pop the first aircraft from each non-empty queue and add it to candSet .4. If candSet is empty no more aircraft can be scheduled legally.Report the schedule constructed so far and exit.
+Otherwise, evaluate each of the aircraft incandSet to see if it can be legally scheduled, given the partial schedule constructed so far.Remove from candSet any aircraft that cannot be scheduled legally.6. Let B ∈ candSet be the aircraft that could be scheduled earliest while satisfying all constraints, or B = ∅ if candSet is empty.7. If (B = ∅), go to step 3.8. Remove B from candSet, schedule B randomly in its legal range.9. Pop the next aircraft from the stream containing B (if there exists one) and add it to candSet.
+Go to step 4Much of the algorithm is quite straightforward.The most interesting and involved steps in this algorithm are steps 5 and 6.Step 5 is a pruning step to eliminate from consideration any aircraft in the candSet that cannot be legally scheduled given the partial schedule that is constructed so far.Note that if an aircraft cannot be legally scheduled, given the partial schedule that is constructed so far, there is no need to consider it in the future either.This is because of the constructive and greedy nature of the algorithm.Therefore, we can safely eliminate these aircraft from consideration.Step 6 seeks to find the best among the remaining candidate aircraft in candSet.It is implemented using a case-based analysis that looks at whether or not the last scheduled aircraft was single or paired.Then it looks at all the choices to pick the aircraft that can be scheduled as early as possible, while satisfying all the scheduling constraints.The choice that gives the minimum possible STA value meeting all the wake separation, pairing, pair grouping, and other constraints is returned as the best choice stored in B.Once the best choice among the candidate aircraft is identified, it is scheduled within its legal range in a randomized fashion in step 8.This step provides the desired non-determinism in the initial population pool, resulting in diversity of the seed population.The genetic algorithm can then use this diversity for much more effective exploration of the solution space using genetic mutation and crossover operations.
+Experimental ResultsThe pairing algorithm described in this paper was implemented in C/C++ using the Genetic Algorithm Library GAlib [34] and integrated into the ground air traffic control system for HITL simulations [6].A stand-alone version was also implemented to conduct off-line performance and stress testing.The stand-alone runtimes are performed on a Mac Pro machine with 2 x 2.8 GHz Quad-Core Intel Xeon processor.This section presents the results of experiments conducted to measure the performance, scalability, and quality of the pairing results produced by the pairing algorithm.
+Performance ResultsThe first set of results, presented in Table 3, shows the impact of the enhancements made to the GA initialization algorithm on the number of pairs discovered by the pairing algorithm.Each row of the table presents one of the scenarios that were tested.The first six test cases (row 1 through 6) were chosen randomly from those that were being developed in preparation of the HITL simulations [6].The last test case (row 7) shows the scenario used to help identify the issues with the original GA initialization algorithm.As Table 3 shows, with the new initialization algorithm, significantly more number of aircraft pairs were found and scheduled.In many cases the original algorithm failed to find any pairs, even after evolving for several thousand generations.The total numbers of discovered pairs in these runs were 6 and 40, using the original and improved GA initialization algorithms, respectively.Note that this improvement was achieved at the expense of only about 5% increase in the overall runtime.The scenarios developed for the HITL simulations [6] were intended to exercise the system in different operating modes.The main objective in preparing these scenarios was to provide coverage for the operational procedures that provide insights into the proper allocation of tasks under TACEC for automation and the air traffic controllers.These scenarios were quite helpful in revealing certain limitations of the original implementation of the pairing algorithm and identifying potential areas that needed enhancements.However, they were not developed to stress the pairing algorithm sufficiently.In order to conduct a more detailed evaluation of the new GA initialization algorithm, a large suite of stress test scenarios were generated using a randomized parametric algorithm for generating arrival scenarios.The parameters included the number of arrival streams, the number of aircraft, the number of pair groups, and the minimum and maximum spacing requirements between the arrival times of consecutive aircraft on the same arrival stream.Experiments were conducted to see the impact of the GA initialization algorithm on the performance of the pairing algorithm.Table 4 shows the results of these experiments.Each row in this table corresponds to over two hundred different scenarios, each with the same number of aircraft.The average number of pairs and the average runtime in seconds are shown on each row for all the runs with the same number of aircraft in the scenario.The table shows the average value for the number of pairs and runtime across all the runs with the same number of aircraft in the scenario as specified in the first column.It can be seen that the pairing algorithm with the original GA initialization algorithm had significant difficulty in scheduling aircraft pairs, while the implementation of the pairing algorithm using the improved version of the GA initialization algorithm found many pairs.This came at the expense of about three-fold increase in runtime, which is reasonable considering the improved performance in terms of the number of aircraft pairs scheduled.Besides, as discussed in the next section the runtimes remained quite manageable and within the expected response time requirements for a realtime application.To show the total number of aircraft that could be landed in each scenario, we need to include the number of single aircraft that were scheduled for landing as well.Figure 4 shows the total number of aircraft scheduled for landing on average, for the stress test scenarios that were used to obtain the results presented in Table 4.As shown in Figure 4, the implementation with the original GA initialization algorithm was not very successful at finding and scheduling pairs of aircraft for simultaneous landing.As a result, the total number of aircraft that were scheduled for landing was considerably lower when we used the original GA initialization algorithm, although the number of aircraft scheduled for single landing was generally equal or more than those obtained using the improved GA initialization algorithm.In the rest of the experimental results section, unless explicitly mentioned otherwise, the improved GA initialization algorithm is used and implied for all the reported results.
+Efficiency and Scalability ResultsAn important characteristic of a pairing algorithm to be used for real-time applications is a measure of its scalability.An algorithm is considered efficient if its runtime scales sufficiently slowly.This allows its application on large instances and results in response times that are acceptable for real-time applications.The same stress test scenarios used to generate the results for Table 4 were employed to test the scalability of the GA based pairing algorithm.Figures 5 and6 show the percentage of aircraft successfully scheduled for landing, and the runtime of the pairing algorithm, respectively, as a function of the number of aircraft in the scenario.In Figure 5, the percentage of aircraft successfully scheduled is further broken down into its paired-landing and single-landing constituents.As shown in Figure 5, the percentage of the total aircraft successfully scheduled for landing stays at a respectable value, well above 95% even for problem instances containing up to one hundred aircraft.At the same time, the percentage of the aircraft that are scheduled for paired landing comprises a significant portion of the total, ranging from 30% to more than 60% of all the aircraft.This means that the performs in a very scalable fashion with no sign of deterioration as the number of arriving aircraft in the problem instance approaches one hundred or more.
+Figure 5. Percentage of Scheduled AircraftAs Figure 6 shows, a 100-aircraft instance of the problem required no more than 40 seconds to solve, on average.Most of the scenarios in the HITL simulations contained 60 or fewer aircraft, requiring no more than 20 seconds to solve, on average.As discussed earlier, the pairing occurs about 30 minutes prior to the aircraft reach the terminal area boundary.A pairing algorithm with less than half a minute of turnaround time proved quite adequate in the HITL simulation that was conducted.On most instances the pairing result was available in less than 10 seconds since the number of aircraft in the problem instance was often 30 or less.
+Quality of the Scheduling ResultsNote that ultimately making a judgment call about the quality and suitability of an aircraft pair identified for simultaneous landing is the responsibility of the human operators and air traffic controllers.To measure how good the pairing algorithm's results were, the HITL simulations were examined to see how often the controllers exercised the forbidden pair feature.The result of this investigation is shown in Figure 7.The data that was collected during the HITL simulation consisted of 18 runs, each representing a few hours of simulation.During the course of these experiments the pairing scheduler suggested a total of 9,381 pairs.The air traffic controllers accepted all pairs except for 281 (less than 3%), which were identified as forbidden pairs.In other words, the pairing algorithm produced results that were acceptable in over 97% of the instances.This is a very encouraging result and speaks to the effectiveness of the objective function that was developed to help guide the search process.
+ConclusionAn improved pairing algorithm for Very Closely Spaced Parallel Approaches is presented.An earlier greedily enhanced genetic algorithm prototype was adopted, extended and enhanced in several ways to make it suitable for automatic pairing and scheduling of paired and single aircraft and for use in a recent HITL simulation.The key contributions of this paper include:• Extending the problem formulation and extending the basic Implementation to allow its application to the extended problem.• Evaluating the performance of the basic algorithm and identifying GA initialization algorithm as root cause of its degraded performance.• Implementation of a much more effective randomized GA initialization algorithm that specifically seeks to maximize the number of pairs while meeting all the constraints.• Development of a simplified and improved objective function to guide the search process.• Putting in place proper controls in the algorithm to guarantee strict adherence to hard rules and preferential adherence to soft rules.• Implementation of forbidden-pair feature to enable air traffic controllers to instruct the pairing algorithm about undesirable pairs.The resulting algorithm was integrated and used successfully in recent HITL simulations conducted at NASA Ames Research Center.In addition to the scheduling scenarios that were of the HITL simulations, an extensive set of stress test scenarios were developed to exercise the pairing algorithm more thoroughly.Experimental results indicate:• The runtime of the proposed algorithm scales linearly with the number of aircraft in the problem instance, with acceptable response time making it suitable for real-time application.• The proposed pairing algorithm succeeded in finding significantly more number of pairs, compared to its predecessor.• The pairing results quality was high despite its fast running time.Analysis of the HITL simulation results indicated that over 97% of the pairs suggested by the algorithm were accepted by the air traffic controllers.Some generalizations of the problem that might be of interest for future research include extensions to more than two parallel runways, and inclusion of additional constraints and objectives such as balancing the traffic on the runways, as well as simultaneous consideration of arrival and departure traffic.Conducting research into paired arrival and departure scheduling has other practical long-term applications.The insights gained from these studies could help extend the capabilities of new and improved tools for terminal area scheduling such as those currently under development [5].Figure 3 .3Figure 3. Arrival Stream Geometries
+Figure 4 .4Figure 4. Impact of the Initialization Algorithm
+Figure 6 .Figure 7 .67Figure 6.Runtime Profile of the Algorithm
+
+Table 1 . Airports with Parallel Runways Below 4300 ft Spacing1AirportRunway SpacingLos Angeles (LAX)750 ftSan Francisco (SFO)750 ftSeattle (SEA)800 ftNewark (EWR)900 ftHouston (IAH)1000 ftLas Vegas (LAS)1000 ftAtlanta (ATL)1000 ftDallas-Ft Worth (DFW)1200 ftPittsburgh (PIT)1200 ftSt. Louis (STL)1300 ftBoston (BOS)1500 ftOrlando (MCO)1600 ftNew York (JFK)3000 ftMinneapolis (MSP)3380 ftMemphis (MEM)3400 ftRaleigh (RDU)3400 ftPhoenix(PHX)3565 ftSalt Lake City (SLC)3700 ftDetroit (DTW)3800 ft
+Table 2 . Enforced Wake Separation Matrix Following Aircraft2SL7HS98838372LeadingL147838372Aircraft7180125125106H213152152106
+Table 3 . Impact of GA Initialization Algorithm3OriginalImprovedTest# A/C#pairs runtime (s)#pairs runtime (s)1110142212135331454744160263518025262003637340675Total6214022
+Table 4 . Stress Test Scenario Result Averages # A/C Original #pairs runtime (s)4Improved#pairsruntime (s)100.031.201.422.11200.022.164.304.64300.003.177.127.40400.004.2611.7610.66500.005.4715.7614.26600.006.6418.7518,28700.007.8321.6222.02800.009.0425.0226.70900.0010.3129.9330.841000.0011.5032.7435.54Total0.0561.58168.42173.45
+		
+		
+			
+
+				
+
+
+	
+		Paired approach operational concept
+		
+			RBone
+		
+		
+			AMundra
+		
+		
+			BOOlmos
+		
+		10.1109/dasc.2001.963404
+	
+	
+		20th DASC. 20th Digital Avionics Systems Conference (Cat. No.01CH37219)
+		Daytona Beach, FL
+		
+			IEEE
+			2001
+		
+	
+	Bone, R., A. Mundra, B.O. Olmos, 2001, "Paired Approach Operational Concepts," Digital Avionics Systems Conference, Daytona Beach, FL.
+
+
+
+	
+		NASA administrator announces resignation
+		
+			TAbbott
+		
+		
+			DElliot
+		
+		10.1016/s0045-8732(01)80042-5
+		NASA/TP-2001-210665
+	
+	
+		COSPAR Information Bulletin
+		COSPAR Information Bulletin
+		0045-8732
+		
+			2001
+			152
+			
+			2001
+			Elsevier BV
+		
+	
+	Abbott, T. & Elliot, D., 2001, "Simulator Evaluation of Airborne Information for lateral Spacing (AILS) Concept," NASA/TP-2001-210665.
+
+
+
+	
+		CNS requirements for precision flight in advanced terminal airspace
+		
+			MEMiller
+		
+		
+			SDougherty
+		
+		
+			JStella
+		
+		
+			PReddy
+		
+		10.1109/aero.2005.1559471
+	
+	
+		2005 IEEE Aerospace Conference
+		Big Sky, MO
+		
+			IEEE
+			2005
+		
+	
+	Miller, M.E., S. Dougherty, J. Stella, P. Reddy, 2005, "CNS Requirements for Precision Flight in Advanced Terminal Airspace," IEEE Aerospace Conference, Big Sky, MO.
+
+
+
+	
+		Scheduling Aircraft Landings to Closely Spaced Parallel Runways
+		
+			MKupfer
+		
+	
+	
+		Eighth USA/Europe Air Traffic Management Research and Development Seminar
+		Napa, CA
+		
+			2009
+		
+	
+	Kupfer, M., 2009, "Scheduling Aircraft Landings to Closely Spaced Parallel Runways," Eighth USA/Europe Air Traffic Management Research and Development Seminar, Napa, CA.
+
+
+
+	
+		Design Considerations for a New Terminal Area Arrival Scheduler
+		
+			JaneThipphavong
+		
+		
+			DanielMulfinger
+		
+		
+			AlexanderSadovsky
+		
+		10.2514/6.2010-9290
+	
+	
+		10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Fort Worth, TX
+		
+			American Institute of Aeronautics and Astronautics
+			2010
+		
+	
+	Thipphavong, J., D. Mulfinger, A. Sadovsky, 2010, "Design Considerations for a New Terminal Area Scheduler", AIAA Aviation Technology, Integration, and Operations, Fort Worth, TX.
+
+
+
+	
+		Preliminary Guidelines on Controller's Procedures for Pairing Aircraft for Simultaneous Approaches under Different Levels of Automation
+		
+			SavitaVerma
+		
+		
+			ThomasKozon
+		
+		
+			DeborahBallinger
+		
+		10.1201/ebk1439834916-c52
+	
+	
+		Advances in Human Factors and Ergonomics Series
+		Miami, FL
+		
+			CRC Press
+			2010
+			
+		
+	
+	Verma, S., T. Kozon, Deborah Ballinger, 2010, "Preliminary Guidelines -Air Traffic Control Procedures for Pairing Aircraft for Closely Spaces Simultaneous Approaches," Applied Human Factors Ergonomics Conference, Miami, FL.
+
+
+
+	
+		U.S. Airport Infrastructure and Sustainable Aviation Fuel
+		
+			KristiMoriarty
+		
+		
+			AllisonKvien
+		
+		10.2172/1768316
+		
+	
+	
+		Federal Aviation Administration
+		
+			Office of Scientific and Technical Information (OSTI)
+			2008
+		
+	
+	Federal Aviation Administration, 2008, " National Aviation Research Plan," http://nas- architecture.faa.gov/nas/downloads/
+
+
+
+	
+		Overview of Federal Aviation Administration Aviation Safety Research for Aircraft Icing
+		
+			EugeneHill
+		
+		10.2514/6.2006-81
+		8260.49A
+	
+	
+		44th AIAA Aerospace Sciences Meeting and Exhibit
+		
+			American Institute of Aeronautics and Astronautics
+			2006
+		
+	
+	Federal Aviation Administration, 2006, Order 8260.49A, "Simultaneous Offset Instrument Approach (SOIA)."
+
+
+
+	
+		Scheduling Algorithms
+		
+			PBrucker
+		
+		
+			2009
+			Springer-Verlag
+			Berlin, Germany
+		
+	
+	Fifth Edition
+	Brucker, P., 2009, Scheduling Algorithms, Fifth Edition, Springer-Verlag, Berlin, Germany.
+
+
+
+	
+		Optimization and Approximation in Deterministic Sequencing and Scheduling: a Survey
+		
+			RLGraham
+		
+		
+			ELLawler
+		
+		
+			JKLenstra
+		
+		
+			AH G RinnooyKan
+		
+		10.1016/s0167-5060(08)70356-x
+	
+	
+		Discrete Optimization II, Proceedings of the Advanced Research Institute on Discrete Optimization and Systems Applications of the Systems Science Panel of NATO and of the Discrete Optimization Symposium co-sponsored by IBM Canada and SIAM Banff, Aha. and Vancouver
+		
+			Elsevier
+			1979
+			5
+			
+		
+	
+	Graham, R.L., E.L. Lawler, J.K. Lenstra, A.H.G. Rinooy Kan, 1979, "Optimization and Approximation in Deterministic Sequencing and Scheduling: A Survey," Annals of Discrete Mathematics, Vol. 5, pp. 278-326.
+
+
+
+	
+		Mathematical Models in Airline Schedule Planning: A Survey
+		
+			RamGopalan
+		
+		
+			KalyanTTalluri
+		
+		10.1023/a:1018988203220
+	
+	
+		Annals of Operations Research
+		0254-5330
+		
+			76
+			
+			1998
+			Springer Science and Business Media LLC
+		
+	
+	Gopalan, R., K.T. Talluri, 1998, "Mathematical Models in Airline Schedule Planning: A Survey," Annals of Oper. Res., Vol. 76, pp. 155-185.
+
+
+
+	
+		Airline Scheduling: An Overview
+		
+			MaximilianMEtschmaier
+		
+		
+			DennisF XMathaisel
+		
+		10.1287/trsc.19.2.127
+	
+	
+		Transportation Science
+		Transportation Science
+		0041-1655
+		1526-5447
+		
+			19
+			2
+			
+			1984
+			Institute for Operations Research and the Management Sciences (INFORMS)
+		
+	
+	Etschmaier, M.M., D.F.X. Mathaisel, 1984, "Aircraft Scheduling -The State of the Art," 24 th AGIFORS Annual Symposium, pp. 181-225.
+
+
+
+	
+		The dynamic scheduling of aircraft in the near terminal area
+		
+			RGDear
+		
+		10.1016/0041-1647(78)90133-8
+	
+	
+		Transportation Research
+		Transportation Research
+		0041-1647
+		
+			12
+			3
+			
+			1976
+			Elsevier BV
+			Cambridge, MA
+		
+		
+			MIT Flight Transportation Laboratory
+		
+	
+	Dear, R.G., 1976 "The Dynamic Scheduling of Aircraft in the Near Terminal Area," Research Report R76-9, MIT Flight Transportation Laboratory, Cambridge, MA.
+
+
+
+	
+		A Dynamic Programming Approach for Sequencing Groups of Identical Jobs
+		
+			HarilaosNPsaraftis
+		
+		10.1287/opre.28.6.1347
+	
+	
+		Operations Research
+		Operations Research
+		0030-364X
+		1526-5463
+		
+			28
+			6
+			
+			1978
+			Institute for Operations Research and the Management Sciences (INFORMS)
+			Cambridge, MA
+		
+		
+			MIT Flight Transportation Laboratory
+		
+	
+	Psaraftis, H.N., 1978 "A Dynamic Programming Approach to the Aircraft Sequencing Problem," Research Report R78-4, MIT Flight Transportation Laboratory, Cambridge, MA.
+
+
+
+	
+		Real time genetic scheduling of aircraft landing times
+		
+			VCiesielski
+		
+		
+			PScerri
+		
+		10.1109/icec.1998.699759
+	
+	
+		1998 IEEE International Conference on Evolutionary Computation Proceedings. IEEE World Congress on Computational Intelligence (Cat. No.98TH8360)
+		
+			IEEE
+			1997
+			4
+			
+		
+	
+	Ciesielski, V., P. Scerri, 1997, "An Anytime Algorithm for Scheduling Aircraft Landing Times Using Genetic Algorithms," Australian J. of Intelligent Information Processing Systems, Vol. 4, pp. 206-213.
+
+
+
+	
+		A Conceptual Approach for Simultaneous Flight Schedule Construction with Genetic Algorithms
+		
+			TobiasGrosche
+		
+		
+			ArminHeinzl
+		
+		
+			FranzRothlauf
+		
+		10.1007/3-540-45365-2_27
+	
+	
+		Lecture Notes in Computer Science
+		Lecture Notes in Computer Science
+		
+			Springer Berlin Heidelberg
+			2001. 2001
+			2037
+			
+		
+	
+	Grosche, T., A. Heinzl, F. Rothlauf, 2001, "A Conceptual Approach for Simultaneous Flight Schedule Construction with Genetic Algorithms," Applications of Evolutionary Computing, Lecture Notes in Computer Science, Vol. 2037/2001, pp. 257-267, Springer.
+
+
+
+	
+		Displacement problem and dynamically scheduling aircraft landings
+		
+			JEBeasley
+		
+		
+			MKrishnamoorthy
+		
+		
+			YMSharaiha
+		
+		
+			DAbramson
+		
+		10.1057/palgrave.jors.2601650
+	
+	
+		Journal of the Operational Research Society
+		Journal of the Operational Research Society
+		0160-5682
+		1476-9360
+		
+			55
+			1
+			
+			2004
+			Informa UK Limited
+		
+	
+	Beasley, J.E., M. Krishnmoorthy, Y.M. Sharaiha, D. Abramson, 2004, "Displacement Problem and Dynamically Scheduling Aircraft Landings," J. of the Operational Research Society, Vol. 55, Issue 1, pp. 54-64, Palgrave, Macmillan.
+
+
+
+	
+		Genetic algorithm based on receding horizon control for arrival sequencing and scheduling
+		
+			Xiao-BingHu
+		
+		
+			Wen-HuaChen
+		
+		10.1016/j.engappai.2004.11.012
+	
+	
+		Engineering Applications of Artificial Intelligence
+		Engineering Applications of Artificial Intelligence
+		0952-1976
+		
+			18
+			5
+			
+			2005
+			Elsevier BV
+		
+	
+	Hu, X.-B., W.-H. Chen, 2005, "Genetic Algorithm based on Receding Horizon Control for Aircraft Sequencing and Scheduling," J. of Engineering Approaches of Artificial Intelligence, Vol. 18, No. 5, pp. 633-642.
+
+
+
+	
+		An efficient genetic algorithm with uniform crossover for air traffic control
+		
+			Xiao-BingHu
+		
+		
+			EzequielDi Paolo
+		
+		10.1016/j.cor.2007.09.005
+	
+	
+		Computers & Operations Research
+		Computers & Operations Research
+		0305-0548
+		
+			36
+			1
+			
+			2009
+			Elsevier BV
+		
+	
+	Hu, X.-B., E. Di Paolo, 2009, "An Efficient Genetic Algorithm with Uniform Crossover for Air Traffic Control," Computers and Operations Research, Vol. 36, Issue 1, pp. 245-259.
+
+
+
+	
+		A Dynamic Programming Algorithm for Robust Runway Scheduling
+		
+			BalaChandran
+		
+		
+			HamsaBalakrishnan
+		
+		10.1109/acc.2007.4282922
+	
+	
+		2007 American Control Conference
+		New York, NY
+		
+			IEEE
+			2007
+		
+	
+	Chandran, B., H. Balakrishnan, 2007, " Dynamic Programming Algorithm for Robust Runway Scheduling, " American Control Conference, New York, NY.
+
+
+
+	
+		A Study of Tradeoffs in Scheduling Terminal Area Operations
+		
+			HLee
+		
+		
+			HBalakrishnan
+		
+	
+	
+		Proceedings of the IEEE
+		
+			96
+			12
+			
+			2008
+		
+	
+	Lee, H., H. Balakrishnan, 2008, "A Study of Tradeoffs in Scheduling Terminal Area Operations," Proceedings of the IEEE, Vol. 96, No. 12, pp. 2081- 2095.
+
+
+
+	
+		Heuristic and exact algorithms for scheduling aircraft landings
+		
+			AndreasTErnst
+		
+		
+			MohanKrishnamoorthy
+		
+		
+			RobertHStorer
+		
+		10.1002/(sici)1097-0037(199910)34:3<229::aid-net8>3.0.co;2-w
+	
+	
+		Networks
+		Networks
+		0028-3045
+		1097-0037
+		
+			34
+			3
+			
+			1999
+			Wiley
+		
+	
+	Ernst, A.T., M. Krishnamoorty, R.H. Storer, 1999, "Heuristic and Exact Algorithms for Scheduling Aircraft Landings," Networks Int'l J., Vol. 34, No. 3, pp. 229-241.
+
+
+
+	
+		Scheduling Aircraft Landings—The Static Case
+		
+			JEBeasley
+		
+		
+			MKrishnamoorthy
+		
+		
+			YMSharaiha
+		
+		
+			DAbramson
+		
+		10.1287/trsc.34.2.180.12302
+	
+	
+		Transportation Science
+		Transportation Science
+		0041-1655
+		1526-5447
+		
+			34
+			2
+			
+			2000
+			Institute for Operations Research and the Management Sciences (INFORMS)
+		
+	
+	Beasley, J.E., M. Krishnamoorthy, Y.M. Sharaiha, D. Abramson, 2000 "Scheduling Aircraft Landings -The Static Case," Transportation Science, Vol. 34, Issue 2, pp. 180-197.
+
+
+
+	
+		Polynomial Time Algorithms for Scheduling of Arrival Aircraft
+		
+			KaushikRoy
+		
+		
+			AlexandreBayen
+		
+		
+			ClaireTomlin
+		
+		10.2514/6.2005-6044
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		San Francisco, CA
+		
+			American Institute of Aeronautics and Astronautics
+			2005
+		
+	
+	Roy, K., A.M. Bayen, C.J. Tomlin,2005, "Polynomial Time Algorithms for Scheduling of Arrival Aircraft," AIAA Guidance, Navigation anc Control, San Francisco, CA.
+
+
+
+	
+		Computing Optimal Scheduling for Landing Aircraft
+		
+			JAbela
+		
+		
+			DAbdamson
+		
+		
+			MKrishnamoorthy
+		
+		
+			ADeSilva
+		
+		
+			GMills
+		
+	
+	
+		Proc. 12 th National ASOR Conference
+		12 th National ASOR ConferenceAdelaide, Australia
+		
+			1993
+			
+		
+	
+	Abela, J., D. Abdamson, M. Krishnamoorthy, A. De Silva, G. Mills, 1993, "Computing Optimal Scheduling for Landing Aircraft," Proc. 12 th National ASOR Conference, Adelaide, Australia, pp. 71-90.
+
+
+
+	
+		Scheduling Aircraft Landings Under Constrained Position Shifting
+		
+			HamsaBalakrishnan
+		
+		
+			BalaChandran
+		
+		10.2514/6.2006-6320
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		Keystone, CO
+		
+			American Institute of Aeronautics and Astronautics
+			2006
+		
+	
+	Balakrishnan, H., B. Chandran, 2006, "Scheduling Aircraft Landings under Constrained Position Shifting," AIAA Guidance, Navigation, and Control Conference and Exhibit, Keystone, CO.
+
+
+
+	
+		Modelling the capacity of closely-spaced parallel runways using innovative approach procedures
+		
+			MJani
+		
+		10.1016/j.trc.2008.01.003
+	
+	
+		Transportation Research Part C: Emerging Technologies
+		Transportation Research Part C: Emerging Technologies
+		0968-090X
+		
+			16
+			6
+			
+			2008
+			Elsevier BV
+		
+	
+	Jani, M., 2008, "Modeling the Capacity of Closely-Spaced Parallel Runways using Innovative Approach Procedures," Transportation Res., Part C: Emerging Technologies, Vol. 16(6), pp. 704-730.
+
+
+
+	
+		Genetic algorithms in search, optimization, and machine learning
+		
+			DEGoldberg
+		
+		10.5860/choice.27-0936
+	
+	
+		Choice Reviews Online
+		Choice Reviews Online
+		0009-4978
+		1523-8253
+		
+			27
+			02
+			27-0936-27-0936
+			1989
+			American Library Association
+		
+	
+	Goldberg, D.E., 1989, Genetic Algorithms in Search, Optimization, and Machine Learning, Addison-Wesley Professional.
+
+
+
+	
+		Computers and Intractability: A Guide to the Theory of NP-Completeness
+		
+			MRGarey
+		
+		
+			DSJohnson
+		
+		
+			1979
+			W.H. Freeman and Co
+			New York
+		
+	
+	Garey, M.R., D.S. Johnson, 1979, Computers and Intractability: A Guide to the Theory of NP- Completeness, W.H. Freeman and Co., New York.
+
+
+
+	
+		Optimal Arrival Traffic Spacing via Dynamic Programming
+		
+			AlexandreBayen
+		
+		
+			ToddCallantine
+		
+		
+			ClaireTomlin
+		
+		
+			YinyuYe
+		
+		
+			JiaweiZhang
+		
+		10.2514/6.2004-5228
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		Providence, RI
+		
+			American Institute of Aeronautics and Astronautics
+			2004
+		
+	
+	Bayen, A.M., T. Callantine, C.J. Tomlin, Y. Ye, J. Zhang, 2004, "Optimal Arrival Traffic Spacing via Dynamic Programming," AIAA Conference on Guidance, Navigation and Control, Providence, RI
+
+
+
+	
+		Genetic algorithms in search, optimization, and machine learning
+		
+			DEGoldberg
+		
+		10.5860/choice.27-0936
+	
+	
+		Choice Reviews Online
+		Choice Reviews Online
+		0009-4978
+		1523-8253
+		
+			27
+			02
+			27-0936-27-0936
+			1989
+			American Library Association
+		
+	
+	Goldberg, D.E., 1989, Genetic Algorithms in Search, Optimization, and Machine Learning, Addison-Wesley Professional.
+
+
+
+	
+		Introduction to Evolutionary Computing
+		
+			AEEiben
+		
+		
+			JESmith
+		
+		10.1007/978-3-662-05094-1
+	
+	
+		Introduction to Evolutionary Computing
+		
+			Springer Berlin Heidelberg
+			2003
+		
+	
+	Eiben, A.E., J.E. Smith, 2003, Introduction to Evolutionary Computing, Springer.
+
+
+
+	
+		Practical Genetic Algorithms
+		
+			RandyLHaupt
+		
+		
+			SueEllenHaupt
+		
+		10.1002/0471671746
+	
+	
+		Practical Genetic Algorithms
+		
+			2004
+			Wiley
+		
+	
+	Second Edition
+	Haupt, R.L., S.E Haupt, 2004, Practical Genetic Algorithms, Second Edition, Wiley Interscience.
+
+
+
+	
+		[Front matter]
+		
+			MWall
+		
+		10.1109/dasc.2010.5655439
+		
+	
+	
+		29th Digital Avionics Systems Conference
+		
+			IEEE
+			1996. October 3-7, 2010
+		
+	
+	Wall, M., 1996, "GAlib: A C++ Library of Genetic Algorithm Components," Mechanical Engineering Departement, Massachusetts Institute of Technology, http://lancet.mit.edu/ga/. Save. 29th Digital Avionics Systems Conference October 3-7, 2010
+
+
+				
+			
+		
+	

@@ -1,0 +1,502 @@
+
+	
+	
+		
+I. IntroductionT he United States is transforming its current air transportation system to increase safety and efficiency, reduce aviation's impact on the environment, and address the projected increase in air traffic demand.This new system is called the Next Generation Air Transportation System (NextGen.)Part of NextGen will provide a number of new tools and automation for en route air traffic management.The basis of these systems is the ability to use predicted trajectories, i.e. four-dimensional predicted flight paths, in order to support separating aircraft from other traffic and convective weather, and merging aircraft for arrival sequencing.Trajectory predictions are more accurate with intent information.Sometimes aircraft deviate from predicted trajectories used by automation tools to maintain a conflict-free flow of traffic.This is often due to vectors from controllers not entered into the automation, or open-ended maneuvers supplied by safety systems, e.g.Traffic Alert and Collision Avoidance System (TCAS.)In order to address these problems, a way to detect when an aircraft deviates from its intent is needed.Furthermore, a method that creates a conflict-free maneuver back to an aircraft's intended flight path is essential to the performance of automation tools.][3] The AAC is intended to exist in a post-NextGen era of the United States' National Airspace System (NAS).However, certain algorithms within the AAC are being evaluated in NextGen's concept development research.At the core of AAC is a strategic problem solver, referred to as the Autoresolver.The Autoresolver algorithm solves three air traffic problems: separation conflicts, arrival sequencing, and convective weather-cell penetration.The Autoresolver has been the subject of several experiments including a fast-time simulation evaluation under high traffic demand, 4 analysis of trajectory error uncertainties' impact on performance, 5 study of balancing time and fuel efficiencies when selecting conflict resolutions, 6 and evaluation of the benefits from strategic maneuvering 7 as well as real-time simulations. 8In order to detect and resolve conflicts, the Autoresolver relies on accurate trajectory predictions that conform to flight path along flight plan routes and altitude clearances.However, operationally, aircraft are not always following their route and/or altitude clearance.This has potential negative impact on Autoresolver's ability to safely separate traffic.Therefore, a strategy for Autoresolver to detect cases when aircraft are out-of-conformance is proposed as a fourth type of problem the algorithm handles.0][11][12] Following a TSAFE resolution, an aircraft is left in an open-ended trajectory state, because the return to route or assigned altitude trajectory change is not supplied by the algorithm; the aircraft will continue following its TSAFE commanded heading or altitude change indefinitely.In order for Autoresolver to safely resume control following such situations, a trajectory management strategy called Recapture was developed to rejoin an aircraft to its route and/or assigned altitude in a conflict-free fashion.Section II will provide background and motivation to the need for the proposed strategy.Section III describes the new trajectory management strategy in detail.Section IV details the integration of new algorithms into AAC to address nonconforming flights and multi-agent separation assurance.Results of fast-time simulation tests to evaluate these algorithms are presented in Section V. Section VI discusses a survey of additional operational applications of the trajectory management strategy, and in Section VII conclusions are made.
+II. Background
+A. Flight ConformanceTypically, before an aircraft departs from an airport for its destination, a flight plan route and desired cruise altitude is filed and approved by air traffic control (ATC).A flight plan route is a set of fixes (waypoints), in latitude and longitude coordinates, that define the horizontal path an aircraft is intending to travel.The cruise altitude, a.k.a assigned altitude, is the altitude level the aircraft wishes to climb to and maintain as its flies through the airspace.This altitude level is always in intervals of 1,000 feet for aircraft above 18,000 feet, and is often identified by the term "FL350" for an altitude of 35,000 feet, for example.Flight conformance is the determination of how well an aircraft is adhering to these constraints.There have been many approaches to characterizing out-of-conformance aircraft, [13][14][15] and its impact on the performance of air traffic control systems has been measured. 16These approaches were too restrictive in their classification of out-of-conformance, or were too advanced for separation assurance applications.This work coupled with future goals of automated separation assurance motivate the need to create a new conformance monitoring tool that ties into the AAC.
+B. Multi-Agent Separation AssuranceThe primary role of any agent in separation assurance is to ensure that traffic is safely separated, typically at least five nautical miles horizontally, or 1,000 feet vertically.There are two classes of conflict detection and resolution (CD&R) strategies within separation assurance, which can be identified as separate agents.Typically, strategic CD&R uses aircraft performance and intent to predict trajectories, predicts conflicts between 2-20 minutes, and uses trajectory changes for resolving conflicts.Tactical CD&R, typically, predicts trajectories using a mixture of aircraft state vectors and intent, predicts conflicts between 0-3 minutes, and temporarily maneuvers aircraft off their route or altitude level not equal to the assigned altitude.The interoperability and integration of these two components is a deprived area of research, and this paper attempts to address gaps in the transition between strategic and tactical CD&R.
+III. Proposed Trajectory Management Strategy
+A. Conformance MonitorHow well an aircraft is following its route can be describe using lateral error, typically in nautical miles (nmi), and angle to fix, typically measured in degrees.Figure 1 provides an illustration of these metrics comparing an aircraft's path to its route.Lateral error is denoted by d, and the angle to fix is denoted by β.For example, an aircraft whose lateral error is 1.0 nautical miles, and angle to fix is 0 degrees is off its route, laterally by 1.0 nmi, however it is headed directly towards a fix on the route.An aircraft is classified as out-of-conformance if the lateral error or angle to fix exceed some threshold.In this paper, an aircraft is defined to be out-of-conformance when:d > 7.0, β > 30.Flight conformance in the vertical domain describes the relationship of an aircraft to its assigned altitude.Cases when vertical out-of-conformance occur are when an aircraft is: (a) at level flight and more than 300 feet from its assigned altitude; (b) climbing when the assigned altitude is not above the current altitude, or (c) descending when the assigned altitude is not below the current altitude.Out-of-conformance situations pose a risk to the performance of an automated conflict resolution algorithm that relies on accurate trajectory-based intent.The first part of the process is to detect whether an aircraft is out-of-conformance by comparing its current position with its route and assigned altitude.The second part of conformance monitoring is determining whether an action needs to take place.A new attribute, called out-of-conformance age, is computed and used as a threshold for determining when to initiate the Recapture algorithm.Out-of-conformance age is simply the time since the aircraft was first characterized as out-of-conformance.The default out-of-conformance age threshold is 2 minutes, which was selected based on typical tactical conflict time ranges, however the optimal value for this parameter is the subject of future considerations.
+B. Route RecaptureRoute Recapture is designed to generate conflict-free maneuvers that rejoin out-of-conformance aircraft with their original route.The problem is made difficult by the need to consider conflicts, ATC procedures, and maneuvering constraints.The Route Recapture algorithm begins by identifying a list of candidate fixes the aircraft can use to rejoin the route.The next sequential fix on an aircraft's route is always a candidate.The arrival fix cannot be a candidate.All subsequent candidate fixes must be located within the current Center boundaries, cannot be within the minimum turn radius scaled by a configurable buffer (i.e.250%), and the angle between the recapture fix to the next fix on the flight plan cannot exceed a configurable threshold (i.e.95 degrees).The minimum turn radius consideration is to prevent the aircraft from rejoining its route through a fix that is too close to the aircraft's current position, and the angle consideration is to prevent the aircraft from excessive turns after achieving the recapture fix.The candidate fixes are iterated through either in ascending order to achieve route recapture as soon as possible, or in descending order, to achieve the most time efficient maneuver when rejoining the route.For each candidate fix, a maneuver is built that expeditiously turns the aircraft towards this fix and resumes the intended flight along its route.This maneuver is then sent to the trajectory engine, and a high-fidelity 4-D trajectory is supplied to the conflict detector.If it is found to be conflict-free, then the maneuver is commanded to the pilot for execution.If this recapture maneuver is not conflict-free, it is stored for later consideration after other attempts.In case the recapture attempts to all candidate fixes result in conflicts, iteration through each candidate fix occurs once more, but the turn towards the route is delayed by a user-specified time (e.g. one minute.)The first, if any, delayed recapture maneuver that is conflict-free will be commanded.Ultimately, in the event all recapture attempts cause a conflict, the first failed recapture maneuver and its associated conflicts should be sent to
+C. Altitude RecaptureAltitude Recapture is designed to generate conflict-free maneuvers that rejoin aircraft to their assigned altitude.The Altitude Recapture algorithm begins by computing a maneuver that commands the out-ofconformance aircraft to return, expeditiously, to its assigned altitude if it had already achieved the altitude level, or to resume its transition to its assigned altitude if the aircraft is currently at a temporary altitude.Next, using the maneuver a high-fidelity 4-D trajectory is created by the trajectory engine.The trajectory is sent to the conflict detector, and if this recapture maneuver is conflict-free then it is commanded for execution, otherwise it is stored for later consideration.In case this initial altitude recapture is not conflictfree, then another recapture maneuver is generated, which delays transitioning to the assigned altitude by a user-specified time.If this does not succeed, then the initial recapture altitude maneuver and its associated conflict(s) should be sent to the conflict resolution algorithm to solve rejoining the assigned altitude and conflicts along that path in an integrated fashion.Illustrations of altitude recapture trajectory changes are presented in Fig. 3.This figure depicts only the example of an aircraft in level flight below its assigned altitude.
+IV. Integration into AACThe AAC's Autoresolver prototype was modified to include the new Recapture and Conformance Monitoring algorithms described previously.The integration of these algorithms does not modify the core functionality of AAC; it simply extends the Autoresolver through the handling of two additional lists of problems to solve.The first list contains the aircraft determined to be out-of-conformance by the new conformance monitoring algorithm.The second list contains the aircraft in which separate agents, external to the Autoresolver, are requesting a conflict-free maneuver that conforms to the aircraft route and assigned altitude.With this enhancement, the Autoresolver now solves five types of problem: 1) separation conflicts, 2) weather-cell avoidance, 3) arrival sequencing, 4) out-of-conformance cases, and 5) external Recapture requests.
+A. New AutoresolverA new diagram of Autoresolver is shown in Fig. 4. The blocks represent algorithms that generate solutions for the five problems, and primary inputs to these algorithms are depicted in the figure as well.A list for these five problems is updated at a cyclic rate synchronized to the update cycle of the surveillance system, typically every 12 seconds in the en-route airspace.The Autoresolver first cycles through the list of recapture requests and generates a solution using the Recapture algorithm as described in Sections III.B and III.C.If a conflict-free solution could not be determined, the Resolution Generator algorithm is called to deconflict the recapture maneuver prior to any of the original conflicts being addressed.Next, the list out-of-conformance flights is processed, and to protect against duplicate Recapture solutions, all cases that did not have an associated recapture request are solved using the Recapture algorithm.Again, if a conflict-free solution could not be determined, the Resolution Generator algorithm is called to deconflict the recapture maneuver.At this point, there should be one trial resolution for each out-of-conformance and recapture requested aircraft stored in the trial trajectory engine before processing separation conflicts, weather-cell violations, and arrival sequencing.Any separation conflict or weather-cell violation involving an aircraft with an already existing recapture resolution should already be resolved as a byproduct of the Recapture algorithm, however these cases are doubled-checked as Autoresolver iterates through these problems.The Recapture algorithm avoids resolving arrival aircraft; solutions for simultaneously rejoining an aircraft to its route and/or assigned altitude and meeting a scheduled time of arrival is the subject of future work.
+B. TSAFE IntegrationTogether, Autoresolver and TSAFE comprise a two layer, hierarchical system of automated separation assurance.TSAFE detects conflicts in the rare case when conflicts are not detected and/or resolved by the Autoresolver.TSAFE is designed to generate a heading vector or altitude maneuver that resolves conflicts with times to loss of separation less than 3 minutes.Examples of such maneuvers are to turn right 30 degrees for heading vectors, or climb and maintain "FL250" for altitudes.Following a vector or altitude maneuver, TSAFE actively monitors whether the maneuver has deconflicted the problem, and once it is predicted to be clear, a release message is broadcast to indicate to the system that TSAFE is relinquishing control over the aircraft.In this case, the aircraft is in an open-ended trajectory state either heading off its route or not at its assigned altitude.TSAFE purposefully does not return an aircraft to its intended path.because that would put unnecessary complexity on the algorithm as it attempts to avoid the conflict.An modification was made to Autoresolver to register each TSAFE release message and create a recapture request using the new interface described above.Depending on whether TSAFE used a vector or altitude maneuver to resolve the tactical conflict, either the Route or Altitude Recapture algorithm will be initiated.
+V. Algorithm EvaluationA set of fast-time simulations were executed to evaluate and validate the modifications to the AAC prototype.
+A. Test MethodFor this study, the Airspace Concept Evaluation System (ACES) 17 was used to simulate traffic in the NAS.As a result of previous experimentation, Autoresolver was already integrated into the ACES simulation environment.TSAFE is the subject of new on-going fast-time simulation evaluations, and an ACES plugin component for TSAFE was obtained for this simulation.a Moreover, the Conformance Monitor and Recapture algorithm were implemented and added to the AAC.Two types of test were used to evaluate the Conformance Monitor and Recapture algorithms.The first type was to simulate the flight characteristics of controllers vectoring aircraft off their route.This test modeled an environment like the current system.The second type was to evaluate the integration of the Autoresolver and TSAFE algorithms.This test is intended to model a NextGen environment focusing on multi-agent automated separation assurance.
+Vector SetupA way to randomly maneuver aircraft off their route was added, because, nominally, in ACES aircraft are never out-of-conformance.This function runs in the background, triggers at the same cyclical rate as Autoresolver, e.g.every 1 minute, and is offset by a time, e.g. 30 seconds, so these uniformly distributed random maneuvers do not mix with conflict resolution maneuvers.The process is configured using a percentage value that determines how many aircraft will be vectored at each cycle.At each step, the function keeps a list of aircraft that have already been randomly vectored.If the random vector selection percentage parameter is set to 10%, at each call if the number of aircraft already randomly vectored is less than 10% of the number of aircraft in the system, then the function will randomly select the number of aircraft to make up the difference.For example, if there are 500 airborne flights in the system, and 45 aircraft are currently on a random vector, five additional aircraft will be randomly vectored for a total of 50 flights (i.e.10%) at that time step.If an aircraft is selected to vector, it will either turn left or right by a heading between five and 45 degrees at a five degree resolution.These vector parameters are selected from a random uniform distribution.These events create test cases for the Conformance Monitor.
+TSAFE SetupFor the TSAFE tests, conflicts were detected based upon a separation standard of 1,000 feet and five nautical miles.TSAFE resolved conflicts when either the time to predicted loss of separation was between 0-2 minutes for state-based trajectory predictions or between 0-3 minutes for intent-based predictions.TSAFE preferred altitude maneuvers when resolving conflicts, however vector maneuvers were used when altitude maneuvers were not viable solutions.TSAFE and Autoresolver perform CD&R independent of each other; no detection or resolution information is exchanged, except for TSAFE sending a recapture request to Autoresolver.a The results of these TSAFE evaluations are intended to be disseminated at the same time as this work.
+B. Test Scenario and Independent VariablesAll simulations used a nominal NAS-wide 1x traffic demand (i.e.nominal traffic level of today's system) containing 3 hours of departures.In total, the scenario included approximately 4,800 flights.The traffic was simulated using the unperturbed flight plans airlines typically filed based on a Spring day in 2002, and 4-D trajectories were modeled from departure fix to arrival fix.Autoresolver was enabled in all 20 Air Route Traffic Control Centers (ARTCCs) to resolve en-route separation conflicts within eight minutes until predicted loss of separation, and arrival separation conflicts within 20 minutes of predicted loss of separation.Conflicts were detected based upon a separation standard of five nautical miles and 1,000 feet, and resolved to provide 7 nautical mile separation or more.Convective weather was not included in any of the simulations.For the simulation utilizing the randomized vector maneuver test cases, the five selection percentages from a uniform distribution used are shown in Table 1.Also provided in this table are the lateral error, angle to next fix, and out-of-conformance age used to create the conformance monitoring constraints.In the TSAFE simulation, conflict detection and resolution functionality was enabled for all 20 ARTCCs.Randomized vectors were not used during the TSAFE simulation.The results validate that the Recapture algorithm and trajectory management strategy worked properly when integrated with the Conformance Monitor and TSAFE.
+C. ResultsIn the first set of runs, aircraft were randomly selected and vectored off their route temporarily in order to test the Conformance Monitor (see Section V.A.1.)Simulations were executed using increasing levels of random vectors.The Conformance Monitor was configured to use 7.0 nmi as the lateral error threshold, 30.0 degrees for angle to fix, and the Recapture algorithm was used when an aircraft's out-of-conformance age exceeded 2 minutes.As one would expect, the number of out-of-conformance cases increased as the random vector selection percentage increased.In total, there were 1,923 outof-conformance cases resulting from all the vector maneuvers executed across all five random vector simulations.Figure 5 illustrates the aggregate results from the Recapture algorithm solving the out-of-conformance cases in all random vector selection percentage levels.Of the 1,923 out-of-conformance cases, Recapture was able to generate a trajectory rejoining the aircraft to its route without the need to call Autoresolver 1,854 times, or approximately 96%.This includes the 1,821 times a direct recapture succeeded and the 33 times recapture was delayed and succeeded.In Fig. 6, statistics are shown to describe the extent of the Route Recapture maneuvers.Figure 6(a) reveals the distribution of time it took for the aircraft to reach its recapture fix.Time until reaching recapture fix is described by the length of time it takes the out-of-conformance flight to reach the fix identified by the Recapture algorithm.Additionally, Fig. 6(b) shows the distribution of the distance until reaching the recapture fix.The time to the recapture fix is distributed between 1 and 30 minutes.There is an elevation in the distribution around 30 minutes, because this is the maximum look-ahead time of the trajectories used for determining when the aircraft reached the recapture fix.The time to reach the recapture fix, when actually flown, is at times greater than 30 minutes.The median reveals half the recapture maneuvers took less than eight minutes to rejoin the route.Alternatively, the distribution for distance to recapture fix fits tightly between 0 to 100 nautical miles and then drops off quickly.This distribution fits closely to a lognormal distribution with a low P-value.Its differences compared to time to recapture fix are a result of the various speeds aircraft were flying when performing the recapture maneuver.In general, the distance traveled before an aircraft recaptures its route is less than 200 nautical miles.It is difficult to describe the impact these magnitudes have on the performance of the conflict resolution algorithm, because all of these recapture maneuvers were conflict-free.However, the data does verify conflict-free recapture maneuvers can be achieved among wide ranges of time and distance thresholds.Figure 6(c) shows the percentage for the future fix indices used when recapturing an aircraft to its route.As was expected, the majority of the Recapture maneuvers rejoined the route at the next future fix (index = 0).When the next future fix did not meet the candidate fix constraints or was not conflict-free, other future fixes were attempted.The Recapture algorithm rejoined aircraft to their route at the second, third, and fourth fix, 17.7%, 1.4%, or 0.5% of the time, respectively.The ability for the Recapture algorithm to return an aircraft to its route with the first or second future fixes, most of the time, is advantageous to efficiencies as these routes were designed to control flows and congestion of the airspace.Deconfliction logic was required for the remaining 69 cases where the Recapture algorithm was unable to find a conflict-free recapture trajectory.These unresolved recaptures were sent to Autoresolver.Autoresolver was not able to resolve 10 cases, because these conflicts were too near-term, and Autoresolver, by default, does not attempt to resolve conflicts where time until first loss is less than 1 minute.One disadvantage to the process of randomly vectoring aircraft is it can result in short range conflicts when the Recapture algorithm is triggered.However, Autoresolver was able to resolve 59 of the conflicts that were farther out in time.Table 2 describes the resolution type and performance of these resolved recaptures.Of the 59, two were resolved using direct-to maneuvers, four used parallel route offsets, and 53 used path stretches to rejoin an aircraft to its route.The majority resulting in path stretches is not surprising, as the process of adding an auxiliary waypoint to a flight's route is a robust way to resolve a conflict.The appearance of two direct-to maneuvers is surprising, because these are essentially the same as direct recapture maneuvers.However, the Recapture algorithm has a limit in how many candidate future fixes to consider for recapturing the route, where the direct-to maneuvers in Autoresolver do not.The two direct-to maneuvers were more than three fixes away along its route.Limiting direct recaptures to no more than three future fixes downstream is an arbitrary constraint used only for these initial evaluations.Table 2 also includes the mean delay of the maneuver types used to deconflict failed recaptures with the delay from resolving separation conflicts.In addition to conflicts submitted by the Recapture algorithm, during these simulations Autoresolver also was resolving normal traffic separation conflicts.The amount of delay for these resolutions was used as a benchmark when evaluating the delay of deconflicted recapture conflicts.The direct-to maneuvers saved, on average, approximately 75 seconds more than direct-to maneuvers used for separation conflicts.Alternatively, the path stretches and parallel route offset maneuvers used to deconflict failed recaptures resulted in approximately double the delay when using these maneuvers types for separation conflicts.This is realistic since Recapture algorithm encounters more maneuverability constraints when compared to resolving normal separation conflicts where all options (maneuver types) are available.The second test did not use Conformance Monitor, but used TSAFE conflict detection and resolution in order to verify the integration of Autoresolver, TSAFE, and Recapture.When TSAFE detects a conflict, it sends a resolution to the pilot model in ACES to be executed.If this resolution is a heading vector, then the aircraft will no longer be on its route; if it is an altitude, then the aircraft eventually will be vertically out-of-conformance.When a conflict no longer poses a threat, TSAFE generates a release message.Figure 7 shows the results of the Recapture algorithm generated after TSAFE releases an aircraft.In total, there were 960 cases where Altitude Recapture was activated and 244 cases where Route Recapture was activated.As depicted in Fig. 7, Recapture was able to immediately command the aircraft to recapture its assigned altitude 901 times (93.8%), and 49 times (5.1%) a delayed recapture trajectory was required.The Route Recapture algorithm also had a high success rate, resulting in 231 (96.3%) instances where it was able to rejoin a route without delay, and only 4 instances (1.6%) where a delayed recapture was required.The distributions for time and distance to recapture fix were similar to the randomized vector selection simulations, except the sample size was smaller.Similarly, the percentage of which future fix index was used for the maneuver closely matches that of the other simulations.TSAFE provides the first opportunity to evaluate the Altitude Recapture algorithm since, in previous runs, vertical out-of-conformance cases were not created.Figure 8 illustrates how close an aircraft was to its assigned altitude when the Altitude Recapture algorithm was called.On average, an aircraft was approximately 7,700 feet from its assigned altitude when initiating the maneuver.This indicates the aircraft was generally held at a temporary altitude, by  TSAFE, well below the assign altitude to resolve tactical conflicts.The peak at zero feet indicates aircraft were commanded to maintain their current assigned altitude.At times, TSAFE will provide an altitude maneuver to both aircraft where the intent is to have one of the aircraft maintain its assigned altitude, and not depart from it for any circumstances (e.g.procedural altitude restrictions or arrival initial descent).The Altitude Recapture algorithm does not maneuver aircraft released by TSAFE that are already at their assigned altitude.The few negative values in the distribution represent the cases where an aircraft was above the assigned altitude when implementing the recapture maneuver.Overall, an aircraft was never more than 2,000 feet above the assigned aircraft when the Altitude Recapture algorithm was employed.These attributes reveal the Altitude Recapture solves various vertical encounter situations, but is dominated by the case where the algorithm computes a climb maneuver returning an aircraft to its assign altitude.There were 10 cases where the Altitude Recapture algorithm was unable to rejoin an aircraft with its assigned altitude following a TSAFE resolution.Five of these 10 failures were successfully deconflicted by the Autoresolver.For these five, Autoresolver was configured to prefer altitude resolutions, however in four of the cases no altitude maneuver succeeded.In this case, the maneuver with the minimum delay was selected.The remaining recapture altitude failure was resolved using an altitude maneuver extending the TSAFE temporary altitude for eight additional minutes, then resumed climb to assigned altitude.In total, the mean delay for resolving the failed altitude recapture maneuvers was approximately 33 seconds.The other five cases were disregarded by the Autoresolver because either the conflicts were too near-term, and outside its operational envelope, or the recapture aircraft transitioned into another ARTCC after TSAFE maneuvered the aircraft (inter-facility procedures is the responsibility of the air navigation service provider and would be addressed at the time the technology is transferred.)There were nine cases where the Route Recapture algorithm was unable to rejoin an aircraft with its route following a TSAFE resolution.Five of these nine failures were successfully deconflicted by the Autoresolver by maneuvering the aircraft in the horizontal domain.Four of the five were resolved using path stretch maneuvers with a mean delay of 45 seconds.The remaining conflict did not require deconfliction, because it was not truly a failure; the other aircraft had just been resolved by Autoresolver using an altitude maneuver, and the trajectory for it had not been updated yet.The four cases in which Autoresolver did not deconflict the recapture failures were due to the conflict being disregarded, as previously discussed.A reasonable goal would be to refine the Recapture algorithm to decrease the number of times Autoresolver is needed for deconfliction.This could be pursued by advancing the logic of how the Recapture algorithm delays rejoining its route or assigned altitude by 1 minute.A process that iterates through many delayed time values or estimates a delayed recapture maneuver based on the characteristics of the conflicts could prove to make the Recapture algorithm more robust.
+VI. Survey of Additional Operational ApplicationsThe proposed trajectory management strategy presented in this paper has been characterized for applications in an automated separation assurance concept.However, with a few adaptations to the strategy, the algorithms could be used in a non-automated fashion as well.One area of NextGen research is to associate resolution advisories with the conflict probe, and display them on the en-route controller workstation.Typically, when resolving conflicts, controllers maneuver an aircraft off its route or assigned altitude, then after the conflict is clear, and when the controller has the time, he/she will maneuver the aircraft back on course; this is typically called a two-part maneuver.One possible operational application of the Recapture algorithm is for the controller to make a request through the controller workstation interface to show a single or list of rejoin route or assigned altitude maneuvers.Two-part maneuvers are usually used in a voice ATC environment, therefore the utility of on-demand Recapture maneuver advisories could be realized in the near-term.Besides providing separation services, controllers manage out-of-conformance situations.Many proposed tools aid the controller in separating traffic, however it is conceivable aiding the controller in rejoining nonconforming aircraft could result in maneuver efficiency improvements and workload reductions.A real use-case for such a concept, and second application, would be an addition to the reminder function within the Problem Analysis, Resolution, and Ranking tool. 19Instead of supplying only an alert to the controller, which reminds to command the last part of a two-part resolution maneuver, the alert could remind and supply a rejoining maneuver using the Recapture algorithm that is free of secondary traffic and weather conflicts.These adapted applications of the Recapture algorithm will be considered for future real-time, human-in-the-loop experiments.
+VII. ConclusionsThis paper described the addition of a conformance monitor function and trajectory management strategy for addressing out-of-conformance issues as an enhancement to the AAC.The Conformance Monitor was tested to verify its ability in detecting out-of-conformance cases.When laterally out-of-conformance cases were detected, the Route Recapture algorithm was successful at rejoining the aircraft to their route in a conflict-free fashion approximately 96% of the time.When deconfliction was necessary, Autoresolver was almost always able to compute a maneuver that avoided conflicts and rejoined an aircraft to its route.Because Autoresolver cannot perform accurately when aircraft are flying open-ended vectors or temporary altitudes, this enhancement is needed for the integration with TSAFE.The Recapture algorithm was able to rejoin aircraft to their route or assigned altitude in a conflict-free fashion approximately 98% of the time following a TSAFE resolution.Furthermore, the approach of relying on Autoresolver to deconflict recapture failures shows promise.The enhancement to the AAC still maintains its core competency of ensuring aircraft are separated, arrival sequencing is maintained, and convective weather-cells are avoided.Results show the new functions successfully integrated Autoresolver with TSAFE, and the approach was validated using ACES.This paper suggests potential application of the proposed strategies for use in other systems, and hopefully is motivation for future research.Figure 1 :1Figure 1: Illustration of route conformance metrics.
+Figure 2 :2Figure 2: Possible trajectory changes for route recapture.a) recapture trajectory to first fix, b) recapture trajectory to next fix, c) delayed recapture trajectory to next fix, and d) path stretch recapture to next fix.
+Figure 3 :3Figure 3: Possible trajectory changes for altitude recapture.
+Figure 4 :4Figure 4: New functional diagram of Autoresolver
+Figure 5 :5Figure 5: Recapture result for out-ofconformance cases for all random vector selection percentage levels.
+Figure 6 :6Figure 6: a) Distribution of time until reaching the recapture fix for all successful recapture maneuvers, b) Distribution of distance until reaching recapture fix for all successful recapture maneuvers, c) Future fix index used during the Recapture maneuver where 0 represents the next fix on the aircraft's route, 1 represented second, 2 is third, and so on.
+Figure 7 :7Figure 7: Recapture results following TSAFE resolutions.
+Figure 8 :8Figure 8: Distribution of distances between current altitude at time of recapture maneuver and the assigned altitude.Distances are in terms of 1,000 feet.Positive values represent altitude below the assigned altitude, and negative values relate to cases when the aircraft was above the assigned altitude.
+Table 1 :1Independent variables for randomize vector maneuvering simulationsIndependent VariableValue(s)Random Vector Selection % 1, 5, 10, 20, 30Lateral Error7 nmiAngle to Next Fix30 deg.Out-of-conformance Age2 mins.
+Table 2 :2Resolution maneuver types using during recapture deconfliction attempts during all randomized vector runs.Mean DelayMean DelayResolutionN (recapture only) (all conflicts)Direct-to2-145.0-69.2Path Stretch5340.220.2Parallel Route Offset 440.820.2
+			of 12 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on August 14, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2013-4366Thismaterial is declared a work of the U.S. Government and is not subject to copyright protection in the United States.
+			of 12 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on August 14, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2013-4366Thismaterial is declared a work of the U.S. Government and is not subject to copyright protection in the United States.
+			of 12 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on August 14, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2013-4366Thismaterial is declared a work of the U.S. Government and is not subject to copyright protection in the United States.
+			of 12 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on August 14, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2013-4366Thismaterial is declared a work of the U.S. Government and is not subject to copyright protection in the United States.
+			of 12 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on August 14, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2013-4366Thismaterial is declared a work of the U.S. Government and is not subject to copyright protection in the United States.
+			of 12 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on August 14, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2013-4366Thismaterial is declared a work of the U.S. Government and is not subject to copyright protection in the United States.
+			of 12 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on August 14, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2013-4366Thismaterial is declared a work of the U.S. Government and is not subject to copyright protection in the United States.
+			American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on August 14, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2013-4366Thismaterial is declared a work of the U.S. Government and is not subject to copyright protection in the United States.
+		
+		
+
+			
+AcknowledgmentsThe author would like to thank David Thipphavong of NASA and James Snow of the University of California, Santa Cruz for their work in incorporating TSAFE into ACES.The author would also like to thank Drs. Todd Lauderdale and Heinz Erzberger of NASA for their invaluable advice and support.
+			
+
+			
+
+				
+
+
+	
+		Transforming the NAS: The Next Generation Air Traffic Control System
+		
+			HErzberger
+		
+		
+			2004
+		
+		
+			National Aeronautics and Space Administration
+		
+	
+	Tech. Rep. TP-2004-212828
+	Erzberger, H., "Transforming the NAS: The Next Generation Air Traffic Control System," Tech. Rep. TP-2004-212828, National Aeronautics and Space Administration, 2004.
+
+
+
+	
+		Automated Conflict Resolution for Air Traffic Control
+		
+			HErzberger
+		
+		
+			2006
+		
+	
+	The 25th Congress of International Council of the Aeronautical Sciences (ICAS
+	Erzberger, H., "Automated Conflict Resolution for Air Traffic Control," The 25th Congress of International Council of the Aeronautical Sciences (ICAS), 2006.
+
+
+
+	
+		Automated Conflict Resolution, Arrival Management, and Weather Avoidance for Air Traffic Control
+		
+			HErzberger
+		
+		
+			TALauderdale
+		
+		
+			YCheng
+		
+	
+	
+		Proceedings of the Institution of Mechincal Engineers, Part G: Journal of Aerospace Engineering
+		
+			226
+			8
+			
+			2012
+		
+	
+	Erzberger, H., Lauderdale, T. A., and Cheng, Y., "Automated Conflict Resolution, Arrival Management, and Weather Avoidance for Air Traffic Control," Proceedings of the Institution of Mechincal Engineers, Part G: Journal of Aerospace Engineering, Vol. 226, No. 8, 2012, pp. 930-949.
+
+
+
+	
+		Fast Time Air Traffic Simulation of a Conflict Resolution Algorithm Under High Air Traffic Demand
+		
+			TFarley
+		
+		
+			HErzberger
+		
+	
+	
+		Europe Air Traffic Management R&D Seminar
+		
+			July 2007
+			Barcelona, Spain
+		
+	
+	Farley, T. and Erzberger, H., "Fast Time Air Traffic Simulation of a Conflict Resolution Algorithm Under High Air Traffic Demand," 7 th USA/Europe Air Traffic Management R&D Seminar , Barcelona, Spain, July 2007.
+
+
+
+	
+		Relative Significance of Trajectory Prediction Errors on an Automated Separation Assurance Algorithm
+		
+			TALauderdale
+		
+		
+			ACCone
+		
+		
+			ARBowe
+		
+	
+	
+		9 th USA/Europe Air Traffic Management R&D Seminar
+		
+			June 2011
+			Berlin, Germany
+		
+	
+	Lauderdale, T. A., Cone, A. C., and Bowe, A. R., "Relative Significance of Trajectory Prediction Errors on an Automated Separation Assurance Algorithm," 9 th USA/Europe Air Traffic Management R&D Seminar , Berlin, Germany, June 2011.
+
+
+
+	
+		An Approach for Balancing Delay and Fuel Burn in Separation Assurance Automation
+		
+			ARBowe
+		
+		
+			CSantiago
+		
+	
+	
+		AIAA Aviation Technology, Integration, and Operations Conference
+		Virginia Beach, VA
+		
+			September 2012
+		
+	
+	Bowe, A. R. and Santiago, C., "An Approach for Balancing Delay and Fuel Burn in Separation Assurance Automation," AIAA Aviation Technology, Integration, and Operations Conference, Virginia Beach, VA, September 2012.
+
+
+
+	
+		Trajectory-Based Operations -Conflict Resolution Advisories: A Simulation to Evaluate the Benefits of Strategic Maneuvering
+		
+			MPaglione
+		
+		
+			CSantiago
+		
+		
+			CJPankok
+		
+		
+			CMYoung
+		
+		
+			RDOaks
+		
+		DOT/FAA/TC-TN11/4
+	
+	
+		Federal Aviation Administration
+		
+			June 2011
+		
+	
+	Tech. Rep.
+	Paglione, M., Santiago, C., Pankok, C. J., Young, C. M., and Oaks, R. D., "Trajectory-Based Operations -Conflict Resolution Advisories: A Simulation to Evaluate the Benefits of Strategic Maneuvering," Tech. Rep. DOT/FAA/TC-TN11/4, Federal Aviation Administration, June 2011.
+
+
+
+	
+		Initial Evaluation of Air/Ground Operations with Ground-Based Automated Separation Assurance
+		
+			TPrevot
+		
+		
+			JHomola
+		
+		
+			JMercer
+		
+		
+			MMainini
+		
+		
+			CCabrall
+		
+	
+	
+		8th USA/Europe Air Traffic Management R&D Seminar
+		
+			2009
+			Napa, California
+		
+	
+	Prevot, T., Homola, J., Mercer, J., Mainini, M., and Cabrall, C., "Initial Evaluation of Air/Ground Operations with Ground-Based Automated Separation Assurance," 8th USA/Europe Air Traffic Management R&D Seminar , Napa, California, 2009.
+
+
+
+	
+		Tactical Conflict Resolution Using Vertical Maneuvers in Enroute Airspace
+		
+			RAPaielli
+		
+	
+	
+		AIAA Journal of Aircraft
+		
+			45
+			1
+			November 2008
+		
+	
+	Paielli, R. A., "Tactical Conflict Resolution Using Vertical Maneuvers in Enroute Airspace," AIAA Journal of Aircraft, Vol. 45, No. 1, November 2008.
+
+
+
+	
+		Tactical Conflict Alerting Aid for Air Traffic Controllers
+		
+			RAPaielli
+		
+		
+			HErzberger
+		
+		
+			DChiu
+		
+		
+			KHeere
+		
+	
+	
+		AIAA Journal of Guidance, Control, and Dynamics
+		
+			32
+			1
+			January 2009
+		
+	
+	Paielli, R. A., Erzberger, H., Chiu, D., and Heere, K., "Tactical Conflict Alerting Aid for Air Traffic Controllers," AIAA Journal of Guidance, Control, and Dynamics, Vol. 32, No. 1, January 2009.
+
+
+
+	
+		Algorithm and operational concept for resolving short-range conflict
+		
+			HErzberger
+		
+		
+			KHeere
+		
+	
+	
+		Proceedings of the Institution of Mechincal Engineers, Part G: Journal of Aerospace Engineering
+		
+			224
+			2
+			
+			2009
+		
+	
+	Erzberger, H. and Heere, K., "Algorithm and operational concept for resolving short-range conflict," Proceedings of the Institution of Mechincal Engineers, Part G: Journal of Aerospace Engineering, Vol. 224, No. 2, 2009, pp. 225-243.
+
+
+
+	
+		Evaluation of Tactical Conflict Resolution Algorithms for Enroute Airspace
+		
+			RAPaielli
+		
+	
+	
+		AIAA Journal of Aircraft
+		
+			48
+			1
+			January 2011
+		
+	
+	Paielli, R. A., "Evaluation of Tactical Conflict Resolution Algorithms for Enroute Airspace," AIAA Journal of Aircraft, Vol. 48, No. 1, January 2011.
+
+
+
+	
+		
+			MLCale
+		
+		
+			SKazunas
+		
+		
+			MMPaglione
+		
+		
+			HFRyan
+		
+		DOT/FAA/CT-97/4
+		User Request Evaluation Tool (URET) Algorithm Assessment Report
+		
+			Federal Aviation Administration
+			February 1997
+		
+	
+	Tech. Rep.
+	Cale, M. L., Kazunas, S., Paglione, M. M., and Ryan, H. F., "User Request Evaluation Tool (URET) Algorithm Assess- ment Report," Tech. Rep. DOT/FAA/CT-97/4, Federal Aviation Administration, February 1997.
+
+
+
+	
+		Determination of Lateral Flight Adherence in Recorded Air Traffic Data
+		
+			RDOaks
+		
+		
+			MPaglione
+		
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		San Francisco, CA
+		
+			August 2005
+		
+	
+	Oaks, R. D. and Paglione, M., "Determination of Lateral Flight Adherence in Recorded Air Traffic Data," AIAA Guid- ance, Navigation, and Control Conference and Exhibit, San Francisco, CA, August 2005.
+
+
+
+	
+		Investigating Conformance Monitoring Issues in Air Traffic Control Using Fault Detection Techniques
+		
+			TGReynolds
+		
+		
+			RJHansman
+		
+	
+	
+		AIAA Journal of Aircraft
+		
+			45
+			2
+			
+			2005
+		
+	
+	Reynolds, T. G. and Hansman, R. J., "Investigating Conformance Monitoring Issues in Air Traffic Control Using Fault Detection Techniques," AIAA Journal of Aircraft, Vol. 45, No. 2, 2005, pp. 1307-1317.
+
+
+
+	
+		Lateral Intent Error's Impact on Aircraft Prediction
+		
+			MMPaglione
+		
+		
+			IBayraktutar
+		
+		
+			GMcdonald
+		
+		
+			JBronsvoorr
+		
+	
+	
+		Air Traffic Control Quarterly
+		
+			18
+			1
+			
+			2010
+		
+	
+	Paglione, M. M., Bayraktutar, I., McDonald, G., and Bronsvoorr, J., "Lateral Intent Error's Impact on Aircraft Predic- tion," Air Traffic Control Quarterly, Vol. 18, No. 1, 2010, pp. 29-62.
+
+
+
+	
+		Build 8 of the Airspace Concept Evaluation System
+		
+			SGeorge
+		
+		
+			GSatapathy
+		
+		
+			VManikonda
+		
+		
+			KPalopo
+		
+		
+			LMeyn
+		
+		
+			TALauderdale
+		
+		
+			MDowns
+		
+		
+			MRefai
+		
+		
+			RDupee
+		
+	
+	
+		AIAA Modeling and Simulation Technologies Conference
+		Portland, OR
+		
+			2011
+		
+	
+	George, S., Satapathy, G., Manikonda, V., Palopo, K., Meyn, L., Lauderdale, T. A., Downs, M., Refai, M., and Dupee, R., "Build 8 of the Airspace Concept Evaluation System," AIAA Modeling and Simulation Technologies Conference, Portland, OR, 2011.
+
+
+
+	
+		Interoperability of Tactical and Strategic Separation Assurance
+		
+			DThipphavong
+		
+	
+	
+		AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Los Angeles, CA
+		
+			August 2013
+		
+	
+	in press
+	Thipphavong, D., "Interoperability of Tactical and Strategic Separation Assurance," AIAA Aviation Technology, Inte- gration, and Operations (ATIO) Conference (in press), Los Angeles, CA, August 2013.
+
+
+
+	
+		4 th USA
+		
+			DBKirk
+		
+		
+			KCBowen
+		
+		
+			WSWeagy
+		
+		
+			NERozen
+		
+		
+			KJViets
+		
+	
+	
+		Problem Analysis, Resolution, and Ranking (PARR) Development and Assessment
+		NM
+		
+			2001
+		
+	
+	Sante Fe
+	Kirk, D. B., Bowen, K. C., Weagy, W. S., Rozen, N. E., and Viets, K. J., "Problem Analysis, Resolution, and Ranking (PARR) Development and Assessment," 4 th USA/Europe Air Traffic Management R&D Seminar , Sante Fe, NM, 2001.
+
+
+				
+			
+		
+	

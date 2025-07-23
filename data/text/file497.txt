@@ -1,0 +1,462 @@
+
+	
+	
+		
+I. IntroductionGrowing air traffic demand presents researchers with the challenge of increasing the capacity of current air traffic management systems.This challenge is most pronounced in the terminal area, where multiple traffic flows converge within a confined region.A failure to manage these merges effectively can start a causal chain wherein an accumulating bottleneck effect leads to flight delays, unused runway capacity, and increased controller workload which, in turn, leads to increased financial and environmental costs.Because of the complexity of optimization problems that describe the aforementioned impacts, fast-time statistical analysis of large air traffic data samples is a critical asset for rapidly researching heuristics and strategies for traffic management.Results in this study are based on fast-time Monte-Carlo simulations, conducted using an expanded version of the air traffic scheduling research software called the Stochastic Terminal Area Scheduling Simulation (STASS).The modifications were needed as the previous version of STASS did not have the data storage infrastructure required for large scale analysis and lacked a number of scheduling capabilities needed to model future operations more realistically.][6] The original version of STASS has been used to show that the utilization of decision support tools and Advanced Airspace Concepts (AAC) 7 can increase airport capacity.This expanded version of STASS was used to explore design issues for a future scheduler. 8his paper presents the computational and analytical capabilities gained from expanding STASS.These capabilities are a massively parallel computational engine and a data storage system suitable for large trade studies; a detailed description is given in section STASS Architecture (Expanded Version).Two case studies demonstrating these capabilities are presented in the section Two Case Studies Using Expanded STASS.The first of these case studies, conducted for the Atlanta, Dallas/Ft.Worth, and Los Angeles airports, focuses on fractional airport throughput and meter-fix-to-runway ratio.This study investigates the hypothesis that airport capacity is limited by the number of meter fixes available per runway.The second case study, conducted for the Los Angeles airport, focuses on the potential scheduling benefits of reduced arrival time uncertainty facilitated by improved technologies and procedures.This increased precision promises to improve the predictability of air traffic managed by an automation system.
+II. BackgroundThe specific behavior of the bottleneck effect, which leads to congestion, depends heavily on the topology of the airspace.Figure 1 shows an example of an airspace topology with four meter fixes (see Appendix) surrounding a TRACON with five runways.Whereas the freeze horizon (see Appendix) is a temporal concept, it can be converted to a spatial curve for a given aircraft with a known speed profile.Examples of two aircraft and the spatial representations of their freeze horizons are also shown in the figure.The fundamental considerations underlying a study of terminal airspace topology are as follows.A natural and widely used framework for modeling general transportation networks is a flow network as described by Cormen et al. 9 and Kotnyek et al. 10 This framework provides a well-defined measure of capacity and formulations of mathematical problems aimed at managing traffic congestion and meeting traffic demand (referred to as scheduling problems in operations research as described by Bellman et al. 11 ).Most of the constraints specific to aircraft flight scheduling can be roughly classified into two types; adhering to schedule and maintaining safety.Those of the first type are aimed at making sure that the time allotted to the aircraft (by a schedule) to traverse a segment of airspace is consistent with the aircraft's capabilities.Those of the second type are aimed at safety.Constraints of the first type heavily depend on the specific airspace topology.Constraints of the second type are mostly focused on meeting the FAA's separation requirements.Two metrics indicative of airport utilization and controller workload are throughput and the probability of separation loss (see appendix A, section Minimum Separation Time, Separation Loss, and Buffer).Low throughput indicates unused maximum airport capacity.High probability of separation loss indicates increased workload for the controller, who must then intervene and guide the aircraft.The presence of costs and constraints has naturally led researchers to approach scheduling as a problem in constrained optimization.A trend in such research is the use of mathematical (e.g., linear, mixed-integer linear, and nonlinear) programming to compute arrival schedules that minimize a given cost functional. 12hese techniques have been applied to domains of the airport surface traffic management 13,14 and en route air traffic flow management (TFM). 15Whereas the mathematical programming framework provides optimal solutions when the computation converges, most optimization software tools do not have the large-scale stochastic Monte-Carlo simulation capability needed to investigate wide parameter ranges and representative data samples.Historically, implementation of this capability has been hindered by the heavy computational demands of this type of problem.However, fast-time simulation capabilities, achieved by reducing complex spatial problems to time-based problems, are needed to support human-in-the-loop (HITL) simulations which are necessary for maturing ATM technologies.The research described here is conducted with a view toward a HITL simulation of precision arrival scheduling.
+III. STASSThe following is a brief description of the original STASS; for a detailed description, see Ref. 18. STASS was designed as a time-based scheduling simulation tool that models aircraft arrivals in the terminal area.The scheduling is performed in two steps using (1) the Center Scheduler to schedule aircraft from the freeze horizon to the meter fixes and runways and (2) the TRACON Scheduler to schedule aircraft to the runways upon their arrival at the meter fixes.Uncertainty in arrival times is modeled at the freeze horizon, meter fixes, and runways.STASS uses two types of constraints: inter-aircraft separation and transit time bounds.The required inter-aircraft spatial separations, mandated by the FAA, are converted in STASS to time constraints using nominal aircraft speeds at the meter fix and runway.Transit time constraints are the minimum and maximum transit times for aircraft traveling through the center and TRACON airspaces.Using Monte Carlo techniques, a given set of input parameters are evaluated by running multiple iterations of STASS on a data set of aircraft with the arrival uncertainties randomly sampled during each iteration.The aggregate metrics generated include throughput, delay, and fuel burn statistics.
+IV. Expanded STASS Modeling CapabilitiesThe terms and acronyms used throughout this section are listed in the Nomenclature section at the beginning of this paper and are defined in detail in the Appendix.A comparison of the two versions of STASS, the original version and the expanded version, is summarized in Table 1.
+V. Expanded STASS ArchitectureThis section describes the algorithm flow of the expanded STASS system.This system runs five algorithms in a sequence.The outputs of some of the algorithms are fed into others as inputs.The order and input/output flow are described in the bulleted list and Table 2 below.The rest of this section gives an overview of how the algorithms interact.The five algorithms (each briefly described at the end of this section) are executed in the following order.• The Freeze Horizon Simulator.Yes.Aircraft can be scheduled to arrive at the meter fix or runway earlier than their nominal arrival time. 1 The amount of allowed time advance is specified as parameters, T A M F and T A RW Y for the meter fix and runway, respectively.This capability is necessary for exploring the concept of time advance, envisioned in future operations.How is Maximal TRACON Delay (MTD) defined?A constant value for all aircraft.A percentage of the aircraft's individual TTF.To model delay using speed control alone, the maximal delay that can be scheduled in the TRA-CON is specified, following Ref.18 • The Center Scheduler (Appendix).• Freeze Horizon to Meter Fix Simulator.• The TRACON Scheduler.• Meter Fix-to-Runway Simulator.The input to each algorithm includes the same set of aircraft; the number of aircraft is denoted by K.For each aircraft object, there is a 5-tuple of information:(aircraft ID, wake class, engine type, meter fix, FH ETA)The output of each algorithm except the last is included in the input to the next algorithm.These inputs and outputs are summarized in Table 2.The Center Scheduler imposes a separation constraint of the form (1) (see the section Minimum Separation Time, Separation Loss, and Buffer) at the meter fixes and at the runways.The TRACON Scheduler imposes such a constraint only at the runways.During every consecutive execution of the above algorithms, the FH Simulator perturbs the FH ETAs to create FH ATAs.The Center Scheduler computes a schedule at the meter fix, taking into account runway availability by constructing a preliminary runway schedule, and assigns to each aircraft an MF STA.The FH to MF Simulator then perturbs the MF STA by added a sample value 17 of the meter fix arrival time uncertainty (a random variable described in more detail below) to generate an actual time of arrival at the meter fix (MF ATA).The MF ATAs are adjusted, if necessary, for minimum separation from prior aircraft at the meter fix:M F AT A = max M F ST A + (M F arrival time uncertainty) (previous aircraf t s M F AT A) + (minimum separation)The TRACON Scheduler computes a schedule at each runway and assigns to each aircraft destination runway and a corresponding RWY STA.The Meter Fix to Runway Simulator then perturbs the RWY STA by adding runway arrival time uncertainty to generate an actual time of arrival at the runway (RWY ATA).The RWY ATAs are adjusted, if necessary, for minimum separation from prior aircraft at the runway:RW Y AT A = max RW Y ST A + (RW Y arrival time uncertainty) (previous aircraf t s M F AT A) + (minimum separation)
+A. Jobs DatabaseThe jobs database is used to manage the list of simulation runs (jobs) that need to be executed.The database is created by the STASS component called the jobs loader program(JLP).The JLP reads in a user-specified parameter input file that contains a list of parameter names and, for each parameter, a set of values.Using this input, the JLP then computes all permutations of the parameter values to create a list of jobs that are loaded into the jobs database.This database contains for each job the following simulation-specific data: status, name of the assigned computer, start time, and end time.The availability of this data enables the user to query the jobs database to determine the status of the simulation and estimate the completion time.
+B. STASS DatabaseThe STASS database is used to store the data output during a run of the simulation and to evaluate the metrics (see section Metrics, below).The database is organized as a relational database and is designed to have the flexibility to handle new parameters and metrics without any changes to the database structure.Figure 2 shows a diagram of the database structure with each box representing a table composed of rows of data.The internal elements of the boxes correspond to data fields which are the columns of their containing table.The data generated by a run are stored with its corresponding simulation parameters and metrics.The parameters are stored as scalars.The metrics come in two types, 1) single-value metrics that use a scalar (such as total throughput and total delay) to describe a run, and 2) multiple-value metrics that use a vector (such as a time-varying curve of average throughput over time).The database has the capability to store, among other data, every ETA, STA, and ATA, at both the meter fix and runway, for every aircraft in each iteration of each run.Raw data values such as estimated time of arrival (ETA), STA, and actual time of arrival (ATA) are stored for the Center and TRACON schedulers.Although incurring performance costs, storage of such a large amount of data opens numerous possibilities for post-run analysis.New metrics that are conceived of after the simulation can be evaluated from the raw data.
+C. STASS ExecutionSTASS is designed to run in parallel on a network of computers.To execute STASS on one or more computers in the network, one first runs a launch program on each of these computers.This program determines the number of processors available on that computer and creates, for each processor, a STASS process.Each STASS process queries the jobs database, which is accessible by each computer in the network, to retrieve a job assignment and then updates the database atomically to ensure that no other process can be assigned the same job.When a STASS process is completed, it sends its results to the STASS database, updates the jobs database to mark job completion, and queries for a new job.The flexibility of this execution design allows a computer to withdraw from a simulation, delegating its assigned jobs to be executed by another computer in the network.For the results published by Thipphavong and Mulfinger, 8 STASS was executed on approximately 25 8processor computers.The simulation consisted of over 30,000 runs with 500 Monte-Carlo schedule iterations per run.
+D. Results ViewerAs an interface to the new version of STASS, a graphical program called the Results Viewer (see Figure 3) was created to facilitate quick visualization of the simulation results.Queries using the original parameter values show graphs that represent the effects of changing individual parameter values.Multiple parameters can be selected to show the correlations between parameters over multiple result types.This alleviated the need to export the data to be plotted in an external program.This capability to export data from the Results Viewer, however, has been retained.
+VI. STASS Settings Used in the Simulations
+A. Probability distributions used for arrival time uncertaintiesIn STASS, the probability density function for all arrival time uncertainties is an approximation of the zeromean Gaussian, truncated at 3 standard deviations on either side of the mean.This computation of arrival time uncertainty is the same as used by Meyn and Erzberger in their study of airport arrival capacities. 18ifferent values of the standard deviation are chosen for meter fix arrival time uncertainty and for runway arrival time uncertainty.
+B. Monte-Carlo simulationsTo evaluate the effect of the arrival time uncertainties on the above metrics, a data sample is needed where each sample point includes (MF STA, MF ATA, RWY STA, RWY ATA).These example data were generated by fixing a set of parameter values and consecutively executing the four algorithms described above.Each execution is termed an iteration.For a fixed set of parameters, we perform between 500 and 1000 iterations.The collection of all iterations corresponding to a set of parameter values is called a run.
+C. MetricsFrom the output of a run of STASS-i.e., of the sequence of the five algorithms described in section 4,-a number of metrics can be computed.A few of the most commonly used metrics are shown in Table 3.The following two metrics are used for the case studies presented below.1. Average throughput: given a sequence of N aircraft and the time stamp of each aircraft's landing, the makespan is the difference (latest landing time earliest landing time).The average throughput is defined as the ratio of the number of flights to the makespan.2. Probability of separation loss: the probability of separation loss is defined as the probability that a given in-trail pair of aircraft will experience a separation loss.This probability is approximated by the statistical relative frequency 17 of the occurrence of separation loss in the given sample of the N landing.
+VII. Case Studies
+A. Analysis of correlation between fractional throughput and meter fix-to-runway ratioThis case study, complementing the research effort reported in Ref. 8, focuses on the interaction between terminal airspace topology and scheduling performance.Given an airspace topology where multiple flows can merge at a meter fix, the meter fix-to-runway ratio (MFRR) is defined as the ratio of the total number of meter fixes to that of runways.The importance of this ratio to scheduling design is as follows.Observation of simulated data suggests that fractional throughput (defined below) and meter fix-to-runway ratio are strongly correlated.The intuitive basis for this hypothesis is Kirchhoff's Current Law 19 applied to a static network flow on a directed graph G = (V, E) with each edge (representing a route segment) having unit throughput capacity.Namely, if N flows merge at a vertex u ∈ V (i.e., if u has in-degree N and out-degree 1), then the outflow from u cannot exceed one unit, yet the inflow into u can equal N units.Thus, u is a bottleneck where the demand exceeds the min-cut 9 capacity by a factor of N .In the airspace regions for arriving traffic we are considering here, flows are merged at meter fixes, and the above network flow model applies in that the runway-to-meter fix ratio serves as an estimate of the factor N .To explore the above hypothesis more systematically, let T be the set of the four traffic types assumed in STASS; i.e., T = {heavy, large, 757, small}For each type t ∈ T , let m(t) denote the number of aircraft of type t present in a data sample generated by a run of STASS.(Thus, m is a function that assigns to each element of T a nonnegative integer.)This function will be called a traffic mix; the traffic mix reflects how many aircraft of each kind are present in a data sample generated by a run of STASS.)The statistical relative frequency (denoted below by f (t)) of an aircraft type t for the given traffic mix m is defined as the ratio of the number of aircraft of type t to the total number of aircraft; i.e.,f (t) = m(t)τ ∈T m(τ ) Given a traffic mix, we consider the experiment of picking, randomly, an in-trail pair of aircraft and recording their respective types (and, later, the corresponding required separation at the runway).Thus, each outcome of the experiment is an ordered pair (t 1 , t 2 ) of aircraft types.The set S of all such pairs is, therefore, the sample space of the above experiment.With suitable assumptions of statistical independence, the probability of the outcome (t 1 , t 2 ) ∈ S is defined as the productp(t 1 , t 2 ) = f (t 1 )f (t 2 )Furthermore, to each outcome (t 1 , t 2 ) we assign the minimal required separation (at the runway) d(t 1 , t 2 ), which is therefore a random variable on the above probability space.This random variable has an expected value 17 equal tod RW Y = (t1,t2)∈S d(t 1 , t 2 )p(t 1 , t 2 )This expected value is called the average minimal separation at the runway.The average random throughput at the runway (ART RW Y ) is defined as 1 d RW Y and represents the average number of aircraft that would arrive during unit time if ordered randomly and separated minimally.A fractional throughput of a given STASS run is defined as the ratio of that run's throughput to the corresponding ART RW Y .The fractional throughput of a run represents that portion of the ART RW Y actually realized in the run.Use of FCFS on multiple runways, however, may effect an ordering that is not random on a particular runway (thus deviating from the assumption of random ordering made in the derivation of the ART RW Y ), which can result in a fractional throughput exceeding 1.The simulation results used in this analysis were generated by simulating twice the demand observed in operations during peak hours.This level of demand was sufficient to ensure saturation at the meter fixes.Examining the fractional throughputs and the MFRRs for three airports, LAX, ATL, and DFW, a scatter plot of the three data points exhibit a strong correlation (coefficient 0.9998), shown with a linear fit for reference in Figure 4.
+B. Potential scheduling benefits of reduced arrival time uncertaintyArrival time uncertainty (defined in the section Arrival Time Uncertainty) can be reduced by introducing precision spacing technologies, airborne and on the ground.Among the potential benefits of such reduction is an increase in throughput.This increase is attained because with higher precision in arrival times a smaller buffer suffices to maintain the same upper bound on the probability of separation loss.To analyze the potential benefits quantitatively, expanded STASS was used to perform Monte Carlo runs for three airports, LAX, DFW, and ATL.(For details on the probability distribution of arrival time uncertainty at meter fixes and runways, see section 4).In a given airspace topology, let σ M F and σ RW Y denote the respective standard deviations of the arrival time uncertainty at the meter fixes and at the runways.Letting σ M F (in seconds) range over the values 60, 30, 15, 0, and letting σ RW Y (in seconds) range over the values 30, 15, 3, 0, a STASS run was performed for each of the possible value pairs (σ M F , σ RW Y ).For each value pair, the runway buffer was allowed to range from 0 to 20 in steps of 3, while the meter fix buffer was held at the constant value 10 sec.The statistical relative frequencies of separation loss calculated from the simulation results for ATL with σ M F = 30 are plotted in Figure 5.To each value of σ RW Y corresponds a curve that is the graph of the (statistical) relative frequency 17 of separation loss (RF SL RW Y ) as a function of runway buffer.The plots show, for example, that with RF SL RW Y = 0.2, a reduction of σ RW Y from 15 sec to 12 sec results in a runway buffer reduction from 18.2 sec to 14.5 sec.The plot of throughput as a function of runway buffer for the same run, in Figure 6, shows that this reduction in runway buffer raises average throughput (in #aircraft/hr) from 90.5 to 94.6, an increase of 4.5%.
+VIII. DiscussionWe have described the data generation and processing capabilities acquired by updating the STASS software originally written at NASA for airport capacity studies.Because of the complexity of ATM optimization problems and the presence of variables inherently random, the goals of research into optimal solutions necessarily include knowing the individual and joint probability distributions of these random variables.Estimation of these probability distributions, in turn, requires data samples, which are frequently unavailable in sufficient quantities from operational data.In section Two Case Studies Using Expanded STASS, we have demonstrated the ability of the expanded version of STASS to provide such data samples.In the first of these case studies, we used the data to exhibit a strong correlation (coefficient 0.9998 for the data used) between a terminal area's meter fix-to-runway ratio and its fractional throughput.In the second case study, we analyzed the potential scheduling benefits of reduced runway arrival uncertainty.The analysis revealed, in particular, that a 4.5% increase in airport arrival throughput was achievable by reducing arrival time uncertainty from 15 seconds to 12 seconds.
+IX. Directions for Future ResearchNext steps include refining the definition of the throughput metric and introducing a capability to model departure traffic.The throughput metric used in the second case study above is the average throughput, defined as the ratio of the number of aircraft to the makespan.A shortcoming of this definition is that it does not capture rapid fluctuations in traffic density.A fruitful research direction is to use STASS data to explore throughput metrics that would capture such fluctuations.The expanded version of STASS presented here considers arriving traffic only.To gain a more complete understanding of airport scheduling, research needs to include departure modeling which therefore would be a profitable capability if added to STASS.
+Appendix: Key Concepts and Inequality Constraints in Time-Based Air Traffic SchedulingTo model in-trail separation, we use the time-based approach, taken in Ref. 18.By using reference aircraft speeds, separation times can be converted to separation distances, used in the FAA-mandated spatial separation standards.Following are detailed definitions of the terms and acronyms listed in the Nomenclature.Meter Fix (MF): a point along a standard arrival route at which each aircraft is controlled to arrive at a certain scheduled time, these times selected to meet various operational constraints.These constraints include FAA-mandated separation requirements, runway capacity, and terminal airspace capacity.Transit Time (TT): An aircraft's transit time from point A to point B is the duration of the aircraft's travel from A to B. In particular, the Meter Fix-to-Runway Transit Time (MR TT) is the transit time from the meter fix to the runway.Schedule and Scheduled Time of Arrival (STA): In the recent literature and throughout this paper, the term schedule (for a collection of aircraft in a given airspace) refers to a table that assigns to each pair (aircraft, waypoint) a time stamp, called the aircraft's scheduled time of arrival (STA) at that waypoint.To schedule an aircraft to a waypoint is to assign the corresponding STA.Freeze Horizon (FH): Once an aircraft's STA to the meter fix has been calculated, frequent changes to the STA can be disruptive as controllers attempt to slow down, speed up, or reroute aircraft to meet the new STAs.To prevent these disruptions, STAs to the meter fix are frozen (i.e., disallowed any further changes) when an aircraft reaches a point from which the TT to the meter fix is equal to a preset value, called the freeze horizon.A more detailed discussion of freeze horizon can be found in Ref. 20.Arrival Time Uncertainty: Unforeseen processes, such as wind, human factors, or aircraft performance, prevent an aircraft from meeting its STAs exactly.To capture this in scheduling models, the actual time of arrival at a waypoint is assumed of the form (STA + error).The error, henceforth called arrival time uncertainty, is a random variable 17 with an assumed probability distribution.Minimum Separation Time, Separation Loss, and Buffer: If one aircraft is trailing another and both are crossing a waypoint, the actual crossing times must be separated by a time period, which is computed, using representative aircraft speeds, from an FAA-mandated required separation distance.This time period, called minimum separation time, is a parameter chosen in models and in the field-depending on the engine types and wake classes of the trailing and leading aircraft.(A failure to comply with this requirement is called a separation loss.)Thus, the corresponding STAs at the waypoint must not be closer than the minimum separation time:ST A trail -ST A lead = (minimal separation)Because of the arrival time uncertainty, however, choosing the STAs separated exactly by the minimum incurs the risk of separation loss.To mitigate the risk, one introduced a slack variable is called buffer and, in a scheduling algorithm, aims to meet the condition ST A trail -ST A lead = (minimal separation)Estimated Time of Arrival (at the Meter Fix / Freeze Horizon): Given the location of an aircraft outside the TRACON, a specific meter fix assigned to the aircraft, and an assumed nominal route and speed profile, a simple calculation yields an estimate of the aircraft's time of transit from the current location to the meter fix.This estimate is called the aircraft's estimated time of arrival at the meter fix (MF ETA).The time 19 minutes before the MF ETA is called the aircraft's estimated time of arrival at the freeze horizon (FH ETA).Maximal TRCON Delay (MTD) and Maximal TRACON Time Recovery (MTTR): In this paper, all of the considered airspaces are Centers containing a set of meter fixes and a TRACON, which, in turn, contains a set of runways (see Figure 1).This structure dictates that each arriving aircraft traverse, after having passed its freeze horizon, two waypoints: a meter fix and a runway.The delay-and time advance margins for transit from meter fix to runway are called, respectively, maximal TRACON delay (MTD) and maximal TRACON time recovery (MTTR).
+ATA:The acronym ATA will be used to denote an aircraft's actual time of arrival at a specified location.Figure 1 .1Figure 1.Example airspace showing center, freeze horizons, meter fixes, TRACON and runways.
+Figure 2 .2Figure 2. STASS database design.
+Figure 3 .3Figure 3.A sample image from the STASS Results Viewer software program.
+Figure 4 .4Figure 4. Linear fit of three airports ratio of STASS throughput to expected throughput corresponding to their meter-fix/runway ratio.
+Figure 5 .5Figure 5. Runway: RF SL RW Y vs. buffer.Dashed horizontal line represents a separation loss frequency of 0.2.
+Figure 6 .6Figure 6.Runway: average throughput vs. buffer, for two values of σ RW Y .
+Table 1 .1Comparison between original and expanded STASS versions.OriginalExpandedDescriptionTime advanceNo.defined?
+, as a percentage of each aircraft's nominal time to fly from meter fix to runway.Absorption of delay solely by speed control has the potential to reduce controller workload by avoiding path changes.Constrained po-No.Yes.sition shifting al-lowed?Considers meterNo.Yes.fix constraintswhen computingFCFS ordering?SeparationatNo.Yes.runwayen-forced?Which airportsDFWDFW, LAX,The three airports are modeled with their mostimplemented?ATLfrequently used runway configurations.Number of met-1488Additional metrics allow categorization of delayricscauses, tracking of individual aircraft data, andanalysis of aggregate system behavior.Storage systemPlainDatabaseSimulation parameters and results are stored intextfilea database for flexible access using StructuredQuery Language (SQL).Sequencing by Constrained Position Shifting by at most k positions (CPS-k)16optimizes the sequence at individual runways while preserving the ordering among aircraft originating from common routes (overtakes not allowed).When creating runway schedules, aircraft runway ETAs are calculated considering the effect of meter fix constraints.The previous version assumed no delay would be taken at the meter fix when compiling FCFS runway order.Taking account of meter fix constraints at the outset prevents the loss of capacity that can result from meter fix overload.Aircraft are delayed in the TRACON in order to enforce minimum separation at the runway between pairs of aircraft.The original version computed the actual times of arrival at the runway without introducing additional delay to enforce wake separation, merely counting the number of runway separation violations.
+Table 2 .2List of STASS inputs and outputs.InputsOutputsFH SimulatorK aircraft FH ETAsFH ATAsCenter SchedulerK aircraft, FH ATAsMF STAsFH to MF SimulatorK aircraft, MF STAsMF ATAsTRACON SchedulerK aircraft, MF ATAsRunway assignments, RWY STAsMF to RWY SimulatorK aircraft, RWY STAs RWY ATAs
+Table 3 .3STASS metrics.Average ThroughputPeak ThroughputRunway ViolationsMeter Fix ViolationsMax DelayMakespanAverage System DelayAverage Delay (TRACON)Average Feeder Fix Uncertainty Delay Average Delay (Center)Average Runway Uncertainty DelayAverage Runway Assignment Delay
+		
+		
+
+			
+AcknowledgmentsWe thank Doug Isaacson, John Robinson and Harry Swenson, of the NASA Ames Research Center, for valuable insights and discussion.
+			
+
+			
+
+				
+
+
+	
+		Analysis of Sequencing and Scheduling Methods for Arrival Traffic
+		
+			FNeuman
+		
+		
+			HErzberger
+		
+	
+	
+		NASA Technical Memorandum 102795
+		
+			1990
+		
+	
+	Neuman, F., and Erzberger, H., "Analysis of Sequencing and Scheduling Methods for Arrival Traffic," NASA Technical Memorandum 102795, 1990.
+
+
+
+	
+		Analysis of Delay Reducing and Fuel Saving Sequencing and Spacing Algorithms for Arrival Traffic
+		
+			FNeuman
+		
+		
+			HErzberger
+		
+	
+	
+		NASA Technical Memorandum 103880
+		
+			1991
+		
+	
+	Neuman, F., and Erzberger, H., "Analysis of Delay Reducing and Fuel Saving Sequencing and Spacing Algorithms for Arrival Traffic," NASA Technical Memorandum 103880, 1991.
+
+
+
+	
+		A Fast-Time Simulation Tool for Analysis of Airport Arrival Traffic
+		
+			FNeuman
+		
+		
+			HErzberger
+		
+		
+			LMeyn
+		
+		NASA/TP-2004-212283
+		
+			August 2004
+		
+	
+	Neuman, F., Erzberger, and H., Meyn, L., "A Fast-Time Simulation Tool for Analysis of Airport Arrival Traffic," NASA/TP-2004-212283, August 2004.
+
+
+
+	
+		Fast Time Study of Airline-Influenced Arrival Sequencing and Scheduling
+		
+			GCCarr
+		
+		
+			HErzberger
+		
+		
+			FNeuman
+		
+	
+	
+		Air Transportation Engineering
+		
+			2001
+			American Institute of Aeronautics and Astronautics, Inc
+		
+	
+	Carr, G. C., Erzberger, H., and Neuman, F., "Fast Time Study of Airline-Influenced Arrival Sequencing and Scheduling," Air Transportation Engineering, American Institute of Aeronautics and Astronautics, Inc., 2001.
+
+
+
+	
+		Delay Exchanges in Arrival Sequencing and Scheduling
+		
+			GCCarr
+		
+		
+			HErzberger
+		
+		
+			FNeuman
+		
+	
+	
+		Journal of Aircraft
+		
+			36
+			5
+			
+			Sep.-Oct. 1999
+		
+	
+	Carr, G. C., Erzberger, H., and Neuman F., "Delay Exchanges in Arrival Sequencing and Scheduling," Journal of Aircraft, Vol. 36, No. 5, Sep.-Oct. 1999, pp. 785-791.
+
+
+
+	
+		Airline Arrival Prioritization in Sequencing and Scheduling
+		
+			GCCarr
+		
+		
+			HErzberger
+		
+		
+			FNeuman
+		
+	
+	
+		Europe Air Traffic Management R&D Seminar
+		
+			1-4 Dec. 1998
+			Orlando, FL
+		
+	
+	2nd USA/
+	Carr, G. C., Erzberger, H., and Neuman, F., "Airline Arrival Prioritization in Sequencing and Scheduling," 2nd USA/Europe Air Traffic Management R&D Seminar, Orlando, FL, 1-4 Dec. 1998.
+
+
+
+	
+		4th USA/Europe Air Traffic Management R&D Seminar
+		
+			HErzberger
+		
+	
+	
+		The Automated Airspace Concept
+		Santa Fe, NM, USA
+		
+			Dec. 2001
+			
+		
+	
+	Erzberger, H.: "The Automated Airspace Concept," 4th USA/Europe Air Traffic Management R&D Seminar, Santa Fe, NM, USA, 3-7 Dec. 2001.
+
+
+
+	
+		Design Considerations for a New Terminal Area Arrival Scheduler
+		
+			JThipphavong
+		
+		
+			DMulfinger
+		
+	
+	
+		10th AIAA Aviation Technology, Integration, and Operations Conference
+		Fort Worth, TX
+		
+			Sep. 2010
+			
+		
+	
+	Thipphavong, J., and Mulfinger, D., "Design Considerations for a New Terminal Area Arrival Scheduler," 10th AIAA Aviation Technology, Integration, and Operations Conference, Fort Worth, TX, 13-15 Sep. 2010.
+
+
+
+	
+		Introduction to Algorithms
+		
+			TCormen
+		
+		
+			CLeiserson
+		
+		
+			RRivest
+		
+		
+			1990
+			MIT Press
+			Cambridge, MA
+		
+	
+	Cormen, T., Leiserson, C., and Rivest, R., Introduction to Algorithms, MIT Press, Cambridge, MA, 1990.
+
+
+
+	
+		An Annotated Overview of Dynamic Network Flows
+		
+			BKotnyek
+		
+		4936
+	
+	
+		INRIA
+		
+			2003
+		
+	
+	Technical Report
+	Kotnyek, B., "An Annotated Overview of Dynamic Network Flows," Technical Report 4936, INRIA, 2003.
+
+
+
+	
+		Mathematical Aspects of Scheduling and Applications
+		
+			RBellman
+		
+		
+			AEsogbue
+		
+		
+			INabeshima
+		
+		
+			1982
+			Pergamon Press
+			London
+		
+	
+	Bellman, R., Esogbue, A., and Nabeshima, I., Mathematical Aspects of Scheduling and Applications, Pergamon Press, London, 1982.
+
+
+
+	
+		Towards Optimal Routing and Scheduling of Metroplex Operations
+		
+			SAtkins
+		
+		
+			BCapozzi
+		
+		
+			SChoi
+		
+	
+	
+		9th AIAA Aviation, Technology, Integration, and Operations Conference
+		
+			September 2009
+			
+		
+	
+	Atkins, S., Capozzi, B., and Choi, S., "Towards Optimal Routing and Scheduling of Metroplex Operations," 9th AIAA Aviation, Technology, Integration, and Operations Conference, 21-23 September 2009.
+
+
+
+	
+		A Mixed Integer Linear Program for Airport Departure Scheduling
+		
+			GGupta
+		
+		
+			WMalik
+		
+		
+			YCJung
+		
+	
+	
+		AIAA Aviation, Technology, Integration, and Operations Conference
+		Hilton Head, SC
+		
+			Sep. 21-23, 2009
+		
+	
+	Gupta, G., Malik, W., and Jung, Y. C., "A Mixed Integer Linear Program for Airport Departure Scheduling," AIAA Aviation, Technology, Integration, and Operations Conference, Hilton Head, SC, Sep. 21-23, 2009.
+
+
+
+	
+		A Mixed Integer Linear Program for Solving a Multiple Route Taxi Scheduling Problem
+		
+			JMontoya
+		
+		
+			ZWood
+		
+		
+			SRathinam
+		
+		
+			WMalik
+		
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		Toronto, Canada
+		
+			2-5 Aug. 2010
+			15
+		
+	
+	Montoya, J., Wood, Z., Rathinam, and S., Malik, W., "A Mixed Integer Linear Program for Solving a Multiple Route Taxi Scheduling Problem," AIAA Guidance, Navigation, and Control Conference, Toronto, Canada, 2-5 Aug. 2010. 15
+
+
+
+	
+		Sequential Traffic Flow Optimization with Tactical Flight Control Heuristics
+		
+			SGrabbe
+		
+		
+			BSridhar
+		
+		
+			AMukherjee
+		
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		Honolulu, HI
+		
+			18-21 Aug. 2008
+			16
+		
+	
+	Grabbe, S., Sridhar, B., and Mukherjee, A., "Sequential Traffic Flow Optimization with Tactical Flight Control Heuris- tics," AIAA Guidance, Navigation, and Control Conference and Exhibit, Honolulu, HI, 18-21 Aug. 2008. 16
+
+
+
+	
+		Scheduling Aircraft Landings under Constrained Position Shifting
+		
+			HBalakrishnan
+		
+		
+			BChandran
+		
+	
+	
+		AIAA Guidance, Navigation and Control Conference
+		Keystone, CO
+		
+			August 2006
+		
+	
+	Balakrishnan, H., and Chandran, B., "Scheduling Aircraft Landings under Constrained Position Shifting," AIAA Guid- ance, Navigation and Control Conference, Keystone, CO, August 2006.
+
+
+
+	
+		Mathematical Handbook for Scientists and Engineers
+		
+			GKorn
+		
+		
+			TKorn
+		
+		
+			2000
+			Dover
+		
+	
+	Korn, G., and Korn, T., Mathematical Handbook for Scientists and Engineers, Dover, 2000.
+
+
+
+	
+		Airport Arrival Capacity Benefits Due to Improved Scheduling Accuracy
+		
+			LMeyn
+		
+		
+			HErzberger
+		
+	
+	
+		5th AIAA Aviation, Technology, and Operations Conference
+		Arlington, Virginia
+		
+			2005
+		
+	
+	Meyn, L., and Erzberger, H., "Airport Arrival Capacity Benefits Due to Improved Scheduling Accuracy." 5th AIAA Aviation, Technology, and Operations Conference. Arlington, Virginia, 2005.
+
+
+
+	
+		
+			SSeshu
+		
+		
+			NBalabanian
+		
+		Linear Network Analysis
+		
+			John Wiley & Sons
+			1964
+		
+	
+	Seshu, S., and Balabanian, N., Linear Network Analysis. John Wiley & Sons. 1964.
+
+
+
+	
+		The Dynamic Planner: The Sequencer, Scheduler, and Runway Allocator for Air Traffic Control Automation
+		
+			GLWong
+		
+		NASA TM-2000-209586
+		
+			April 2000
+		
+	
+	Wong, G. L., "The Dynamic Planner: The Sequencer, Scheduler, and Runway Allocator for Air Traffic Control Automa- tion," NASA TM-2000-209586, April 2000.
+
+
+				
+			
+		
+	

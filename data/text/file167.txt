@@ -1,0 +1,372 @@
+
+	
+	
+		
+I. IntroductionConcepts and technologies to handle arrival, departure, and surface operations have been under development by NASA, the Federal Aviation Administration (FAA), and industry to improve the flow of traffic into and out of the nation's busiest airports.Whereas trajectory-based concepts and technologies have been developed for specific phases of flight, their integration across surface and airspace domains to more fully optimize traffic flow remains a considerable challenge. 1o address this challenge, NASA has committed to developing the Airspace Technology Demonstration-2 (ATD-2) concept which provides an Integrated Arrival, Departure, and Surface (IADS) traffic management system that extends traffic sequencing all the way from the gate to the overhead stream and back again for multi-airport, metroplex environments.The ATD-2 concept builds on and integrates previous NASA research such as the Terminal Sequence and Spacing (TSAS), 2 the Precision Departure Release Capability (PDRC), 3 and the Spot and Runway Departure Advisor (SARDA) 4,5 which were focused on individual airspace domains.These concepts have been integrated into a single traffic management tool and tested in Human-In-The-Loop simulations 6 and eventually deployed to the Charlotte Douglas International Airport (CLT) for field evaluation.A key component of the ATD-2 system focuses on surface scheduling and aims to generate schedules that allow aircraft to taxi, climb, and insert within the overhead stream with minimal interruptions. 1 During time periods when departure demand at the runway overwhelms the available capacity, ATD-2 generates flight-specific gate hold advisories to absorb delay at the gate prior to engine start to reduce fuel burn and gas emissions. 7In order to generate schedules that manage the desired departure runway queue time and to efficiently merge controlled flights with Traffic Management Initiative (TMI) constraints into the overhead stream, it is necessary for the ATD-2 scheduler to balance the demand at the runway with the available capacity, while simultaneously predicting accurate takeoff times.The purpose of this paper is to measure and assess the ability of the scheduler in the tactical time frame to balance the demand and capacity while generating accurate takeoff time predictions.The data that we analyze are from the operational ATD-2 IADS system during the Phase 1 demonstration at the CLT airport.We use the data to evaluate the ability of the scheduler to accurately balance the demand and capacity by comparing the rate of the scheduled operations to the rate of the realized operations during peak traffic demand.We also compare the accuracy of the predicted takeoff times to the actual takeoff times as a function of the lookahead time.We identify a surprising relationship between the rate of the operations and the accuracy of the schedules which highlights the complexities present in scheduling surface operations.This paper is organized as follows.Section II provides background information on the ATD-2 IADS system operating at the CLT airport.In Section III we provide a description of the ATD-2 tactical surface scheduler and describe the logic that is used for scheduling the departure operations.Section IV provides an analysis of the demand capacity balancing and Section V analyzes the accuracy of the predicted takeoff time compared to the actual takeoff time as a function of the lookahead time.In Section VI we describe the main challenges that were identified when scheduling in the tactical time frame in the live operational environment and Section VII provides concluding remarks.
+II. Background on ATD-2 IADS system at CLT AirportTraffic demand at CLT is characterized by definite peaks and valleys which define a traffic bank. 6There are clear distinctions between departure and arrival banks throughout the day.Within a bank, the departure and arrival banks can overlap and the combined departure and arrival bank takes approximately two hours.Bank 2 typically has the heaviest traffic and occurs between 9am EST and 11am EST.Starting on November 29th, 2017 the IADS tactical surface scheduler has been available to air traffic controllers and the ramp operators to assist in surface metering for bank 2 operations.This has provided a unique opportunity to assess the performance of the tactical scheduler in a live operational environment where the controllers could actively use the tactical scheduler advisories.This paper analyzes data that were collected between 2018-03-01 through 2018-04-30 during bank 2 operations and focuses on the immediate tactical time frame 30 minutes prior to takeoff to the actual off event.For this analysis, we focused on North flow operations with a dedicated arrival only runway 36L, a predominantly departure only runway 36C that accommodates some arrival operations, and a dual use runway 36R that accommodates both arrivals and departures, see Fig. 1.North flow operations were selected for analysis because we wanted to eliminate some of the uncertainty and complexity that is present in South flow operations due to the close proximity of the ramp area and the departure runway which results in a greater number of aircraft occupying and interacting within the ramp area during peak traffic demand.Analyzing only the North flow operations allows us to focus on the uncertainty of the runway operations and eliminate some of the uncertainties and challenges present in ramp operations.
+III. Tactical Surface Scheduler DesignOne of the components of the ATD-2 IADS system is the tactical surface scheduler 8 (tactical scheduler) which assigns scheduled times for each aircraft at various control points.A core component of the tactical scheduler is a surface model which drives inputs to the scheduler.The tactical scheduler uses these inputs and applies rules to determine the order of consideration which dictates the order in which flights are assigned scheduled runway usage times.Based on the order of consideration, de-conflicted schedules and flight specific advisories are generated.In the following paragraphs, we briefly describe the different components of the tactical scheduler.A more detailed description of the IADS system and the tactical scheduler can be found within the ATD-2 Technology Description Document 8 and the ATD-2 Phase 1 Concept of Use. 9
+A. Surface ModelThe tactical scheduler interacts with a surface model 8 which tracks, updates, and disseminates information on key surface events.Actual surface event data (e.g., Actual OUT information) is used in conjunction with derived data and model processing logic to produce a single cohesive view of airport operations.The core surface modeler functions include computing the three-dimensional (3D) (x,y,t) surface trajectory from the gate to the runway for departures, and from the runway to the gate for arrivals, based on the expected airport/runway configuration and gate configuration.The surface modeler uses surveillance data, when available, to detect the actual surface trajectory and update the estimates.The surface modeler uses coded taxi routes defined by the adaption using the airport resource information to select the available routes or default to shortest path when the coded taxi routes are not available in the adaptation.For a departure aircraft, the model generates an Unimpeded Off-Block Time (UOBT), Unimpeded Taxi Time (UTT), and Unimpeded-Takeoff Time (UTOT) estimate.The off-block time refers to the time the aircraft initiates the pushback from the gate.The model is provided with an Earliest Off-Block Time (EOBT) prediction provided by the airlines.The UOBT is the maximum of the EOBT and current time and represents the best estimate of the time the aircraft will initiate the pushback process.For the UOBT we use the maximum between the EOBT and current time because if the EOBT estimate is in the past, then the current time is the earliest the flight would be available to initiate the pushback process.The UTT is derived from nominal taxi speeds and the expected taxi route and is used to generate the UTOT defined as the UOBT + UTT.
+B. Scheduler Inputs and Order of ConsiderationThe surface model provides EOBT, UOBT, UTOT and other detailed flight-specific modeled input.The tactical scheduler uses the EOBT and UTOT for departures and the Unimpeded Landing Time (ULT) for arrivals as the basis for developing the schedule.For departures, the EOBT and UTOT are used to assign aircraft to three main scheduling groups: Uncertain, Planning and Taxi that define the order of consideration which dictates the order aircraft are inserted into the schedule.The order of consideration is guided by a heuristic that flights with higher certainty should have higher precedence in scheduling.Flights in the Taxi group are assigned runway usage times before flights in the Planning group which are still at the gate.These flights are assigned runway usage times before flights in the Uncertain group.Flights at the gate with an EOBT within the ten minute planning horizon are assigned to the Planning group and the order of consideration within the group is defined by a Ration By Schedule 8 (RBS) approach.For departures in the Uncertain group or taxi group, the order of consideration within the group is governed by a First Come First Served (FCFS) logic based on the UTOT.For an arrival aircraft, NASA's research Time Based Flow Management 8 (rTBFM) generates a wheels-on time at the runway which is passed to the surface model as the ULT.The tactical scheduler receives this wheels-on time as input and does not adjust the arrival schedules.The order of consideration for arrivals runway use scheduling is based on the ULT and is governed by a FCFS logic.
+C. Scheduling Target Takeoff Times and the Delay Propagation FormulaArrivals have the highest order of consideration and are assigned runway usage times known as the Targeted Landing Time (TLT) before the departures.The departures are then assigned runway usage times, which are referred to as the Target Takeoff Times (TTOTs), in order based on the order of consideration and are scheduled at the earliest feasible times such that the TTOTs satisfy all known constraints, including aircraft type (i.e., taxi speed, wake vortex separation), dual-use runways, converging runway operations, any TMIs, and conflicts at the runway thresholds.For departures, the tactical scheduler provides the de-conflicted TTOTs which are used to generate TOBTs and Target Movement Area entry Times (TMATs) to provide specific event times for pushback, movement area entry, and wheels up to the users of the system.Surface metering on a per flight basis is accomplished by assigning a de-conflicted TTOT for each flight and then back calculating a TOBT such that the difference TTOT -TOBT is bounded.This bound is achieved by the delay propagation formula given byT OBT = max[U OBT, T T OT -U T T -TargetQueueLength] (1)where the TargetQueueLength is a parameter defined in time units set by the users that influences the maximum amount of excess taxi time the aircraft will experience.The smaller (larger) the TargetQueueLength translates into less (more) excess taxi time and more (less) gate hold times.
+IV. Balancing Departure Runway Demand and CapacityWhen the departure demand for a runway exceeds the available capacity, the scheduler suggests holding aircraft at the gate to reduce the amount of time aircraft spend off the gate with engines running.In order to properly manage the available runway capacity, it is important for the scheduler to schedule the departure operations at a rate that is consistent with the available capacity.During peak demand, if the scheduled rate is greater than (less than) the capacity of the runway the scheduler will release more (less) aircraft than the runway can accommodate.The rate at which the scheduler schedules the departure operations is not explicitly defined by an Airport Departure Rate (ADR).Instead, each departure is dependent on other departure and arrival operations and a minimum-time separation constraint is applied.The minimum-time separation constraints between any two operations are defined by the FAA wake vortex separation 10 constraints.Scheduling each aircraft at the earliest time such that the separation constraints are satisfied will result in a unique scheduled rate for the given traffic demand.The purpose of this Section is to evaluate if the runway capacity defined by the wake vortex separation constraints provides an accurate estimate of the actual runway capacity.The wake vortex separation constraints schedule the runway at the theoretical maximum capacity and do not provide for runway crossings or missed departure opportunities.Here we measure the difference between the theoretical capacity and the actual runway capacity.
+A. Single Day OperationsTo analyze the rate at which the scheduler is scheduling operations and the rate at which the runway is operating, we count the number of departure and arrival operations in a fixed time period, see Figures 2 and3.These figures illustrate data related to the scheduled number of operations and the realized number of operations within a 15-minute interval for runway 36C and runway 36R, respectively.The data shown in these figures are from the operation data on 2018-04-24 during bank 2 operations that range between 9:00 -11:00am local time at CLT. Runway 36C is primarily a dedicated departure runway that accommodates arrival operations occasionally, whereas runway 36R is a dual use runway that accommodates both arrival and departure operations.In Figures 2 and3 the x-axis represents the start of a 15-minute time bin and the y-axis represents the number of operations within the time bin.Starting at 9:00am, we sample the scheduler at five-minute intervals and count the number of operations that are scheduled between the sampled time and a 15-minute interval into the future.We plot the scheduled number of departure (arrival) operations with a blue (grey) dashed line.At each five minute interval that we sample the scheduler, we also count the number of operations that are realized between the sampled time and a 15-minute interval into the future.We plot the realized number of departure (arrival) operations with a blue (grey) solid line.At each time point that we sample the scheduler, we know how many departure and arrival operations were scheduled and realized between the sampled time and a 15-minute interval into the future.The differences between the scheduled and realized number of departure (arrival) operations are illustrated by the blue (grey) bar chart.For example in Fig. 3, when we sampled the scheduler at 09:45am, we had scheduled eight departure operations and six arrival operations between 09:45am and 10:00am.During this time period, we realized seven departure operations and seven arrival operations.Therefore, in this 15-minute time interval we had scheduled one more departure operation and one less arrival operation than were realized, which are illustrated by the blue and grey bar chart.
+B. Aggregation of Many Days OperationsFigures 2 and 3 provide measurements and insights into a single days operations.On any given day, the difference between the scheduled number of operations and the realized number of operations can occur due to a wide variety of reasons and may not be indicative of a general bias towards scheduling at a higher or lower rate than the available runway capacity.To understand if the scheduler has a general bias towards scheduling at a higher or lower rate than the available runway capacity, we sample schedules at consistent time points during all North flow days between 2018-03-01 through 2018-04-30 and measure the error between the scheduled and realized number of operations for both runways 36C and 36R, see Fig. 4 and Fig. 5. Starting at 9:00am local, we sample the scheduler at five-minute intervals and plot the mean error between the scheduled and realized number of departure (arrival) operations in blue (grey) solid line.The +/-one standard deviation are illustrated with blue (grey) bands around the mean value for the departure (arrival) operations.As can be seen in Figures 4 and5, the average error between the scheduled and realized number of arrivals for both runways tends to oscillate near zero.Since the scheduler is not adjusting arrival schedules, this indicates that the rate at which rTBFM is scheduling the arrival operations does not contain any obvious bias.For the arrivals, we believe that small deviations in the final approach can introduce the uncertainty that is observed in the error between the scheduled and realized number of arrival operations within the 15-minute interval.For departures, we observe that on average the scheduler schedules more departure operations in a 15minute interval than the actual (realized) runway use.This bias towards scheduling more departures than the actual runway use is observed on both runway 36C, which is mainly a departure only runway, and runway 36R, which is a dual use runway.We believe that the cause of the over scheduling is driven by different factors for each runway.For the dedicated departure only runway 36C illustrated in Fig. 4, we observe that the error between the scheduled number of departures and realized number of departures builds throughout the bank and reaches a peak somewhere around 10:00am -10:10am local.The timing of the growth and peak of the error coincides with the growth and peak of the arrival demand landing on the dedicated arrival only runway 36L shown in Fig 1 .As the arrivals land, they must cross the active departure runway 36C in order to get to their gates.Since the tactical scheduler simply separates departure operations by the minimum-time separation defined by the wake vortex constraints, we do not plan for or schedule runway crossings.We believe that the bias we see in Fig. 4 of scheduling more departures than actually use the runway is caused by the runway crossings.For the dual use runway 36R illustrated in Fig. 5, we observe that the error between the scheduled number  of departures and realized number of departures peaks early in the bank and then oscillates at a consistent level just below one.During peak demand, arrivals are typically delivered to this runway in such a way that between any two arrival aircraft there is enough space to depart a single departure.For a variety of reasons, such as compression between two arrivals, the departure that is supposed to takeoff between two arrivals does not always utilize the available slot.This results in a departure that was scheduled to depart taking off at a later point in time.Since we can not make up for this missed opportunity, it seems reasonable to observe the slight bias of over scheduling on the dual use runway.
+V. Target Takeoff Time AccuracyIn addition to surface metering, the scheduler is responsible for generating accurate Target Takeoff Time (TTOT) estimates, which can be used for a variety of reasons including estimating an Earliest Feasible Takeoff Time (EFTT) used to negotiate a Controlled Takeoff Time (CTOT) for aircraft subject to TMI constraints.Evaluating the error in the TTOT prediction can inform the buffers that should be included in an EFTT prediction.The purpose of this section is to measure the TTOT accuracy as a function of the lookahead time.
+A. Accuracy of TTOT PredictionFigure 6 contains histograms of the accuracy of the TTOT on runway 36C measured as the difference between the Actual Takeoff Time (ATOT) and the TTOT in minutes.A negative value indicates that the ATOT was earlier than the TTOT whereas a positive value indicates the ATOT was later than the TTOT. Figure 6a -Fig.6f represent the ATOT -TTOT for runways 36C at lookahead times 30, 25, 20, 15, 10, and 5 minutes prior to the ATOT. Figure 7 illustrates the mean value of ATOT -TTOT as a function of the lookahead time for runways 36C and 36R in blue and green, respectively.The +/-one standard deviation are shown in the blue and green bands around the mean value for runways 36C and 36R.As can be seen in Fig. 7, the TTOT predictions for runway 36C are most accurate at shorter lookahead times, and the mean error in the TTOT prediction is relatively small and unbiased between 30-minutes prior to ATOT and 5-minutes prior to ATOT.At a 30-minute lookahead, the mean ATOT -TTOT is 0.61 minutes compared to a mean of 0.13 minutes at 15-minute lookahead and a mean of 0.34 minutes at a 5-minute lookahead.Whereas the mean TTOT error does not change much 30-minutes prior to ATOT to 5-minutes prior to ATOT, the standard deviation of the error does improve noticeably as the lookahead time decreases.At a 30-minute lookahead, the standard deviation of ATOT -TTOT is 7.84 minutes compared to a standard deviation of 4.93 minutes at 15-minute lookahead and a standard deviation of 1.60 minutes at a 5-minute lookahead.For the dual use runway 36R shown in Fig. 7, the TTOT predictions seem to have a slightly increased bias as the lookahead time increases.At a 30-minute lookahead, the mean ATOT -TTOT is -1.4 minutes compared to a mean of -0.4 minutes at 15-minute lookahead and a mean of 0.2 minutes at a 5-minute lookahead.For the dual use runway 36R, the standard deviation of the error improves as the lookahead time decreases but is slightly worse than the dedicated departure only runway.At a 30-minute lookahead, the standard deviation of ATOT -TTOT is 8.62 minutes compared to a standard deviation of 5.41 minutes at 15-minute lookahead and a standard deviation of 1.73 minutes at a 5-minute lookahead.
+B. Relationship Between Runway Rate and TTOT AccuracyWhen we consider the bias that was observed in the runway rate illustrated in Figures 4 and5 we were expecting to recover that bias in the TTOT accuracy shown in Fig. 7. Given that the runway is accommodating less operations in a 15-minute interval than we are scheduling, it would be reasonable to expect at a 15-minute lookahead time the TTOT predictions would be earlier than the ATOT.Surprisingly, Figure 7 does not show this relationship as the mean ATOT -TTOT at a 15-minute lookahead are 0.13 minutes and -0.4 minutes for runway 36C and 36R, respectively.Somehow at a 15minute lookahead, the TTOT predictions show less bias than we were anticipating.This was an unexpected result that was uncovered during the exploratory data analysis.One factor that is influencing the relationship between the runway rate and the TTOT accuracy is shown in Fig. 8.For each aircraft, we sample the scheduler 15 minutes prior to ATOT and count the number of departures that are scheduled to takeoff before the aircraft, and define this as the scheduled queue.We then   compare this to the number of aircraft that actually takeoff within the 15 minutes prior to ATOT, and define this as the realized queue.The difference between the scheduled queue and the realized queue is plotted as a histogram in Fig. 8 for runways 36C and 36R.A positive value indicates at a 15-minute lookahead prior to ATOT more aircraft were scheduled to takeoff in front of a given aircraft than actually took off, whereas a negative value indicates more aircraft actually took off in front of a given aircraft than were scheduled.This phenomenon helps explain the relationship between the bias in the runway rate and the TTOT accuracy.The runway rate illustrated in Figures 4 and5 indicated that we are over scheduling.However, the predicted queue shown in Fig. 8 illustrates that for any given aircraft, not all the aircraft scheduled to takeoff in front of the aircraft materialize.These two factors seem to counteract each other and result in TTOT predictions that are less biased than we would expect looking at either one of these factors individually.The relationship between the runway rate, predicted queue and TTOT accuracy highlight the challenges that are present on the airport surface.Accurately predicting TTOTs require accurately predicting the departure sequence and accurately predicting the rate at which the departures and arrivals will use the runway.Uncertainty in these predictions can materialize as inaccuracy in the TTOT prediction and can emerge as bias in either direction when analyzing the ATOT -TTOT metric.
+VI. Challenges in the Tactical Time FrameOne of the main challenges that we encountered scheduling in the live operational environment is the uncertainty in the underlying trajectory predictions.Uncertainty in EOBT, taxi route, taxi speed, controller actions, ULT and other factors results in very dynamic UTOT predictions.For aircraft that are off the gate, the order of consideration is dictated by a FCFS ordering of the UTOT.The dynamic nature of the UTOT predictions results in a constantly updating FCFS ordering of the departure UTOTs and ultimately the ordering of the TTOTs evolve with the updated predictions.Another challenge we encountered is the uncertainty related to the EOBT predictions and when a departure will be available to push back from the gate.During the time periods of peak demand, aircraft are scheduled assuming that other aircraft will be available to depart at their EOBTs.If the departure demand does not materialize at the predicted EOBTs, this can result in the scheduler holding back aircraft that are ready to pushback and as a result the scheduler does not feed the runway at a consistent rate.This uncertainty is magnified as the target queue length decreases and the scheduler holds more demand back at the gate.In addition to the uncertainty in the trajectory predictions and EOBT, challenges are present on the dual use runway and with the dedicated departure runway as mentioned in Section IV.On the dual use runway 36R, the arrivals can compress, making it infeasible for a departure to takeoff in a slot that was predicted to be feasible.On the departure only runway 36C, the arrival crossings are not modeled and result in the runway operating at a slightly slower rate than would be predicted by the minimum-time wake vortex separation constraints.
+VII. Summary and DiscussionIn this paper, we provided a data driven analysis to assess the performance of a tactical surface scheduler in the time frame ranging from 30 minutes prior to takeoff through actual off.The tactical scheduler's two main functions include surface metering and scheduling controlled flights that are subject to traffic management initiatives.To achieve these tasks, it is critical for the scheduler to balance the departure demand with the available runway capacity while simultaneously generating accurate takeoff time predictions.To measure the performance of the scheduler in balancing the demand with the available capacity we analyzed the rate at which the scheduler is scheduling operations compared to the rate at which the runway is operating at.For both runways that we analyzed, we observed that using the minimum-time wake vortex separation constraints to implicitly define the runway capacity resulted in the scheduler scheduling departure operations at a slightly higher rate than the runway was operating at.For the dual use runway, we believe the difference between the scheduled rate and the realized rate is driven by the departures occasionally missing an opportunity to takeoff in an available slot.On the dedicated departure only runway, the arrivals that land and need to cross the active departure runway results in the runway operating at a slightly lower rate than we are scheduling.To assess the accuracy of the scheduler predictions we compared the TTOT to the ATOT as a function of the lookahead time prior to actual off.We observed on both runways that as the lookahead time to ATOT decreases the standard deviation of the ATOT -TTOT error improves.For the dedicated departure only runway, the mean error showed little bias between 30 minutes prior to takeoff to ATOT.For the dual use runway, the mean error at 30 minutes prior to takeoff showed a slight bias to predicting TTOT that were later than the ATOT, but this bias tended toward zero as the lookahead time decreased.An unanticipated relationship was found between the runway rate and the TTOT accuracy.Knowing that we were scheduling at a higher rate than the runway was operating, we expected to recover this bias in the TTOT accuracy by measuring aircraft taking off late compared to their TTOT predictions.Instead, we discovered that the TTOT predictions contained less bias than we anticipated.One factor that influenced this relationship is that for each departure at a 15-minute lookahead prior to ATOT, we scheduled more departures to takeoff prior to a given departure than actually materialized.This seems to have offset the bias of scheduling at a higher rate and also illustrates the challenges in generating accurate TTOT predictions as they are dependent on predicting both the departure sequence and the runway rate.Future research will investigate new techniques in which we can reduce the inaccuracies observed in the runway rate by incorporating the runway crossings into the logic.We also plan to research the uncertainty in the EOBT and departure trajectory predictions as this uncertainty feeds into inaccurately predicting the departure sequence.Figure 1 .1Figure 1.Layout of runways at CLT airport with three North flow runways 36L, 36C, and 36R.
+Figure 2 .2Figure 2. Data illustrating the rate for runway 36C which is primarily a departure only runway.The x-axis represents the start of a 15-minute time bin and the y-axis represents the number of operations.
+Figure 3 .3Figure 3. Data illustrating the rate for runway 36R which is a dual use runway accommodating departures and arrivals.The x-axis represents the start of a 15-minute time bin and the y-axis represents the number of operations.
+Figure 4 .4Figure 4. Data illustrating the mean error measured as scheduled -realized operations for runway 36C which is primarily a departure only runway.The x-axis represents the start of a 15-minute time bin and the y-axis represents the error in the number of operations.Starting at 9:00am local time, we sample the scheduler over a two month period at consistent five minute intervals and compute the average error between the scheduled and realized operations within the 15 minute interval into the future.
+Figure 5 .5Figure 5. Data illustrating the mean error measured as scheduled -realized operations for runway 36R which is a dual use runway accommodating departures and arrivals.The x-axis represents the start of a 15-minute time bin and the y-axis represents the error in the number of operations.Starting at 9:00am local time, we sample the scheduler over a two month period at consistent five minute intervals and compute the average error between the scheduled and realized operations within the 15 minute interval into the future.
+Figure 6 .6Figure 6.Histograms of the schedule accuracy defined as ATOT-TTOT (Minutes) as a function of the lookahead time to ATOT for runway 36C.
+Figure 7 .7Figure 7. Accuracy of ATOT -TTOT (Minutes) illustrated as the mean value and +/-one standard deviation bands as a function of the lookahead time to ATOT for runways 36C and 36R.
+Figure 8 .8Figure 8. Histogram showing the difference between number of aircraft scheduled to takeoff in front of a given departure at a 15-minute lookahead (predicted queue size) compared to the number of aircraft that actually takeoff in front of a departure in the same 15-minute interval (actual queue size).A positive value indicates that more aircraft were scheduled in the predicted queue than materialized in the actual queue.
+		
+		
+			
+
+				
+
+
+	
+		Benefit opportunities for integrated surface and airspace departure scheduling: A study of operations at Charlotte-Douglas International Airport
+		
+			RichCoppenbarger
+		
+		
+			YoonJung
+		
+		
+			TomKozon
+		
+		
+			AmirFarrahi
+		
+		
+			WaqarMalik
+		
+		
+			HanbongLee
+		
+		
+			EricChevalley
+		
+		
+			MattKistler
+		
+		10.1109/dasc.2016.7778084
+	
+	
+		2016 IEEE/AIAA 35th Digital Avionics Systems Conference (DASC)
+		Sacramento, CA
+		
+			IEEE
+			2016
+			
+		
+	
+	Coppenbarger, R., Jung, Y., Chevalley, E., Kozon, T., Farrahi, A., Malik, W., Lee, H., and Kistler, M., "Benefit Opportunities for Integrated Surface and Airspace Departure Scheduling," 35th Digital Avionics Systems Conference (DASC), Sacramento, CA, 2016, pp. 25-29.
+
+
+
+	
+		Evaluation of the Terminal Sequencing and Spacing system for Performance-Based Navigation arrivals
+		
+			JaneThipphavong
+		
+		
+			JaewooJung
+		
+		
+			HarrySwenson
+		
+		
+			LynneMartin
+		
+		
+			MelodyLin
+		
+		
+			JimmyNguyen
+		
+		10.1109/dasc.2013.6712503
+	
+	
+		2013 IEEE/AIAA 32nd Digital Avionics Systems Conference (DASC)
+		
+			IEEE
+			2013
+			
+		
+		
+			11th USA/Europe Air Traffic Management Research and Development Seminar
+		
+	
+	Thipphavong, J., Jung, J., Swenson, H. N., Witzberger, K. E., Lin, M. I., Nguyen, J., Martin, L., Downs, M. B., and Smith, T. A., "Evaluation of the Controller-Managed Spacing Tools, Flight-deck Interval Management, and Terminal Area Metering Capabilities for the ATM Technology Demonstration# 1," 11th USA/Europe Air Traffic Management Research and Development Seminar , 2013, pp. 10-13.
+
+
+
+	
+		
+			SAEngelland
+		
+		
+			RCapps
+		
+		
+			KBDay
+		
+		
+			MSKistler
+		
+		
+			FGaither
+		
+		
+			GJuro
+		
+		Precision Departure Release Capability (PDRC) Final Report
+		
+			2013
+		
+	
+	Engelland, S. A., Capps, R., Day, K. B., Kistler, M. S., Gaither, F., and Juro, G., "Precision Departure Release Capability (PDRC) Final Report," 2013.
+
+
+
+	
+		Performance Evaluation of SARDA: An Individual Aircraft-based Advisory Concept for Surface Management
+		
+			YoonJung
+		
+		
+			TyHoang
+		
+		
+			MiwaHayashi
+		
+		
+			WaqarMalik
+		
+		
+			LeonardTobias
+		
+		
+			GautamGupta
+		
+		10.2514/atcq.22.3.195
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			22
+			3
+			
+			2015
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Jung, Y., Malik, W., Tobias, L., Gupta, G., Hoang, T., and Hayashi, M., "Performance evaluation of SARDA: an individual aircraft-based advisory concept for surface management," 2015.
+
+
+
+	
+		Evaluation of Pushback Decision-Support Tool Concept for Charlotte Douglas International Airport Ramp Operations
+		
+			MHayashi
+		
+		
+			THoang
+		
+		
+			YCJung
+		
+		
+			WMalik
+		
+		
+			HLee
+		
+		
+			VLDulchinos
+		
+		
+			2015
+		
+	
+	Hayashi, M., Hoang, T., Jung, Y. C., Malik, W., Lee, H., and Dulchinos, V. L., "Evaluation of Pushback Decision-Support Tool Concept for Charlotte Douglas International Airport Ramp Operations," 2015.
+
+
+
+	
+		Evaluation of a tactical surface metering tool for Charlotte Douglas international airport via human-in-the-loop simulation
+		
+			SavitaVerma
+		
+		
+			HanbongLee
+		
+		
+			LynneMartin
+		
+		
+			LindsayStevens
+		
+		
+			YoonJung
+		
+		
+			VictoriaDulchinos
+		
+		
+			EricChevalley
+		
+		
+			KimJobe
+		
+		
+			BonnyParke
+		
+		10.1109/dasc.2017.8102046
+	
+	
+		2017 IEEE/AIAA 36th Digital Avionics Systems Conference (DASC)
+		
+			IEEE
+			2017
+		
+	
+	Verma, S., Lee, H., Dulchinos, V. L., Martin, L., Stevens, L., Jung, Y., Chevalley, E., Jobe, K., and Parke, B., "Evaluation of a Tactical Surface Metering Tool for Charlotte Douglas International Airport via Human-in-the-Loop Simulation," 2017.
+
+
+
+	
+		A framework for integrating arrival, departure, and surface operations scheduling
+		
+			ShannonZelinski
+		
+		10.1109/dasc.2014.6979543
+	
+	
+		2014 IEEE/AIAA 33rd Digital Avionics Systems Conference (DASC)
+		
+			IEEE
+			2014
+		
+	
+	Zelinski, S., "A framework for integrating arrival, departure, and surface operations scheduling," Digital Avionics Systems Conference (DASC), 2014.
+
+
+
+	
+		
+		
+			AGing
+		
+		
+			SEngelland
+		
+		
+			ACapps
+		
+		
+			MEshow
+		
+		
+			YJung
+		
+		
+			SSharma
+		
+		
+			ETalebi
+		
+		
+			MDowns
+		
+		
+			CFreedman
+		
+		
+			TNgo
+		
+		
+			HSielski
+		
+		
+			EWang
+		
+		
+			JBurke
+		
+		
+			SGorman
+		
+		
+			BPhipps
+		
+		
+			MorganRuszkowski
+		
+		
+			L
+		
+	
+	
+		Airspace Technology Demonstration
+		
+			2
+			2
+			2018
+		
+	
+	Technology Description Document (TDD
+	Ging, A., Engelland, S., Capps, A., Eshow, M., Jung, Y., Sharma, S., Talebi, E., Downs, M., Freedman, C., Ngo, T., Sielski, H., Wang, E., Burke, J., Gorman, S., Phipps, B., and Morgan Ruszkowski, L., "Airspace Technology Demonstration 2 (ATD-2) Technology Description Document (TDD)," 2018.
+
+
+
+	
+		Airspace Technology Demonstration 2 (ATD-2) Phase 1 Concept of Use (ConUse)
+		
+			YJung
+		
+		
+			SEngelland
+		
+		
+			ACapps
+		
+		
+			RCoppenbarger
+		
+		
+			BHooey
+		
+		
+			SSharma
+		
+		
+			LStevens
+		
+		
+			SVerma
+		
+		2018. 10
+		
+		
+			
+		
+	
+	Wake Turbulence Recategorization
+	Jung, Y., Engelland, S., Capps, A., Coppenbarger, R., Hooey, B., Sharma, S., Stevens, L., and Verma, S., "Airspace Technology Demonstration 2 (ATD-2) Phase 1 Concept of Use (ConUse)," 2018. 10 "Wake Turbulence Recategorization," https://www.faa.gov/documentLibrary/media/Order/Final_Wake_Recat_Order. pdf, Accessed: 2018-04-25.
+
+
+				
+			
+		
+	

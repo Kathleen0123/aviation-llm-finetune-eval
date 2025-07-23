@@ -1,0 +1,702 @@
+
+	
+	
+		
+I. IntroductionRAFFIC flow management (TFM) in the United States consists of two loosely coupled phases under current day operations.In the first phase, the Federal Aviation Administration's (FAAs) Air Traffic Control System Command Center (ATCSCC) develops national-level flow management initiatives over a 2-8 hour planning horizon.The second phase, which is performed at the Center-level over a 30 minute to 2 hour time horizon, serves as a tactical control loop to implement the national-level initiatives, and to introduce local flow control initiatives, such as miles-in-trail and tactical rerouting.These Center-level controls are designed to accommodate localized disturbances in the national airspace system (NAS), or to refine the national-level plan in response to updated weather and traffic information. 1,2Aside from a limited number of decision support capabilities, such as the Enhanced Traffic Management System (ETMS) 3 and the Flight Schedule Monitor (FSM), 4 the daunting task of developing national and tactical flow control programs is largely left to human operators, who rely on a combination of intuition and past experience.This can result in the under or over and inconsistent controlling of traffic flows, and the inability to accommodate user preferences.With capacity limited by controller workload in many parts of the country, and the forecasted doubling or tripling of air traffic in the United States over the next twenty years, 5 there is a need to develop advanced automation that can maximize the throughput and efficiency of the National Airspace System (NAS), while accommodating user preferences, under sources of uncertainty, such as weather.7][8][9] In Ref. 6, an integrated three-step hierarchical method is proposed for developing deterministic TFM plans consisting of national-level playbook reroutes, miles-in-trail restrictions, and tactical reroutes to alleviate sector-level congestion.A deterministic, Center-based system that can be used to manually identify congested sectors and compare the trade-offs of implementing altitude capping, local rerouting, departure delays, and time-based metering or miles-in-trail restrictions is proposed in Ref. 7. A deterministic, open-loop integer programming based model that can be used to assign departure delays, airborne delays, and reroutes to individual flights is proposed in Ref. 8, but the computational complexity of this model has limited its use to a small number of real-world examples. 10Lastly, Ref. 9 proposes a Monte Carlo-based incremental, probabilistic decision making approach for developing en route traffic management controls.A key research gap that has yet to be addressed is determining how the promising optimization-based approach proposed in Ref. 8 can be exploited for developing TFM controls that account for system uncertainties, while overcoming the documented computational complexities associated with this approach. 10n this study, a sequential optimization approach is developed that integrates a strategic departure control model with a fast-time simulation environment to reactively control flights subject to system uncertainties, such as imperfect weather and flight intent information.This departure control model is formulated as a deterministic integer programming model, which assigns pre-departure delays to individual flights based on deterministic estimates of the flight schedule, airport capacities, and airspace capacities.To reduce the complexity of the ensuing integer programming model, only departure delays are assigned, while tactical en route flight control is accomplished directly within the simulation through heuristic techniques.These heuristics rely on an integer programming based shortest path routing algorithm and an airborne holding model that is used only as a control strategy of last resort.This new closed-loop, integrated optimization-simulation system is tested on a real-world scenario that is derived from the flight schedule data from August 24, 2005 and the Corridor Integrated Weather System (CIWS) convective weather data 11 from June 19, 2007.Different dates for the convective weather and aircraft schedule data were intentionally selected to ensure that control actions implemented by either the FAA or a user in response to the weather impacting the NAS on June 19, 2007 were not reflected in the flight schedule data.Section II describes the strategic and tactical models adopted in this study for assigning departure delays, tactical reroutes, and airborne holding to flights.The software simulation environment that was developed to support the sequential decision-making model is also described in Section II.A discussion of the flight schedules, weather scenarios, and airspace capacity constraints used in this study is presented in Section III.The frequency and intensity of the departure, rerouting, and airborne holding controls are presented in Section IV.Finally, concluding remarks are presented in Section V.
+II. Modeling MethodThis section describes the integrated optimization-simulation architecture.After first describing its key attributes, a modification of the binary integer programming model described in Ref. 8 is presented.Following this discussion, the shortest path routing algorithm and the airborne holding algorithms are described.
+A. System ArchitectureThe major components of the Java-based, integrated optimization-simulation environment are illustrated in Fig. 1.To the left of this image are the system inputs, which consist of user schedules and flight plans, weather data, and airspace adaptation data.For this study, the user schedules and adaptation data are extracted from a historical ETMS data archives that will be described in Section III.The primary weather input used was CIWS data, which will also be described in Section III.These system inputs were processed directly by the "Primary Simulation" system that was chosen to be NASA's Future ATM Concepts Evaluation Tool (FACET). 12To facilitate this study, an Application Programming Interface (API) was developed for FACET that leverages many of the core capabilities designed in the development of the Configurable Airspace Research and Analysis Tool -Scriptable (CARAT#) 13 system.This interface allowed the Java-based sequential optimization framework to be developed without modifying the baseline FACET system.Every minute, the "Primary Simulation" provides updated state information, x(t), (e.g., latitude, longitude, speed, altitude, and heading), x(t), for all aircraft in the simulation, while updates to the observed weather data, w(t), are provided every five-minutes, which corresponds to the frequency at which CIWS weather updates are received.On an hourly basis, x(t) and w(t) are used to develop and refine deterministic, strategic-level flow control initiatives, which for the purpose of this initial study consist of assigning pre-departure delays to flights subject to airport and airspace capacity constraints.The high-level steps associated with this process are depicted by the three boxes that are labeled "Strategic Departure Control Model", "Strategic Weather Translation" and "Secondary Simulation" in Fig. 1.The first step in developing these strategic-level controls is to calculate the predicted positions of all airborne and scheduled flights over a user defined planning horizon, which is accomplished by the "Secondary Simulation" system.This "Secondary Simulation" system was also chosen to be a version of FACET for this study.The planning horizon used, as well as the frequency the strategic-level model was called, are discussed in Section III.A.The predicted positions of all aircraft and the forecasted weather are passed into the "Strategic Weather Translation" module that converts the raw meteorological weather data into reduced sector capacity estimates.The weather translation model adopted is described in Sections III.C and III.D. The forecasted system demand and capacity estimates are used as inputs to the "Strategic Departure Control Model" module.A description of this model is provided in Section II.B.The controls generated by this model, u(t), are flight specific pre-departure delays that are subsequently passed to the "Primary Simulation" for implementation.Refinements to the strategic-level traffic flow management plan to account for uncertainties in the demand and capacity estimates are accomplished through two tactical control loops.The first of these tactical control loops that are depicted by the three boxes labeled "Tactical Weather Translation," "Trajectory Intersects Weather Check," and "Deterministic Weather Rerouting" in Fig. 1 is called at a frequency that ranges between 5 and 30 minutes, and assigns tactical reroutes to flights to ensure that aircraft do not venture into significant convective weather.The variable calling frequency is allowed here to account for the confidence in the weather forecast accuracy, and the impact of varying this parameter is explored in detail in Section IV.B.These regions of significant convective weather are defined by the "Tactical Weather Translation" module, which is described in more detail in Section III.D. The trajectories of all flights over a 100 nmi to 400 nmi look-ahead horizon are checked to determine if any flight intersects one of the identified regions of significant convective weather in the "Trajectory Intersects Weather Check" module.Flights found to intersect these regions are subsequently rerouted in the "Deterministic Weather Rerouting" module using the algorithm described in Section II.C.The tactical, aircraft-level rerouting controls, u(t), are subsequently passed back into the "Primary Simulation" for implementation.The lowest level control loop that is called every minute is used as a control strategy of last resort to immediately assign airborne holding to any flight that will encounter an en route weather hazard within the next minute.These en route weather hazards are defined by the "Tactical Weather Translation" module, and will be described in Section III.D. The three high-level steps associated with this process are depicted by the three boxes labeled "Tactical Weather Translation," "Trajectory Intersects Weather Check," and "Tactical Airborne Holding" in Fig. 1.A description of the tactical airborne holding algorithm is presented in Section II.D.
+B. Departure Control ModelThe parameters for the binary integer programming model that was used to assign departure delays are:F : set of€ w ft j = x ft- l fP( f ,m ) m=1 i-1 ∑With this definition of ft x , the objective of this model is to minimize the total ground delay with respect to the unconstrained schedule, and is expressed as:€ min (t -d f )(x ft -x ft-1 ) t= d f d f +G ∑ f ∈F ∑(1)The set of constraints are described as follows:Airport Departure Capacity: Number of departures from an airport, k, during any time period is bounded by airport departure capacity,€ (x ft -x ft-1 ) ≤ D k f :P( f ,1)= k ∑ (t), € ∀k ∈ K, t ∈ {1,...,T }(2)Airport Arrival Capacity: Number of landings during any time interval is limited by airport arrival capacity,€ (x ft -x ft-1 ) ≤ A k (t) f :P( f ,N f )= k ∑ , € ∀k ∈ K, t ∈ {1,...,T }(3)Sector Capacity: Ensures that the number of aircraft present in sector j at time t does not exceed the sector capacity,€ (w ft j -w ft ′ j { f : j= P( f ,i), ′ j = P( f ,i+1),i< N f } ∑ ) ≤ S j (t), ∀j ∈ J, t ∈ {1,...,T }(4)The baseline sector capacities, € S j (t) , were taken to be the monitor alert parameters (MAP).However only a subset of all flights in the region of airspace considered were subject to pre-departure delays, which is discussed in Section III.C.To account for the impact of these uncontrolled flights on the sector capacities, the time varying demand associated with these flights was calculated and subtracted from the nominal sector MAP to provide an estimate of the actual capacity available in each sector.Furthermore, the "Strategic Weather Translation" module that is illustrated in Fig. 1 and described in Section III.D was used to further reduce the values of € S j (t) to account for en route weather impacts.Time Connectivity: Requires that the decision variables are monotonically increasing1 0, f F, { ,.., } ft ft f f x x t d d G - - ≥ ∀ ∈ ∈ +(5)Maximum Allowed Departure Delay:1 f fd G x + =It is worth noting that the original model presented in Ref. 8 also includes a set of flight connectivity constraints.Since these constraints were not relevant to the current en route flight scheduling problem, their description has been omitted.Additionally, the extra variables and constraints that allowed airborne holding to be assigned to individual flights in the original model have been removed, and airborne holding is assigned independently using the model presented in II.D.By decoupling the assignment of pre-departure delays and airborne holding to flights, the current approach can more readily assign airborne holding to flights in response to changing weather conditions.An added benefit of this decoupling is that the runtime performance of the current model has also been greatly improved.Finally, the integer constraint on € x ft was relaxed to enhance the solvability of this model.The strong formulation of this model resulted in
+€x ft taking on values of only zero or one for the test cases examined in this study.
+C. Deterministic Weather Rerouting ModelTo generate the deterministic weather avoidance routes for this study, a standard linear programming based shortest path algorithm 14 was used.6][17] In future studies, a more sophisticated and computationally efficient algorithm that leverages the state-of-the-art will replace the current algorithm.The parameters for the model used in this study follow:€ w ij =1, if the link between nodes i and j is used 0, otherwise
+  With this definition of € w ij , the objective of the model is to determine the "shortest" or least costly path from starting node € i 1 to ending node € i N , and is expressed as:€ min C ij w ij (i, j )∈L ∑ (6)Here the notation (i,j) denotes the link connecting node i and node j.The set of constraints are described as follows:Starting Flow: Exactly one path is allowed to connect to the starting node€ i 1 , € w i 1 j = 1 (i 1 , j )∈L ∑ (7)Balanced Flow: Ensures that the flow into each routing node is equal to the flow out of each routing node, €w ik = w kj ∀ k ∈ I \ {i 1 ,i N } (k, j )∈L ∑ (i,k)∈L ∑ (8)The set of routing nodes, I, was generated by uniformly distributing 20 latitude points and 20 longitude points within the polygon defined by 43º latitude to the North, 29º latitude to the South, -93º longitude to the West, and -70º longitude to the East.This region and the corresponding routing nodes are illustrated in Fig. 2 along with a snapshot of the CIWS weather at 12:00 UTC on June 19, 2007.With these parameters, a routing grid in which the horizontal and vertical distance between adjacent nodes was approximately 50 nmi was generated that encompassed most of the eastern region of the U.S. The set of all links, € L , connecting the routing nodes was generated by connecting each point to its eight nearest neighbors and the cost of traversing each link was calculated.For this study, the cost was nominally set to the great circle distance connecting the two nodes forming a particular link.Each link that intersected a weather hazard was subsequently weighted by a large penalty factor, which was set to a value of 1,000.Finally, the integer program defined by Eqs. ( 6)-( 8) was solved using either the freely available GNU linear programming solver (glpk) 18 or AMPL 14 /CPLEX, depending on the hardware platform used and whether or not a parallelized version of the routing algorithm was used.An example of a tactical weather avoidance reroute for a flight that was nominally scheduled to travel from Chicago O'Hare (ORD) to Newark International (EWR) on the flight path illustrated by the solid red line is shown in Fig. 3.The rerouted portion of the flight path, which is depicted by the dashed green line, is generated from the starting node, i 1 , to the ending node, i N , and this rerouted flight path segment is subsequently reinserted into the original scheduled route to generate the weather avoidance route.For reference, this reroute was generated to avoid the yellow and orange polygons in this figure that represent the regions in which the CIWS Vertically Integrated Liquid (VIL) level was equal to three or higher.
+D. Tactical Airborne HoldingA one-minute "dead-reckoning" trajectory is generated for each aircraft, and used in the "Trajectory Intersects Weather Check" module that is illustrated in Fig. 1 to identify flights requiring tactical airborne holding.Flights requiring tactical airborne holding are those flights for which neither a pre-departure delay nor a deterministic reroute could be generated to ensure that the flight did not deviate into a weather hazard.A number of factors can contribute to flights receiving airborne holding, such as having a weather hazard located directly over the arrival or departure airport.Additionally, the 50 nmi grid used for the rerouting algorithm (see Section II.C) is often too coarse to generate a reroute that avoids the en route weather hazards, but reducing this grid spacing can significantly increase the runtime of the rerouting algorithm.When determining if a flight was a candidate for airborne holding, the line segment formed by connecting the aircraft's current position with this forecasted position was compared against all line segments forming the contours of the weather hazards.If this segment intersected a weather hazard, then the "Tactical Airborne Holding" module that is depicted in Fig. 1 assigned one minute of airborne delay to the flight in the "Primary Simulation."For reference, the "dead-reckoning" trajectory is generated assuming that an aircraft will maintain its current course, airspeed, and altitude over the next minute.A "Secondary Simulation" could have been used to generate this trajectory, but the computational overhead associated with launching this system every minute was not warranted.
+III. Experimental SetupThe frequency at which the strategic and tactical flight control models were called, the set of potentially controlled flights, and the weather translation models used are described in this section.For all experimental runs, the unscheduled flight demand set was derived from the August 24, 2005 ETMS data set.The ETMS data parsing logic in FACET extracted the following messages to generate the inputs for the fast-time simulations: departure messages (DZ), flow control track/flight data block messages (TZ), and flight plan messages (FZ).The TZ messages were used to establish an initial position for each flight, the FZ messages were used to assign baseline flight paths to each flight, and the DZ messages were used to establish departure times.
+A. Planning IntervalsAll fast-time experimental results assumed a start time of 10:00 Coordinated Universal Time (UTC), which corresponds to 6:00 am Eastern Daylight Time (EDT), and a 6 hr planning horizon as illustrated in Fig. 4. Every two hours, starting at 10:00 UTC, the strategic departure control model illustrated in Figs. 1 and4 was solved for a two hour planning horizon, and the departure controls were applied to the "Primary Simulation" shown in Fig. 1.In follow-on studies, the effect of varying the duration and frequency of this strategic planning phase will be explored.The tactical rerouting controls labeled in Figs. 1 and4 were nominally calculated once every 5 mins.using the methodology described in Section II.C.To explore the sensitivity of these reroutes to the planning interval, subsequent fast-time simulations were conducted for which rerouting occurred at frequencies of 10, 15, and 20 min.These results are presented in Section IV.Finally, the tactical airborne holding controls labeled in Figs. 1 and4, were applied every minute using the method described in Section II.A.
+B. Tactically Controlled FlightsThe set of flights that were candidates for either tactical rerouting or airborne holding consisted of all flights that resided within the blue-green polygon depicted in Fig. 2.This region includes all or most flights in the following Centers: Chicago, Cleveland, Boston, New York, Indianapolis, Washington DC, Memphis, Kansas City, Fort Worth, Jacksonville, and Atlanta.The time varying count of flights subjected to tactical flight controls for the August 24, 2005 data set is shown in Fig. 5.The minimum number of potentially controllable flights was 530, which occurred at 10:00 UTC, while the maximum instantaneous number of controllable flights was 2,412 at 13:37 UTC.
+C. Strategic Model Flights and ConstraintsFor the strategic departure control model that was described in Section II.B, all pre-departure flights that were nominally scheduled to depart from one of the following Centers at any time during the 2-hr strategic planning horizon were candidates for departure control: Chicago, New York, Cleveland, Indianapolis, Washington DC, Fort Worth, Atlanta, Memphis, Jacksonville, and Kansas City.Collectively the airspace of these ten Centers generally cover the polygon illustrated in Fig. 2. Using the August 24, 2005 data set, 2,701 flights were included in the first call to the strategic departure control model that covered the period from 10:00 UTC to 12:00 UTC (see Fig. 4); 4,576 flights were included in the second call to this model that started at 12:00 UTC and extended to 14:00 UTC; and 4,283 flights were included in the third call that started at 14:00 UTC and extended to 16:00 UTC.The geographical distribution of the airspace constraints appearing in Eqs. ( 2)-( 4) is illustrated in Figure 6.The 949 red circles represent the location of the airport arrival and departure capacity constraints appearing in Eqs. ( 2) and (3); and the green highlighted sectors depict those sectors for which capacity constraints were included in Eq. ( 4).Note that the current problem formulation contains constraints for 987 sectors, but only the location of the highaltitude sector capacity constraints are illustrated in Fig. 6.The airport arrival and departure capacities were set to the nominal rates for each of these airports as defined in the ETMS system, where for example the nominal departure rate for EWR is 15 aircraft per 15 minutes and the airport arrival rate is 10 aircraft per 15 minutes.As discussed in the previous section, the nominal sector capacities were set to the monitor alert parameter for each sector, and subsequently reduced to account for the impacts of en route convective weather, which will be discussed in the next subsection, and the time-varying "background" demand of flights that were not candidates for pre-departure delays.An example of the original monitor alert value for sector 49 in Cleveland Center is illustrated by a solid black line in Fig. 7a, while the reduced capacity that accounts for the uncontrolled time-varying traffic demand is depicted by a dashed red line.For reference, the Cleveland Center boundary, the high altitude sectors in this Center, and the regions with CIWS VIL ≥ 3 are depicted in Fig. 7b.The highlighted sector in this figure is sector 49.
+[a][b]
+D. Weather ConstraintsThe weather scenario used was developed using actual and forecasted CIWS data from June 19, 2007.The convective weather on this day consisted of a squall line that extended from the U.S.-Canadian border into Memphis Center by early morning (see Fig. 2).This line of storms moved in an easterly direction throughout the day, and impacted much of the eastern shoreline by mid-afternoon.This weather pattern resulted in widespread delays throughout the NAS based on statistics available through the FAA's Operations Network (OPSNET) 19 database.For reference, 207,912 mins. of delay were logged on this day.In contrast, only 19,712 min. of delay were recorded for July 24, 2007, which can be described as a "good weather day."As noted in Fig. 1, the influence of weather on the air traffic was captured through two independent mechanisms.For strategic planning, the box in Fig. 1 labeled "Strategic Weather Translation" was used to calculate weather impacted sector capacities that were used in Eq. ( 4) of the departure control model.For this initial study, a simple weather translation model was used that reduced the nominal sector capacities, which were taken to be the monitor alert parameters, by fixed percentages (i.e., 0%, 20%, 40%, and 60%) if any portion of a sector was impacted by a region of CIWS VIL ≥ 3.This is acknowledged to be a simplistic model; however, to the best of the author's knowledge no method exists in the literature for accurately estimating the capacity of a weather impacted sector.][22][23][24][25][26] An example of the weather impacted sector capacities for sector 49 in Cleveland Center as a function of time between 10:00 and 13:00 UTC is shown in Fig. 7a.For reference, this sector is depicted by the gray filled polygon in Fig. 7b.The black line represents the MAP, which was used as the nominal sector capacity; the red line represents the residual capacity when accounting for the time varying demand of the flights not controlled by the departure control model; the green line represents the residual capacity when weather results in a 20% reduction in capacity; the blue line represents the capacity when the impact of weather is to reduce the capacity by 40%; and finally the purple line represents the capacity when weather results in a 60% reduction in the sector capacity.Weather with CIWS VIL ≥ 3 was present in sector 49 between 11:00 and 12:00 UTC on June 19, 2007.For reference, the location of the weather with CIWS VIL ≥ 3 at 11:30 UTC is illustrated in Fig. 7b.For the tactical flight controls (e.g., rerouting and airborne holding), the weather translation simply consisted of creating contours around the regions of airspace with CIWS VIL ≥ 3.For airborne holding, contours were only created for the current CIWS observations.However, for tactical rerouting, contours were generated for the current observations, as well as, the 5 min., 10 min., 15 min., 20 min., 25 min., and 30 min.forecasts.The polygons consisting of the union of these individual forecast polygons were subsequently used in assigning costs to the links used in the shortest path rerouting algorithm.Follow-on studies that explore the use of CIWS forecasts up to 2 hours would be beneficial.As in the strategic weather translation modeling approach, the current approach is simple, and as noted in Ref. 24 using VIL alone, as opposed to also considering echo top information, will at times give results that are too conservative while at other times give results that are too liberal.In a future study, a more sophisticated tactical weather translation model, such as the Convective Weather Avoidance Model (CWAM) 22 will be adopted.
+IV. ResultsThis section contains the results of thirty-two, 6-hr fast-time simulation experiments to study the ability of the optimization-simulation approach to assign strategic pre-departure delays, tactical reroutes, and airborne holding to flights subject to the airport and airspace capacity constraints described in Section III.To limit the size of the test matrix, the sensitivity of the total delays, the weighted total delay cost, airborne holding delays, rerouting delays, and ground holding delays were examined in terms of variations in the rerouting look-ahead distance, the rerouting frequency, and the available capacity of the weather impacted sectors.
+A. Sector Capacity versus Rerouting Look-ahead DistanceContour plots of the total delays, the total weighted delay cost as a function of the rerouting look-ahead distance, and the percent reduction in the weather-impacted sector capacities are presented in Figs.8a and8b, respectively.Here, the weighted delay cost is equal to the sum of the ground delays, the rerouting delays weighted by a factor of two, and the airborne holding delays weighted by a factor of 30.The factor of two weighting for the rerouting delays is justified based on the increased cost of fuel consumption for a flight on the ground versus in the air.The factor of 30 weighting associated with the airborne holding accounts for this increased fuel consumption cost, as well as, an additional penalty factor since tactical airborne holding can greatly increase the complexity of a region of airspace, 27 and for this study airborne holding was a control strategy of last resort that was to be applied only when a suitable reroute or pre-departure delay could not be assigned to a flight.Finally, all results in this subsection assume that an aircraft can reroute every 5 minutes, which corresponds to the CIWS weather update rate, if the current path of the flight is forecasted to intersect a weather hazard within the specified look-ahead distance horizon.
+[a][b] Interesting trends are apparent from the total delay contour plot in Fig. 8a.The most notable trend is that the total delay is fairly insensitive to minor reductions (e.g., < 30% capacity reductions) in the sector capacities that appear in Eq. ( 4); however, the total delays increase noticeably for both short and long rerouting look-ahead distance when severe, wide-spread weather impacts are experienced.Unless severe weather impacts are present (e.g., > 50% capacity reductions), the current set of algorithms perform best when the routing look-ahead is limited to 200 to 300 nmi.This is expected since only CIWS weather observations and forecasts up to 30 min were considered when generating the weather avoidance routes, as discussed in Section III.D.Although the total delays for minor reductions in the weather impacted sector capacities appear similar, three distinct types of TFM solutions give rise to these delays.The first type of solutions occur when the rerouting look-ahead distances are short (i.e., ≤ 150 nmi) and a combination of myopic reroutes and airborne holding ensure that flights do not deviate into weather hazards.The second type of solutions occur when the look-ahead distance is between 200 and 350 nmi, and the algorithms generate reasonably robust tactical reroutes with a small amount of airborne holding.Finally, the third type of solutions occur with larger look-ahead distances were more strategic reroutes are generated that require frequent modifications due to the weather intent uncertainty but airborne holding again is low.Moving next to a discussion of the airborne holding and ground holding delay results that are depicted in Figs.9a and9b, respectively, a number of interesting trends can be noted.Firstly, the airborne holding delays are greatest for short look-ahead distances, as previously noted, and the amount of airborne holding is roughly independent of the amount by which the weather impacted sector capacities appearing in Eq. ( 4) are reduced.This illustrates the extent to which the strategic departure control model and the airborne holding model are decoupled, since intuitively an increase in pre-departure delays should give rise to a decrease in airborne holding delays.In regards to the ground holding delays, small reductions in the sector capacities have little effect on the ground holding delays, but these delays increase rapidly once the weather causes sector capacities to be reduced by 40% or more.
+[a][b] Finally, the rerouting delays and the number of reroutes are presented in Fig. 10.In terms of overall performance, the shortest-path routing algorithm used performed best when the look-ahead distance was limited to 200 to 300 nmi, which is expected since only CIWS weather forecasts up to 30 min.were considered.Follow-on studies that explore the utility of using CIWS forecasts up to 2 hours under a variety of weather scenarios would be beneficial.In terms of the number of rerouting reroutes as a function of look-ahead distance, these were roughly independent of the severity of the weather affected sector capacity constraints being considered in Eq. ( 4) as illustrated by Fig. 10b.This is an interesting point that highlights a basic disconnect between the way in which weather is being handled in the strategic departure control model and the tactical rerouting model used.At the root of this problem is the manner by which weather impacts are accounted for in the strategic departure control model.Rather than identifying and controlling individual flights or flows that are predicted to be impacted by weather hazards, any flight passing through a weather impacted sector can potentially be subject to a pre-departure delay regardless of whether it will actually be impacted by the weather.This point warrants follow-on studies, since this problem impacts not only the model being used in this study, but also the model proposed in the seminal work of Reference 7.
+[a][b]
+B. Rerouting Frequency versus Rerouting Look-ahead DistanceFigure 11 contains contour plots of the total delays and the total weighted delay cost as a function of the rerouting look-ahead distance and the frequency at which new reroutes can be created.All results in Figs.111213were calculated assuming that the sector capacities in Eq. ( 4) where the nominal MAP values that have been reduced by the time-varying demand of the uncontrolled traffic (i.e., the 100% available sector capacity case), which was described in Section III.C.Therefore, the tactical rerouting algorithm and the airborne holding model are responsible for keeping flights from deviating into weather hazards, while the strategic departure control model is solely responsible for resolving volumetric constraints (i.e., too many flights arriving in a sector, departing from an airport, or arriving at an airport at any instant of time).As noted in the discussion of Fig. 8a, three distinct types of solutions appear feasible when the results in Fig. 11a are analyzed.The first solution results in the regions of low overall delays that appear in the upper region of Fig. 11a.These solutions are generated when the primary control mechanisms for keeping flights from deviating into a weather hazard is airborne holding, while little rerouting or pre-departure holding occurs.The second type of solutions gives rise to the low regions of delay in the lower middle portion of Fig. 11a that is bounded by rerouting frequencies that vary between 5 to 10 minutes, and rerouting look-ahead distances of 200 to 300 nmi.In this region, the weather intent information is known well and the rerouting algorithm is effective at avoiding weather hazards.Rerouting delays are moderately high in this region and ground holding delays are generally low.The third type of solutions gives rise to the regions of low delay in the lower-right corner of Fig. 11a.In this region, more strategic reroutes are being constructed, but because only a 30 min.weather forecast is being used, flights are often rerouted based on erroneous weather data.Airborne delays in this region are low, but ground delays are increasingly used to resolving volumetric constraints (i.e., too many flights entering a sector or arriving at an airport at an instance of time).When the higher costs of operating flights in the air as opposed to the ground are accounted for, and a penalty function associated with the increased levels of airspace complexity associated with airborne holding 27 are taken into account then a total weighted delay cost, as illustrated in Fig. 11b, can be calculated.The results in this figure indicate that only two of the previously described solutions are feasible, as would be expected.In this case, the high cost of airborne holding effectively eliminates the solution space in the upper region of Fig. 11b, while the two solutions that rely heavily on tactical (200 -300 nmi) and strategic (300 -400 nmi) rerouting to avoid en route weather hazards remain viable solutions.
+[a][b] The airborne holding delays and ground holding delays are illustrated in Figs.12a and12b, respectively.The airborne holding delays increase greatly with increasing rerouting frequency, as would be expected because of the uncertainty in the weather intent information.Additionally airborne delays are highest with shorter rerouting lookahead distance, where myopic reroutes are being constructed.Given the weather scenario considered in this study, the current set of rerouting and ground holding algorithms work best when the rerouting frequency ranges from 5 to 10 minutes, and the rerouting look-ahead distance is 200 nmi or greater, since this is the region of lowest airborne holding delays.The ground holding delays illustrated in Fig. 12b show two interesting features.The first interesting observation is that the model actually assigns little ground delay to flights, which is somewhat expected since the sector capacities appearing in Eq. ( 4) do not account for weather impacts in this particular example.A comparison of the delays in Figs.12b and11a, illustrates that only 2 to 3 percent of the total delays are from ground holding delays, while the airborne delays vary between 5 and 16 percent of the total delays, and rerouting delays account for the remainder of the delays.The second interesting feature is that the ground holding delays increase dramatically with increasing rerouting look-ahead distance.This is occurring because the reroutes with look-ahead distances of 300 nmi or more tend to be more conservative in nature, and more flights tend to be rerouted on similar flight paths, thus these flights are using similar sectors when avoiding the weather hazards which leads to more binding sector capacity constraints and higher ground delays.Figure 13 contains plots of the total rerouting delays and the number of reroutes as a function of the rerouting frequency and the rerouting look-ahead distance.In general, the number of delays and reroutes decrease rapidly with increasing rerouting frequency, but this is not an indication that the routing is working well in this area, in fact the opposite is true.When the rerouting frequency is greater than 15 min,, the shortest-path routing algorithm becomes increasingly less effective at avoiding the weather hazards, causing the airborne holding delays to greatly increase.In terms of rerouting look-ahead distance, the delays are worse for short look-ahead distances (i.e., ≤ 150 nmi) where myopic reroutes are being created, and delays are smallest when longer-range, strategic (i.e., > 300 nmi look-ahead) reroutes are created even though the reroutes are based on 30-minute weather forecasts.This latter observation is likely dependent on the type of weather encountered.It may not hold true for less structured weather cells or for cells that are rapidly growing or decaying.Finally, it is interesting to note that the highest level of rerouting controls occur with a 400 nmi look-ahead distance, and a rerouting frequency of 5 min.In this case, strategic reroutes are being developed, but are being "fine tuned" at a high frequency to adapt to weather hazards that a flight may or may not encounter after nearly an hour of travel time.For these longer routing look-ahead distances, less frequent rerouting update rates on the order of 10 to 15 minutes are more appropriate.Overall, the rerouting algorithm performs reasonably well over a look-ahead distance of 200 to 400 nmi when rerouting occurs at a frequency of 5 to 15 minutes.Future testing of the algorithm on a larger range of weather scenarios would be beneficial.
+[a][b]
+V. ConclusionsThis paper proposes an innovative sequential optimization approach for generating traffic flow management controls in the presence of uncertain flight intent and weather information; an integrated optimization-simulation framework for testing this approach; and finally tests this approach by conducting thirty-two, 6 hour fast-time simulation experiments.The weather impacted traffic scenario used was derived from operational ETMS flight data from August 24, 2005 and the Corridor Integrated Weather System data from June 19, 2006.This weather day was selected because of the severity and intensity of the squall line that extended from the U.S.-Canadian border to the southern portion of the U.S.The experiments examined variations in the ground holding, rerouting, and airborne holding delays and controls in terms of variations in the rerouting look-ahead distance, the rerouting frequency, and the available capacity of the weather impacted sectors.Three distinct feasible types of traffic flow solutions emerged from these experiments.The first type of solution relied primarily on departure controls and strategic reroutes on the 300 to 400 nmi lookahead horizon and worked best when rerouting occurred at a frequency of 10 to 15 minutes.The second type of solution generated more tactical reroutes on the 200 -300 nmi look-ahead horizon and required little airborne holding or pre-departure control when rerouting occurred at a frequency of 5 minutes.The last solution relied heavily on airborne holding controls and infrequent updates to the weather avoidance reroutes, and in general was the least desirable solution due to the impact of airborne holding on airspace complexity.In terms of the distribution of the delays, airborne holding typically accounted for 3% to 9% of the total delays, ground holding accounted for 2% to 30% of the total delays, and rerouting accounted for 67% to 90% of the total delays.These results indicate that the proposed traffic flow management approach is an effective means for controlling flights in the presence of uncertain weather and flight intent information without having to rely too heavily on very tactical flight control techniques, such as airborne holding.Finally, the results highlighted a fundamental difference in the way in which weather impacts were being considered with the tactical rerouting and airborne holding controls, and the manner in which these constraints were accounted for in the strategic departure control model.While the tactical controls were explicitly taking into account the impact of weather hazards on individual flights, the departure control model was accounting for these constraints in a more aggregate sense by translating the impacts of weather into changes in the sector capacity constraints.The benefits of the strategic departure control model were therefore limited because of the lack of consistency in the strategic and tactical weather translation models.Follow-on studies that explore techniques for explicitly accounting for the impact of weather hazards on individual flights or flows within a strategic traffic flow model are required to resolve this discrepancy.Figure 1 .1Figure 1.Integrated optimization-simulation architecture.
+€Nj: number of routing nodes € I : set of routing nodes € {i 1 ,…,i N } where € i 1 is the starting point and € i N is the stopping point € L : set of links connecting the routing nodes where € L ∈ I \ {i 1 } × I \ {i N } € C ij : cost associated with traveling on the link connecting node € i and € The binary decision variables in the model, € w ij ∈ {0,1} , are defined as:
+Figure 2 .2Figure 2. Flight control region (blue-green polygon) and tactical routing grid (gray circles) with CIWS weather data at 12:00 UTC on June 19, 2007.
+Figure 3 .3Figure 3. Nominally scheduled route (solid red line) for a flight between Chicago O'Hare (ORD) and Newark International (EWR) and tactical reroute (dashed green line) that avoids CIWS vertically integrated liquid (VIL) ≥ 3 (yellow polygons).
+Figure 4 .4Figure 4. Strategic and tactical flight control planning frequency versus time.
+Figure 5 .5Figure 5.Time varying count of aircraft subject to tactical flight controls.
+Figure 6 .6Figure 6.Graphical illustration of the airspace constraints included in the strategic departure control model .
+Figure 7 .7Figure 7. [a] Impact of convective weather and uncontrolled demand on the sector capacity of Cleveland sector 49 between 10:00 and 13:00 UTC when weather has no impact (red line); weather reduces capacity by 20% (green line); weather reduces capacity by 40% (blue line); and weather reduces capacity by 60% (purple line) and [b] map of Cleveland Center at 11:30 UTC with sector 49 highlighted and CIWS VIL
+Figure 8 .8Figure 8. Impact of rerouting look-ahead distance and reduction in the weather impacted sector capacity on [a] the total delays; and [b] a weighted sum of the ground delays, rerouting delays, and airborne holding delays.Sector capacity reduced from 0% to 60% in 20% increments, and look-ahead distance varied from 100 nmi to 400 nmi in 100 nmi increments.
+Figure 9 .9Figure 9. Impact of rerouting look-ahead distance and reduction in the weather impacted sector capacity on [a] the airborne holding delays; and [b] the ground holding delays.Sector capacity reduced from 0% to 60% in 20% increments, and look-ahead distance varied from 100 nmi to 400 nmi in 100 nmi increments.
+Figure 10 .10Figure 10.Impact of rerouting look-ahead distance and reduction in the weather impacted sector capacity on [a] the rerouting delays; and [b] the number of reroutes.Sector capacity reduced from 0% to 60% in 20% increments, and look-ahead distance varied from 100 nmi to 400 nmi in 100 nmi increments.
+Figure 11 .11Figure 11.Impact of rerouting look-ahead distance and rerouting frequency on [a] the total delays; and [b] a weighted sum of the ground delays, rerouting delays, and airborne holding delays.Rerouting frequency varied from 5 min.to 20 min. in 5 min.increments, and look-ahead distance varied from 100 nmi to 400 nmi in 100 nmi increments.
+Figure 12 .12Figure 12.Impact of rerouting look-ahead distance and rerouting frequency on [a] the airborne holding delays; and [b] the ground holding delays.Rerouting frequency varied from 5 min.to 20 min. in 5 min.increments, and look-ahead distance varied from 100 nmi to 400 nmi in 100 nmi increments.
+Figure 13 .13Figure 13.Impact of rerouting look-ahead distance and rerouting frequency on [a] the rerouting delays; and [b] the number of reroutes.Rerouting frequency varied from 5 min.to 20 min. in 5 min.increments, and look-ahead distance varied from 100 nmi to 400 nmi in 100 nmi increments.
+		
+		
+
+			
+AcknowledgmentsThe authors would like to thank Ms. Jennifer Lock for her tireless efforts in developing and refining the FACET Application Programming Interface, which was significantly leveraged in completing this study.
+			
+
+			
+
+				
+
+
+	
+		Field Observations of Interactions Between Traffic Flow Management and Airline Operations
+		
+			HusniIdris
+		
+		
+			AntonyEvans
+		
+		
+			RobertVivona
+		
+		
+			JimmyKrozel
+		
+		
+			KarlBilimoria
+		
+		10.2514/6.2006-7721
+	
+	
+		6th AIAA Aviation Technology, Integration and Operations Conference (ATIO)
+		Wichita, KS
+		
+			American Institute of Aeronautics and Astronautics
+			Sept. 25-27, 2006
+		
+	
+	Idris, H., Evans, A., Vivona, R., Krozel, J., and Bilimoria, K., "Field Observations of Interactions Between Traffic Flow Management and Airline Operations," AIAA 6 th Aviation, Technology, Integration, and Operations Conference, Wichita, KS, Sept. 25-27, 2006.
+
+
+
+	
+		Collaborative Decision Making in Air Traffic Management: Current and Future Research Directions
+		
+			MichaelOBall
+		
+		
+			Chien-YuChen
+		
+		
+			RobertHoffman
+		
+		
+			ThomasVossen
+		
+		10.1007/978-3-662-04632-6_2
+	
+	
+		New Concepts and Methods in Air Traffic Management
+		
+			LBianco
+		
+		
+			PDell'olmo
+		
+		
+			AROdoni
+		
+		New York
+		
+			Springer Berlin Heidelberg
+			2001
+			
+		
+	
+	Ball, M. O., Hoffman, R., Chen, C. Y., and Vossen, T., "Collaborative Decision Making in Air Traffic Management: Current and Future Research Directions," New Concepts and Methods in Air Traffic Management, edited by Bianco, L., Dell'Olmo, P., and Odoni, A. R., Springer-Verlag, New York, 2001.
+
+
+
+	
+		Supplement analysis, Southpoint power project
+		10.2172/353400
+		VNTSC-DTS56-TMS-002
+		
+			Oct. 2005
+			Office of Scientific and Technical Information (OSTI)
+			Cambridge, MA
+		
+	
+	Report
+	"Enhanced Traffic Management System (ETMS)," Report No. VNTSC-DTS56-TMS-002, Volpe National Transportation Center, U.S. Department of Transportation, Cambridge, MA, Oct. 2005.
+
+
+
+	
+		Recommendations and Justifications for Modifications for Use Restrictions Established under the U.S. Department of Energy, National Nuclear Security Administration Nevada Site Office Federal Facility Agreement and Consent Order, Revision 0
+		
+			Lynn Kidman
+		
+		10.2172/926217
+		
+	
+	
+		Joint Planning and Development Office
+		
+			5
+			Feb. 14, 2008
+			Office of Scientific and Technical Information (OSTI)
+		
+	
+	NextGen Concept of Operations, Version 2.0. Cited July 15, 2008
+	"Facility Operation and Administration," Order 7210.3V, U.S. Department of Transportation, Federal Aviation Administration, Feb. 14, 2008. 5 "NextGen Concept of Operations, Version 2.0," Joint Planning and Development Office, URL: http://www.jpdo.gov/library.asp [Cited July 15, 2008].
+
+
+
+	
+		Integration of Traffic Flow Management Decisions
+		
+			BanavarSridhar
+		
+		
+			GanoChatterji
+		
+		
+			ShonGrabbe
+		
+		
+			KapilSheth
+		
+		10.2514/6.2002-5014
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		Monterey, CA
+		
+			American Institute of Aeronautics and Astronautics
+			Aug. 5-8, 2002
+		
+	
+	6 Sridhar, B., Chatterji, G. B., Grabbe, S., and Sheth, K., "Integration of Traffic Flow Management Decisions," AIAA Guidance, Navigation, and Control Conference, Monterey, CA, Aug. 5-8, 2002.
+
+
+
+	
+		Airspace Restriction Planner for Sector Congestion Management
+		
+			ParimalKopardekar
+		
+		
+			SteveGreen
+		
+		10.2514/6.2005-7435
+	
+	
+		AIAA 5th ATIO and16th Lighter-Than-Air Sys Tech. and Balloon Systems Conferences
+		Arlington, VA
+		
+			American Institute of Aeronautics and Astronautics
+			Sept. 26-28, 2005
+		
+	
+	Kopardekar, P. and Green, S., "Airspace Restriction Planner for Sector Congestion Management," AIAA Aviation, Technology, Integration, and Operations Conference, Arlington, VA, Sept. 26-28, 2005.
+
+
+
+	
+		The Air Traffic Flow Management Problem with Enroute Capacities
+		
+			DimitrisBertsimas
+		
+		
+			SarahStockPatterson
+		
+		10.1287/opre.46.3.406
+	
+	
+		Operations Research
+		Operations Research
+		0030-364X
+		1526-5463
+		
+			46
+			3
+			
+			1994
+			Institute for Operations Research and the Management Sciences (INFORMS)
+		
+	
+	Bertsimas, D. and Patterson, S. S., "The air traffic flow management with en route capacities," Operations Research, Vol. 42, pp. 249-261, 1994.
+
+
+
+	
+		Incremental, Probabilistic Decision Making for En Route Traffic Management
+		
+			CraigWanke
+		
+		
+			DanielGreenbaum
+		
+		10.2514/atcq.15.4.299
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			15
+			4
+			
+			2007
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Wanke, C. and Greenbaum, D., "Incremental Probabilistic Decision Making for En Route Traffic Management," Air Traffic Control Quarterly, Vol. 15, pp. 299-319, 2007.
+
+
+
+	
+		Central East Pacific Flight Scheduling
+		
+			ShonGrabbe
+		
+		
+			BanavarSridhar
+		
+		
+			AvijitMukherjee
+		
+		10.2514/6.2007-6447
+	
+	
+		AIAA Guidance, Navigation and Control Conference and Exhibit
+		Hilton Head, SC
+		
+			American Institute of Aeronautics and Astronautics
+			Aug. 20-23, 2007
+		
+	
+	Grabbe, S., Sridhar, B., and Mukherjee, A., "Central East Pacific Flight Scheduling," AIAA Guidance, Navigation, and Control Conference, Hilton Head, SC, Aug. 20-23, 2007.
+
+
+
+	
+		Corridor Integrated Weather System
+		
+			JEEvans
+		
+		
+			ERDucot
+		
+	
+	
+		Lincoln Laboratory Journal
+		
+			16
+			1
+			
+			2006
+		
+	
+	Evans, J.E. and Ducot, E. R., "Corridor Integrated Weather System,", Lincoln Laboratory Journal, Vol. 16, No. 1, pp. 59- 80, 2006.
+
+
+
+	
+		FACET: Future ATM Concepts Evaluation Tool
+		
+			KarlDBilimoria
+		
+		
+			BanavarSridhar
+		
+		
+			ShonRGrabbe
+		
+		
+			GanoBChatterji
+		
+		
+			KapilSSheth
+		
+		10.2514/atcq.9.1.1
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			9
+			1
+			
+			March 2001
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Bilimoria, K. D., Sridhar, B., Chatterji, G., Sheth, K.S., and Grabbe, S. R., "Future ATM Concepts Evaluation Tool," Air Traffic Control Quarterly, Vol. 9, No. 1, March 2001.
+
+
+
+	
+		A Rapid-Prototyping Environment for En Route Air Traffic Management Research
+		
+			PKMenon
+		
+		
+			GeraldDiaz
+		
+		
+			SVaddi
+		
+		
+			ShonGrabbe
+		
+		10.2514/6.2005-6046
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		San Francisco, CA
+		
+			American Institute of Aeronautics and Astronautics
+			Aug. 15-18, 2005
+		
+	
+	Menon, P., Diaz, G., Vaddi, S., and Grabbe, S., "A Rapid-Prototyping Environment for En Route Air Traffic Management Research," AIAA Guidance, Navigation, and Control Conference, San Francisco, CA, Aug. 15-18, 2005.
+
+
+
+	
+		AMPL: A Mathematical Programing Language
+		
+			RobertFourer
+		
+		
+			DavidMGay
+		
+		
+			BrianWKernighan
+		
+		10.1007/978-3-642-83724-1_12
+	
+	
+		Algorithms and Model Formulations in Mathematical Programming
+		Danvers, MA
+		
+			Springer Berlin Heidelberg
+			1993
+			
+		
+	
+	Fourer, R., Gay, D. M., and Kernighan, AMPL: A Modeling Language for Mathematical Programming, Boyd & Fraser Publishing Company, Danvers, MA, 1993.
+
+
+
+	
+		Comparison of Algorithms for Synthesizing Weather Avoidance Routes in Transition Airspace
+		
+			JimmyKrozel
+		
+		
+			StevePenny
+		
+		
+			JosephPrete
+		
+		
+			JosephMitchell
+		
+		10.2514/6.2004-4790
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		Providence, RI
+		
+			American Institute of Aeronautics and Astronautics
+			Aug. 16-19, 2004
+			16
+		
+	
+	Krozel, J., Penny, S., Prete, J., Mitchell, J. S. B., "Comparison of Algorithms for Synthesizing Weather Avoidance Routes in Transition Airspace," AIAA Guidance, Navigation, and Control Conference, Providence, RI, Aug. 16-19, 2004. 16
+
+
+
+	
+		Automated Route Generation for Avoiding Deterministic Weather in Transition Airspace
+		
+			JimmyKrozel
+		
+		
+			StevePenny
+		
+		
+			JosephPrete
+		
+		
+			JosephS BMitchell
+		
+		10.2514/1.22970
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		Journal of Guidance, Control, and Dynamics
+		0731-5090
+		1533-3884
+		
+			30
+			1
+			
+			2007
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Krozel, J., Penny, S., Prete, J., and Mitchell, J. S. B., "Automated route generation for avoiding deterministic weather in transition airspace," Journal of Guidance, Control, and Dynamics, Vol. 30, No. 1, pp. 144-153, 2007.
+
+
+
+	
+		Safe Routing of Multiple Aircraft Flows in the Presence of Time-Varying Weather Data
+		
+			JosephPrete
+		
+		
+			JosephMitchell
+		
+		10.2514/6.2004-4791
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		Providence, RI
+		
+			American Institute of Aeronautics and Astronautics
+			Aug. 16-19, 2004. 2007
+			18
+		
+		
+			GNU Linear Programming Kit ; GNU Project -Free Software Foundation
+		
+	
+	Prete, J. and Mitchell, J. S. B., "Safe routing of multiple aircraft flows in the presence of time-varying weather data," AIAA Guidance, Navigation, and Control Conference, Providence, RI, Aug. 16-19, 2004. 18 GLPK, GNU Linear Programming Kit, Ver. 4.23, GNU Project -Free Software Foundation, 2007.
+
+
+
+	
+		Distributing net-enabled federal aviation administration (FAA) weather data
+		
+			MarkSimons
+		
+		10.1109/icnsurv.2008.4559189
+		
+	
+	
+		2008 Integrated Communications, Navigation and Surveillance Conference
+		
+			IEEE
+			July 15, 2008
+		
+	
+	Air Traffic Operations Network (OPSNET), U.S. Federal Aviation Administration, url: http://www.apo.data.faa.gov [cited July 15, 2008].
+
+
+
+	
+		Capacity Estimation for Airspaces with Convective Weather Constraints
+		
+			JimmyKrozel
+		
+		
+			JosephMitchell
+		
+		
+			ValentinPolishchuk
+		
+		
+			JosephPrete
+		
+		10.2514/6.2007-6451
+	
+	
+		AIAA Guidance, Navigation and Control Conference and Exhibit
+		Hilton Head, SC
+		
+			American Institute of Aeronautics and Astronautics
+			Aug. 20-23, 2007
+		
+	
+	Krozel, J., Mitchell, J., Polishchuk, V., and Prete, J., "Capacity Estimation for Airspace with Convective Weather Constraints," AIAA Guidance, Navigation and Control Conference, Hilton Head, SC, Aug. 20-23, 2007.
+
+
+
+	
+		Model Estimates of Traffic Reduction in Storm Impacted En Route Airspace
+		
+			BrianDMartin
+		
+		10.2514/6.2007-7889
+	
+	
+		7th AIAA ATIO Conf, 2nd CEIAT Int'l Conf on Innov and Integr in Aero Sciences,17th LTA Systems Tech Conf; followed by 2nd TEOS Forum
+		Arlington, VA, Sept
+		
+			American Institute of Aeronautics and Astronautics
+			2007
+			18
+		
+	
+	Martin, B. D., "Model Estimates of Traffic Reduction in Storm Impacted En Route Airspace," AIAA Aviation, Technology, Integration, and Operations Conference, Arlington, VA, Sept. 18-20, 2007.
+
+
+
+	
+		An Exploratory Study of Modeling En Route Pilot Convective Storm Flight Deviation Behavior
+		
+			RDelaura
+		
+		
+			JEvans
+		
+	
+	
+		12 th American Meteorological Society Conf. on Aviation, Range, and Aerospace Meteorology
+		Atlanta, GA
+		
+			Jan./Feb. 2006
+		
+	
+	DeLaura, R. and Evans, J., "An Exploratory Study of Modeling En Route Pilot Convective Storm Flight Deviation Behavior," 12 th American Meteorological Society Conf. on Aviation, Range, and Aerospace Meteorology, Atlanta, GA, Jan./Feb. 2006.
+
+
+
+	
+		CONFERENCE ON AEROSPACE AND RANGE METEOROLOGY, AUGUST 27–29, 1985, HUNTSVILLE, ALABAMA
+		
+			Rhoda
+		
+		
+			DPawlak
+		
+		
+			M
+		
+		10.1175/1520-0477-66.5.595
+	
+	
+		Bulletin of the American Meteorological Society
+		0003-0007
+		1520-0477
+		
+			66
+			5
+			
+			Jan., 1999
+			American Meteorological Society
+			Dallas, TX
+		
+	
+	Rhoda, D. and Pawlak, M., "The Thunderstorm Penetration / Deviation Decision in the Terminal Area," American Meteorological Society, 8 th Conf. on Aviation, Range, and Aerospace Meteorology, Dallas, TX, Jan., 1999.
+
+
+
+	
+		Estimating the likelihood of success in departure management strategies during convective weather
+		
+			RichDelaura
+		
+		
+			SAllan
+		
+		10.1109/dasc.2011.6096271
+	
+	
+		2011 IEEE/AIAA 30th Digital Avionics Systems Conference
+		Budapest, Hungary
+		
+			IEEE
+			2003
+			25
+		
+	
+	DeLaura, R. and Allan, S., "Route Selection Decision Support in Convective Weather: A Case Study of the Effects of Weather and Operational Assumptions on Departure Throughput," 5 th Eurocontrol/FAA ATM R&D Seminar, Budapest, Hungary, 2003. 25
+
+
+
+	
+		Aircraft encounters with convective weather in en route vs. terminal airspace above Memphis, Tennessee
+		
+			DARhoda
+		
+		
+			EAKocab
+		
+		
+			MLPawlak
+		
+	
+	
+		American Meteorological Society 10 th Conference on Aviation, Range and Aerospace Meteorology
+		Portland, OR
+		
+			2002
+		
+	
+	Rhoda, D. A., Kocab, E. A., and Pawlak, M. L., "Aircraft encounters with convective weather in en route vs. terminal airspace above Memphis, Tennessee," American Meteorological Society 10 th Conference on Aviation, Range and Aerospace Meteorology, Portland, OR, 2002.
+
+
+
+	
+		Analysis of Thunderstorm Effects on Aggregated Aircraft Trajectories
+		
+			KennethKuhn
+		
+		10.2514/1.34830
+	
+	
+		Journal of Aerospace Computing, Information, and Communication
+		Journal of Aerospace Computing, Information, and Communication
+		1542-9423
+		
+			5
+			4
+			
+			2008
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Kuhn, K., "Analysis of Thunderstorm Effects on Aggregate Aircraft Trajectories," Journal of Aerospace Computing, Information, and Communication, Vol. 5, No. 4, pp. 108-119, 2008
+
+
+
+	
+		The complexity construct in Air Traffic Control: A Review and Synthesis of the Literature
+		
+			RMogford
+		
+		
+			JGuttman
+		
+		
+			SMorrow
+		
+		
+			PKopardekar
+		
+		
+		
+			1995
+			Atlantic City, NJ
+		
+		
+			FAA Technical Center
+		
+	
+	Mogford, R., Guttman, J., Morrow, S., and Kopardekar, P., "The complexity construct in Air Traffic Control: A Review and Synthesis of the Literature," DOT/FAA/CT-TN-95/22, FAA Technical Center, Atlantic City, NJ, 1995.
+
+
+				
+			
+		
+	

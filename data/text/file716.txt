@@ -1,0 +1,485 @@
+
+	
+	
+		
+Nomenclature
+Nnumber of centers (i, j) directional link from center i to center j T time horizon of simulation and optimization T 0 ij , T 1 ij time interval when weather impacts traffic flow between center i and center j x 0 initial condition C i (k) maximum number of aircraft allowed in center i at time k D i (k) maximum number of departures allowed to enter center i at time k S i (k) number of departures scheduled to enter center i at time k A i (k) maximum number of arrivals allowed to leave center i at time k R i total number of scheduled arrivals in center i F ij (k) maximum flows allowed between centers i and j at time k T i minimum time that a flight has to spend in center i if the flight goes through it x i (k) optimal number of aircraft in center i at time k a i (k) equals β ii (k)x i (k), optimal number of arrivals in center i at time k
+I. IntroductionToday, air traffic flow prediction is done by propagating the trajectories of the proposed flights forward in time and using them to count the number of aircraft in a region of the airspace.Examples of systems that use this physics-based modeling approach for demand forecasting include the Center TRACON Automation System (CTAS), 1 the Future ATM Concepts Evaluation Tool (FACET), 2 and the Collaborative Routing Coordination Tool (CRCT). 3The accuracy of these predictions is impacted by departure and weather uncertainties. 4,5 hese trajectory-based models predict the behavior of the National Airspace System adequately for short durations of up to 20 minutes.With the short prediction accuracy, it is difficult to make sound strategic decisions on air traffic management.Aggregate models simplify the analysis and design of many complex systems.The development of aggregate flow models for traffic flow management has been the subject of considerable interest, since the first model 6 appeared in the literature.These models are based on aggregation of traffic flows and simulate the behavior of volumes of flights.Compared with trajectory-based models, aggregate flow models are computationally efficient, and their complexity does not increase with the number of aircraft.The aggregate flow models previously published 7 represent and predict the traffic behavior to a high degree of accuracy and can be tailored to the time-scales and regions of interest.A comparison of the characteristics of the different flow models can be found in previous studies. 8,9 he stability and response characteristics of the aggregate flow models are presented in the article by Chatterji and Sridhar. 10The aggregation in flow models generally results in the loss of information about the route structure of individual aircraft.Additional research is needed to translate the aggregate control policies into actual traffic flow management flight planning decisions involving aircraft departure times and routes.Currently, there is limited experience in the application of aggregate and reduced order flow models for generating flight-level traffic flow management decisions.In this paper, an aggregate traffic flow model developed in earlier work 7 is implemented.The system parameters of the model are identified using historical air traffic data.Using filed flight plans as an input to the model, the traffic situation is predicted and compared with real data.A two-step approach is used to solve traffic flow management problems.The first step is solving an optimization problem, in which the system dynamics of the aggregate model are part of the constraints.In the second step, a computationally efficient disaggregation algorithm is designed to convert flow-based optimal solutions from the first step to flight-specific control actions.This paper is organized as follows.The next section briefly introduces the aggregate flow model.The optimization algorithm and the disaggregation algorithm are described in Section III and Section IV, respectively.Section V presents application results of the optimization framework.Finally, concluding remarks and future work are discussed in Section VI.
+II. An aggregate flow model
+A. A dynamic system modelAn aggregate traffic flow model was developed in an earlier work. 7It is a linear-time-variant dynamic system model (LDSM).The number of aircraft at different times in each center is represented by a state variable.a The number of landings in a center and transitions from the center to the neighboring centers in an interval of time ∆T are assumed to be proportional to the number of aircraft in the center at the beginning of the interval.Using the principle of conservation of flow in a center, the number of aircraft in center i at the next instant of time k + 1 can be related to the number of aircraft in i at k via the difference in the number of aircraft that came into the center and the number of aircraft that left the center as follows:x i (k + 1) = x i (k) - N j=1 β ij (k)x i (k) + N j=1,j =i β ji (k)x j (k) + d i (k). (1)where β ij (k) is the fraction of the aircraft in center i at the start of a time step that leave center i and enter center j during the k-th time interval ∆T .The number of arrivals in center i during the k-th time interval, denoted byβ ii (k) • x i (k), is a fraction of x i (k).The departure within center i is denoted by d i (k), which is independent on x i (k).For simplicity of illustration, "during the k-th time interval ∆T " will also be understood as "at time k" in this paper.
+B. Implementation and validation of LDSMThe inputs to the LDSM include departures d i (k) within center i at time k and the fractions β ij (k).The direct output from LDSM is the aircraft count in the centers at each time step.It is also straightforward to generate other outputs, such as inter-center traffic flows, number of arrivals, etc., based on the information of x i (k), β ij (k) and d i (k).To implement the LDSM, the fractions β ij (k) are obtained as the aggregated fractions of aircraft going from center i to j during the same k-th time interval in each day, using historical air traffic data.In this study, the departures d i (k) are computed from filed flight plans (deterministic).This is different from the original model in Ref. 7, which includes both deterministic and stochastic components.The LDSM model is implemented in a deterministic manner because a deterministic optimization method (Section III) will be used for Traffic Flow Management (TFM).The LDSM is implemented in C++; all the inputs were generated by processing flight data using FACET. 2 All 22 centers of the United States airspace, oceanic centers and part of the Canadian centers are included in the LDSM.The LDSM is validated against real air traffic data.Figure 1 shows a comparison between real and predicted aircraft counts, with two time intervals ∆T = 1 minute and ∆T = 15 minutes, in Oakland center (ZOA) from PDT 5:00PM on August 23, 2005, to PDT 4:59PM on August 24, 2005.For this validation, the fractions β ij (k) are obtained using the historical traffic data from September 6, 2001, and the departures d i (k) are generated using the flight data from August 24, 2005.It is shown that the LDSM correctly predicts the trends of the evolution of aircraft counts in each center, and the average relative error between prediction and real data is less than 2%.It took less than 30 seconds to process one-day of historical data using FACET and to compute β with the C++ code on a 1.8GHz CPU, 2GB RAM IBM ThinkPad T42 laptop, operating system Linux.Performing a prediction of air traffic for a whole day (24 hours) took approximately five seconds.Compared with most trajectory-based models that predict the behavior of the National Airspace System (NAS) adequately for shorter durations, the LDSM is efficient to predict the traffic situation for a longer time horizon, which is helpful to make strategic decisions on air traffic management.The aggregate flow model can be used to design traffic flow management strategies to minimize different objectives subject to various constraints.Several optimization methods have been designed for traffic flow management, [11][12][13][14][15] most of which are based on networked air traffic flows.In the next section, a new optimization method will be proposed, which fully utilizes the aggregate flow properties of LDSM, and is suitable for future disaggregation to generate flight-specific control.
+III. Optimization methodIn this section, using the aggregated flow model LDSM, an optimization method will be designed to optimize the parameters β and d i (k) in equation ( 1) for traffic flow management.A TFM problem is formulated as follows.The constraints and the cost function (2) are described in the following subsections.min β,d J (x)(2)
+of 16American Institute of Aeronautics and Astronautics A. Constraints
+Initial conditionThe initial conditionx(0) = x 0(3)represents the number of aircraft in each center at the beginning (k = 0) of the optimization.
+LDSM dynamicsThe LDSM is subject to the following dynamics:x i (k + 1) = x i (k) - N j=1 β ij (k)x i (k) + N j=1,j =i β ji (k)x j (k) + d i (k), k ∈ {0, • • • , T }, i ∈ {1, • • • , N }(4)which is presented in Section II.
+Center capacity constraintThe time-varying center capacity constraints are formulated as0 ≤ x i (k) ≤ C i (k), k ∈ {0, • • • , T }, i ∈ {1, • • • , N }(5)which restricts the number of aircraft in a center to be below the maximum number of aircraft allowed.
+Inter-center flow constraintInter-center flow constraints are formulated byβ ij (k)x i (k) + β ji (k)x j (k) ≤ F ij (k), k ∈ {T 0 ij , • • • , T 1 ij }(6)which forces the flow between centers i and j below the maximum amount of flow allowed during the time interval[T 0 ij , • • • , T 1 ij ].
+Departure constraintDeparture-related constraints are as follows:0 ≤ d i (k) ≤ D i (k), k ∈ {0, • • • , T }, i ∈ {1, • • • , N } (7) t k=0 d i (k) ≤ t k=0 S i (k), i ∈ {1, • • • , N }, t ∈ {0, • • • , T -1} (8) T k=0 d i (k) = T k=0 S i (k), i ∈ {1, • • • , N }(9)where equation ( 7) restricts the number of departures below the departure capacity at each time step; equation (8) enforces that the cumulative number of departures in a center by time t cannot exceed the cumulative number of scheduled departures by that time; equation ( 9) enforces all flights to depart.
+Arrival constraintIn the arrival constraints0 ≤ a i (k) ≤ A i (k), k ∈ {0, • • • , T }, i ∈ {1, • • • , N } (10) T k=0 a i (k) = R i , i ∈ {1, • • • , N },(11)equation (10) restricts the number of arrivals below the arrival capacity, and equation ( 11) enforces total number of arrivals by time T (left-hand side of the equation) to be equal to the total number of scheduled arrivals (right-hand side of the equation).
+Minimum flight time constraintThis constraint requires a minimum time that a flight has to spend when flying through a center:N j=1 β ij (k)x i (k) = 0, a i (k) = 0, k ∈ {0, • • • , T i -1}, i ∈ {1, • • • , N } (12) N j=1 β ji (k)x j (k) = 0, d i (k) = 0, k ∈ {T -T i + 1, • • • , T }, i ∈ {1, • • • , N } (13) t+Ti k=Ti   N j=1 β ij (k)x i (k) + a i (k)   ≤ t k=0   N j=1 β ji (k)x j (k) + d i (k)   , t ∈ {0, • • • , T -T i }, i = {1, • • • , N }(14)Details about this constraint are presented in Appendix B.
+RemarksIn all constraints, the fraction variables β ij (k) always appear together with x i (k).Therefore alternative variables f ij (k) are defined wheref ij (k) = β ij (k)x i (k); f ij (k)is actually the amount of traffic flow that leaves center i and enters center j at time k.Replacingβ ij (k)x i (k) by f ij (k), all constraints (3)-(14) are linear in x i (k), d i (k) and f ij (k).
+B. Cost functionThe cost function J (x) in ( 2) can be defined in various forms according to specific objectives.For example, to minimize the difference between center counts of flights and a desired center count profile, it can be defined asJ (x) = N i=1 T k=0 x d i (k) -x i (k) 2 2 ,(15)where x d i (k) is the desired center count profile.Another example of a cost function isJ (x) = N i=1 T k=0 x i (k),which is equivalent to minimizing the total flight time (see Appendix).When minimization of the departure delays is also part of the objective, the cost function can be formulated asJ (x) = N i=1 T k=0 x i (k) J0(x) + N i=1 T t=0 t k=0 S i (k) - t k=0 d i (k) J1(d)where J 0 (x) is the total flight time, and J 1 (d) is the total departure delay.Delays in different centers can also include designated weights to impose some requirements on the equity with which delays are distributed across centers. 16The objective function can be formed as follows,J (x) = N i=1 T k=0 w en route i (k)x i (k) + N i=1 T t=0 t k=0 w departure i (k) (S i (k) -d i (k)) ,where w en route i and w departure i are the weights for en route delay and ground delay in center i, respectively.The objective functions above are subject to the same constraints described in the previous subsection.The first objective function in equation ( 15) is convex (quadratic), and the optimization problem is convex.The other two objective functions are linear, and the optimization problems are linear.
+IV. Disaggregation algorithmThe LDSM and the optimization model are formulated based on aggregated traffic flows.An individual flight's identity is not preserved.A disaggregation algorithm, which converts an optimal aggregate flowbased solution (d and β) b to a flight-specific control action, is presented in this section.The optimization algorithm outputs for each center the number of departures, the number of aircraft going to each neighbor, and the number of aircraft that should be in it, during each time period.This algorithm then determines which flights should depart from a center during each time period, the route (a sequence of centers) and the transition times for each flight.The disaggregation algorithm includes the following steps:1. Round d i (k) and f ij (k) = β ij x i (k) to integers.2. Generate a path map: find m possible flight paths (routes) for each origin-destination center pair from historical air traffic data.Rank the paths from "shortest" to "longest" based on the average flight times.In this paper, m = 3.3. Generate a departure queue for each center by picking T k=0 d i (k) flights taking off from center i.The flights with earlier scheduled departure time are put at the front of the departure queue.Flights on top of the departure queue have higher priority to take off.i.For each center flight queue, pop out the flights which land in this center; push these flights in the arrival flight queue of this center.ii.For each inter-center flow f ij (k): search flights in the center flight queue of i, find possible flights that may go through center j.Based on the path map built in Step 2, rank these flights in an order such that flights with a shorter path to destination will have a higher priority to enter center j. iii.Pop out f ij (k) flights from center i flight queue and push them into center j flight queue.(c) For each arrival queue, check if a flight is eligible to land (current criteria: it has to be in the arrival queue of center i for at least T i units of time).If eligible, pop out this flight from the arrival queue and let it land.b This disaggregation algorithm works for solutions other than optimization as well: given the number of departures and inter-center transition flows, the algorithm converts the flows into flight-specific actions, if possible.c As a result of numerical rounding to d i (k) and f ij (k), center capacity constraint of equation ( 5) may be violated, and some flights may be airborne at the end of optimization time horizon.for each flight f id in center queue CenterQ(i) do if dest(f id) = i then CenterQ(i).pop(f id) ArrivalQ(i).push(fid) else if path(j, dest(f id)) exists then tmpSet(i, j) = tmpSet(i, j) ∪ {f id} end if end if end for rank flights in tmpSet(i, j): if length of path(j, dest(f id 1 )) < length of path(j, dest(f id 2 )) then priority(f id 1 ) > priority(f id 2 )end if for n = 1 to f ij (k) do f id n = highest priority flight in tmpSet(i, j) CenterQ(j).push(f id n ) CenterQ(i).pop(f id n ) tmpSet(i, j) = tmpSet(i, j)\{f id n } end forAlgorithm 1: Disaggregation for inter-center flows.
+V. Application to TFMThe optimization model in Section III and the disaggregation algorithm in Section IV are implemented on the same platform as in Section II.B.In the implementation of the optimization model, ILOG CPLEX Concert optimization library 17 is called in C++ to solve the optimization problem.Several application examples of the model and the algorithm are described in the rest of this section.Four-hour TFM problems for the airspace including 20 continental centers of the United States were solved in the examples.The states of the LDSM are updated every 15 minutes.All 8422 flights that departed from the continental centers during the time horizon were included in the study.
+A. Minimization of delays with center capacity constraintsIn the example presented in this section, the objective is to minimize the total flight time and the departure delays under constraints of center capacities.The cost function is defined as follows:J (x) = N i=1 T k=0 x i (k) + N i=1 T t=0 t k=0 S i (k) - t k=0 d i (k)(16)Figures 2 and3 show four center count profiles in Cleveland (ZOB) and New York (ZNY) centers:1.The profile labeled Real is the recorded real center aircraft counts.2. The profile labeled Simulated is a prediction of center aircraft counts using LDSM, i.e., the fractions β in (1) are computed from historical data, and the departures d i (k) = S i (k), where S i (k) are scheduled departures.3. The Optimized profile is an output from the optimization with the objective function of equation ( 16).Notice that the optimized center counts are below 200, which is the user-defined center capacity of ZOB in the example.The simulated and real center counts exceed the center capacity during the first two units of time.Table 1 summarizes the costs defined by equation ( 16) for the real, simulated, optimized and disaggregated data.Clearly, the optimized solution has the minimal cost among the four, while the disaggregated profile Table 1.Comparison of the costs with different center count profiles.obtained with flight-specific information has a larger cost.The simulated data is very close to the real data because the LDSM predicts flows and aircraft counts in centers very close to the real situation.Depending on the values of T i 's in the minimum flight time constraint in equation ( 14), the optimal solution has a lower cost compared with the real data and simulated data in general.The average computational time for optimizations of several test cases in each day of May 2005 is shown in Fig. 4; the average computational time for disaggregation is in Fig. 5.The computations are performed on a 1.8GHz CPU, 2GB RAM IBM ThinkPad T42 laptop with Linux operating system.
+B. Optimal flow routingFigure 6 displays a weather scenario in which Chicago (ZAU), Indianapolis (ZID), Kansas City (ZKC) and Memphis (ZME) centers are impacted by the weather, and their capacities are reduced correspondingly.Using LDSM, it is observed that there is a major flow going through ZKC-ZAU-ZOB under normal weather conditions.Due to the weather impact, the center capacity of ZAU is assumed to have a 75% reduction. 18nder this assumption, the optimization model and the disaggregation algorithm generate a routing strategy such that around 70% of the flights, which use the ZKC-ZAU-ZOB route under normal weather conditions, used a route ZKC-ZMP-ZOB instead.Figure 7 demonstrates this scenario: the blue dashed line represents the route under normal weather condition, while the red solid line represents the route under weather impact.Future work will include both deterministic and stochastic components in the aggregate model, and stochastic optimization algorithms will be explored for generating traffic flow management controls.(ii) The current disaggregation algorithm does not explicitly include capacity constraints (center capacity and flow capacity).A refined disaggregation algorithm will be designed in which the capacity constraints will be respected.
+VI. Conclusion and future work
+Appendix
+A. State and travel timeOne of the characteristics of the LDSM model is that the states of the dynamical system are directly related to flight time.State x i (k) represents the number of aircraft in the center at time k.Assuming the flights do not transfer to a neighbor center or land, x i (k) is also the number of aircraft in center i during a left-closed and right-open time interval [k∆T, (k + 1)∆T ).Therefore, x i (k)∆T is the flight time for all aircraft in center i in the k-th time interval.Clearly, the total flight time spent in center i from time T 0 i to T 1 i is:∆TT 1 i k=T 0 i x i (k).For all the centers, the total flight time (during the entire time horizon) is∆T N i=1 T k=0 x i (k).Therefore, minimizing the following cost functionJ (x) = N i=1 T k=0 x i (k)is equivalent to minimizing the total flight time.
+B. Minimum flight time constraintBecause every aircraft flies at a reasonable speed (not too fast) in a center, the optimization method enforces that each flight has to spend a minimum amount of time in each center it passes.In the constraint (12),N j=1 β ij (k)x i (k) = 0, k ∈ {0, • • • , T i -1}means that the outflows from center i (the left-hand side of the equation) in the first T i units of time is zero, because any flight in center i has to stay in the center for at least T i units of time and cannot exit from the center before time T i .Combining the non-negativity constraints on β and x, this constraint is identical to the following constraint:β ij (k)x i (k) = 0, k ∈ {0, • • • , T i -1}, j = {1, • • • , N }.The second part of (12), a i (k) = 0, k ∈ {0, • • • , T i -1} means that there are no arrivals in center i during the first T i units of time because any flight that arrives in the destination center i has to spend a minimum of T i units of time flying in center i before landing.Constraint (13) means that there are no incoming flows or departures in a center i during the last T i units of time, because otherwise these flights will still be in air at the end of time horizon (T ) in the study, due to the minimum flight time requirement.In constraint (14),N j=1 β ij (k)x i (k) + a i (k)represents the number of "loss" flights, which equal the number of outgoing flights (N j=1 β ij (k)x i (k)) and landing flights a i (k) in center i at time k. Consequently, the term t+Ti k=Ti   N j=1 β ij (k)x i (k) + a i (k)  represents the cumulative "loss" flights from time T i to t + T i in center i.This is also the cumulative "loss" flights from time 0 to t + T i because during the first T i units of time there are no loss flights (by constraint ( 12)).As a counter part, the termt k=0   N j=1 β ji (k)x j (k) + d i (k)  represents the cumulative "gain" flights from time 0 to time t.Altogether, the constraint (14) can be interpreted as: in center i, the cumulative number of "loss" flights cannot exceed the cumulative number of "gain" flights from T i units of time earlier.The "gain" flights have to spend at least T i time in center i before getting lost.In the current study, it is assumed that the minimum flight time is identical for every flight despite the fact that flights use different routes that need different flight times, that there are flights taking off and landing in the same center, and that flights taking off and landing have different flight times than en route flights, etc.However, the proposed mathematical formulation ( 12)-( 14) for minimum flight time can be extended to include the above detailed scenarios.For example, using A to denote the starting point of a route in center i, and using B to denote the ending point as follows:where x AB (k) is the aircraft count on route A → B at time k, N B is the set of downstream flows connecting B, N A is the set of upstream flows connecting A. T AB is the minimum flight time on route A → B.The minimum flight time is computed using historical air traffic data.Figure 8 shows an example of the flight times in the Los Angeles center (ZLA).In this example, the 25-th percentile flight time (20 minutes) is chosen as the minimum flight time for all flights through ZLA. Figure 9 shows examples of flight times for four different routes inside the ZLA center.subject to Initial condition (Section III-A.1)LDSM dynamics (Section III-A.2) Center capacity constraint (Section III-A.3)Inter-center flow constraint (Section III-A.4)Departure constraints (Section III-A.5)Arrival constraints (Section III-A.6)Minimum flight time constraints (Section III-A.7)
+Figure 1 .1Figure 1.Oakland center traffic.
+4 .4At each k for each i: (a) Take out d i (k) flights from each departure queue and push these flights into the center flight queue (a queue of flights in a center) from which the flights depart.(b) Disaggregate inter-center flows (pseudo code in Algorithm 1):
+5 .5A "clean-up" process to remedy the numerical rounding problem.c For each airborne flight f id in center i, (a) Compute the earliest time t i f id when f id can leave center i based on its entry time and the minimum flight time requirement.(b) If f id is eligible to land in center i, let it land.(c) Otherwise, find a minimum cost path from center i to f id's destination.The "cost" includes minimum flight times in the centers along the path, and the marginal capacities of the centers to accept additional flights, i.e., C j (k) -xj (k) for center j at time k, where xj (k) is the number of disaggregated aircraft in Step 4. If C j (k) -xj (k) ≤ 0, a very high cost is assigned for center j at time k.
+4 .Figure 2 .Figure 3 .423Figure 2. Comparison of center count profiles in Cleveland center.
+Figure 4 .Figure 5 .45Figure 4. Average computational time for optimization.Horizontal axis denotes 31 days in May 2005.
+Figure 6 .6Figure 6.An example of NCWD Weather Report.
+In this paper, a linear time-varying aggregate traffic flow model is implemented and validated against real air traffic data.Using the aggregate flow model, an optimization model is proposed for traffic flow management.A disaggregation algorithm is developed to convert a flow-based solution to a flight-specific solution.Disaggregation is an important part for aggregate modeling for implementable control actions.The optimization model and the disaggregation algorithm are implemented and applied to TFM problems.Future work will focus on the following items: (i) The aggregate model in this paper only includes the deterministic components in the original model, and the corresponding optimization is also deterministic.
+Figure 7 .7Figure 7. Dashed line (blue) is the original route.Solid line (red) is a reroute.
+travel time along the route A → B can be formulated as:
+βBj (k)x AB (k) = 0, k ∈ {0, • • • , T AB -1} (17) j∈N A β jA (k)x j (k) = 0, k ∈ {T -T AB + 1, • • • , T } (18) t+TAB k=TAB j∈N B β Bj (k)x AB (k) ≤ t k=0 j∈N A β jA (k)x j (k), t ∈ {0, • • • , T -T AB },
+Figure 8 .Figure 9 .89Figure 8. Flight times for all flights in ZLA.Data collected from March, May and September of 2005.
+			a The LDSM can be used to model different levels (sizes) of airspace, e.g., sector-level LDSM and user-defined-level LDSM, with respect to different levels of objectives and interests.The optimization algorithm desigined in this paper can be adpated for different LDSM models accordingly.2 of 16American Institute of Aeronautics and Astronautics
+			of 16 American Institute of Aeronautics and Astronautics
+			of 16 American Institute of Aeronautics and Astronautics
+			of 16 American Institute of Aeronautics and Astronautics
+			of 16 American Institute of Aeronautics and Astronautics
+			of 16 American Institute of Aeronautics and Astronautics
+		
+		
+			
+
+				
+
+
+	
+		CTAS: Computer Intelligence for Air Traffic Control in the Terminal Area
+		
+			HErzberger
+		
+		
+			July 1992
+			Ames Research Center
+		
+	
+	Tech. Rep. NASA TM 103959
+	Erzberger, H., "CTAS: Computer Intelligence for Air Traffic Control in the Terminal Area," Tech. Rep. NASA TM 103959, Ames Research Center, July 1992.
+
+
+
+	
+		FACET: Future ATM Concepts Evaluation Tool
+		
+			KarlDBilimoria
+		
+		
+			BanavarSridhar
+		
+		
+			ShonRGrabbe
+		
+		
+			GanoBChatterji
+		
+		
+			KapilSSheth
+		
+		10.2514/atcq.9.1.1
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			9
+			1
+			
+			2001
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Bilimoria, K., Sridhar, B., Chatterji, G., Sheth, K., and Grabbe, S., "FACET: Future ATM Concepts Evaluation Tool," Air Traffic Control Quarterly, Vol. 9, No. 1, 2001, pp. 1-20.
+
+
+
+	
+		Horam, Baron, (John Rhodes Horam) (born 7 March 1939)
+		
+			LRhodes
+		
+		
+			SRhodes
+		
+		
+			LBeaton
+		
+		
+			E
+		
+		10.1093/ww/9780199540884.013.u20755
+		. 00W0000302
+	
+	
+		MITRE
+		
+			March 2001
+			Oxford University Press
+		
+	
+	Tech. Rep
+	Rhodes, L., S., Rhodes, L., and Beaton, E., "CRCT Capabilities Detailed Functional Description," Tech. Rep. 00W0000302, MITRE, March 2001.
+
+
+
+	
+		Analysis of En Route Sector Demand Error Sources
+		
+			JimmyKrozel
+		
+		
+			DanRosman
+		
+		
+			ShonGrabbe
+		
+		10.2514/6.2002-5016
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		Monterey, CA
+		
+			American Institute of Aeronautics and Astronautics
+			August 2002
+			
+		
+	
+	Krozel, J., Rosman, D., and Grabbe, S., "Analysis of En Route Sector Demand Error Sources," AIAA Guidance, Navigation and Control Conference, Monterey, CA, August 2002, AIAA Paper 2002-5016.
+
+
+
+	
+		Analysis of Aircraft Arrival and Departure Delay Characteristics
+		
+			EricMueller
+		
+		
+			GanoChatterji
+		
+		10.2514/6.2002-5866
+	
+	
+		AIAA's Aircraft Technology, Integration, and Operations (ATIO) 2002 Technical Forum
+		Los Angeles, CA
+		
+			American Institute of Aeronautics and Astronautics
+			October 2002
+			
+		
+	
+	Analysis of aircraft arrival and departure delay characteristics
+	Mueller, E. and Chatterji, G., "Analysis of aircraft arrival and departure delay characteristics," AIAA 2nd Aviation Technology, Integration and Operations (ATIO) Forum, Los Angeles, CA, October 2002, AIAA Paper 2002-5866.
+
+
+
+	
+		A New Approach for Modeling, Analysis and Control of Air Traffic Flow
+		
+			PadmanabhanMenon
+		
+		
+			GregorySweriduk
+		
+		
+			KarlBilimoria
+		
+		10.2514/6.2002-5012
+		AIAA Paper 2002-5012
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		Monterey, CA
+		
+			American Institute of Aeronautics and Astronautics
+			August 2002
+		
+	
+	Menon, P. K., Sweriduk, G. D., and Bilimoria, K., "A new approach for modeling, analysis and control of air traffic flow," AIAA Conference on Guidance, Navigation, and Control, Monterey, CA, August 2002, AIAA Paper 2002-5012.
+
+
+
+	
+		Aggregate Flow Model for Air-Traffic Management
+		
+			BanavarSridhar
+		
+		
+			TarunSoni
+		
+		
+			KapilSheth
+		
+		
+			GanoChatterji
+		
+		10.2514/1.10989
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		Journal of Guidance, Control, and Dynamics
+		0731-5090
+		1533-3884
+		
+			29
+			4
+			
+			2006
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Sridhar, B., Soni, T., Sheth, K., and Chatterji, G., "Aggregate Flow Model for Air-Traffic Management," AIAA Journal of Guidance, Control and Dynamics, Vol. 29, No. 4, 2006, pp. 992-997.
+
+
+
+	
+		COMPARISON OF LINEAR DYNAMIC MODELS FOR AIR TRAFFIC FLOW MANAGEMENT
+		
+			BanavarSridhar
+		
+		
+			PKMenon
+		
+		10.3182/20050703-6-cz-1902.01963
+	
+	
+		IFAC Proceedings Volumes
+		IFAC Proceedings Volumes
+		1474-6670
+		
+			38
+			1
+			
+			July 2005
+			Elsevier BV
+			Prague, Czech
+		
+	
+	Sridhar, B. and Menon, P. K., "Comparison of linear dynamic models for air traffic flow management," 16 th IFAC world congress, Prague, Czech, July 2005.
+
+
+
+	
+		Eulerian Trilogy
+		
+			DengfengSun
+		
+		
+			SamuelYang
+		
+		
+			IssamStrub
+		
+		
+			AlexandreBayen
+		
+		
+			BanavarSridhar
+		
+		
+			KapilSheth
+		
+		10.2514/6.2006-6227
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		Keystone, CO
+		
+			American Institute of Aeronautics and Astronautics
+			August 2006
+			
+		
+	
+	Sun, D., Yang, S., Strub, I., Bayen, A., Sheth, K., and Sridhar, B., "Eulerian Trilogy," AIAA Conference on Guidance, Navigation, and Control Conference and Exhibit, Keystone, CO, August 2006, AIAA Paper 2006-6227.
+
+
+
+	
+		Some Properties of the Aggregate Flow Model of Air Traffic
+		
+			GanoChatterji
+		
+		
+			BanavarSridhar
+		
+		10.2514/6.2005-7456
+	
+	
+		AIAA 5th ATIO and16th Lighter-Than-Air Sys Tech. and Balloon Systems Conferences
+		
+			American Institute of Aeronautics and Astronautics
+			
+		
+	
+	Chatterji, G. and Sridhar, B., "Some Properties of the Aggregate Flow Model of Air Traffic," AIAA 5th ATIO and 16th
+
+
+
+	
+		AIAA 5th ATIO and16th Lighter-Than-Air Sys Tech. and Balloon Systems Conferences
+		10.2514/matio05
+		AIAA Paper 2005-7456
+	
+	
+		Lighter-Than-Air Sys Tech. and Balloon Systems Conferences
+		Arlington, Virginia
+		
+			American Institute of Aeronautics and Astronautics
+			September 2005
+		
+	
+	Lighter-Than-Air Sys Tech. and Balloon Systems Conferences, Arlington, Virginia, September 2005, AIAA Paper 2005-7456.
+
+
+
+	
+		Parallelization of the Traffic Flow Management Problem
+		
+			JosephRios
+		
+		
+			KevinRoss
+		
+		10.2514/6.2008-6519
+		AIAA Paper 2008-6519
+	
+	
+		AIAA Guidance, Navigation and Control Conference and Exhibit
+		Honolulu, HI
+		
+			American Institute of Aeronautics and Astronautics
+			August 2008
+		
+	
+	Rios, J. and Ross, K., "Parallelization of the Traffic Flow Management Problem," AIAA Guidance, Navigation and Control Conference, Honolulu, HI, August 2008, AIAA Paper 2008-6519.
+
+
+
+	
+		Solving High Fidelity, Large-Scale Traffic Flow Management Problems in Reduced Time
+		
+			JosephRios
+		
+		
+			KevinRoss
+		
+		10.2514/6.2008-8910
+		AIAA Paper 2008-8910. 15 of 16
+	
+	
+		The 26th Congress of ICAS and 8th AIAA ATIO
+		Anchorage, Alaska
+		
+			American Institute of Aeronautics and Astronautics
+			September 2008
+		
+	
+	Rios, J. and Ross, K., "Solving High Fidelity, Large-Scale Traffic Flow Management Problems in Reduced Time," AIAA 8th Aviation Technology, Integration, and Operations Conference (ATIO), Anchorage, Alaska, September 2008, AIAA Paper 2008-8910. 15 of 16
+
+
+
+	
+		Massively Parallel Dantzig-Wolfe Decomposition Applied to Traffic Flow Scheduling
+		
+			JosephRios
+		
+		
+			KevinRoss
+		
+		10.2514/6.2009-6009
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		
+			DSun
+		
+		
+			ABayen
+		
+		Chicago, IL; Chicago, IL
+		
+			American Institute of Aeronautics and Astronautics
+			August 2009. August 2009. 2009
+		
+	
+	A dual decomposition method for traffic flow management problems. submitted
+	Rios, J. and Ross, K., "Massively Parallel Dantzig-Wolfe Decomposition Applied to Traffic Flow Scheduling," to appear in AIAA Guidance, Navigation and Control Conference, Chicago, IL, August 2009. Rios, J. and Lohn, J., "A Comparison of Optimization Approaches for Nationwide Traffic Flow Management," to appear in AIAA Guidance, Navigation and Control Conference, Chicago, IL, August 2009. Sun, D. and Bayen, A., "A dual decomposition method for traffic flow management problems," IEEE Transactions on Control Systems Technology, submitted, 2009.
+
+
+
+	
+		Optimally and equitably distributing delays with the aggregate flow model
+		
+			MichaelBloem
+		
+		
+			BanavarSridhar
+		
+		10.1109/dasc.2008.4702813
+	
+	
+		2008 IEEE/AIAA 27th Digital Avionics Systems Conference
+		
+			IEEE
+			
+		
+	
+	Bloem, M. and Sridhar, B., "Optimally and equitably distributing delays with the aggregate flow model," IEEE/AIAA
+
+
+
+	
+		AIAA/IEEE Digital Avionics Systems Conference. 13th DASC
+		10.1109/dasc.1994.369514
+		
+	
+	
+		AIAA/IEEE Digital Avionics Systems Conference. 13th DASC
+		St. Paul, Minnesota
+		
+			IEEE
+			October 2008
+		
+	
+	3.D.4-1-3.D.4-14
+	Digital Avionics Systems Conference (DASC), St. Paul, Minnesota, October 2008, pp. 3.D.4-1-3.D.4-14. http://www.ilog.com/corporate/training/acrobat/CPLEX.pdf.
+
+
+
+	
+		Airspace availability estimation for traffic flow management using the scanning method
+		
+			AlexanderKlein
+		
+		
+			LaraCook
+		
+		
+			BryanWood
+		
+		10.1109/dasc.2008.4702802
+	
+	
+		2008 IEEE/AIAA 27th Digital Avionics Systems Conference
+		St. Paul, Minnesota
+		
+			IEEE
+			October 2008
+			
+		
+	
+	Klein, A., Cook, L., and Wood, B., "Airspace availability estimation for traffic flow management using the scanning method," IEEE/AIAA 27th Digital Avionics Systems Conference (DASC), St. Paul, Minnesota, October 2008, pp. 3.B.5-1-
+
+
+				
+			
+		
+	

@@ -1,0 +1,727 @@
+
+	
+	
+		
+The flight navigation procedures envisioned under the Next Generation Transportation System will require a specification of the expected route of each flight.Once these specifications are provided, the flights must proceed along their routes with such speed profiles that every pair of aircraft complies with the minimal separation requirement imposed by the Federal Aviation Administration.The task of separation assurance is most challenging in terminal airspace, with many routes merging and crossing.This paper contributes a mathematical model and an algorithmic approach for routing flights strategically, with a foresight that potentially helps the subsequent computation of speed profiles compliant with the separation requirements and with each aircraft's feasible speed range.The approach consists of reducing a general routing problem to the Shortest-Path Problem.
+NomenclatureA the number of aircraft in a given traffic sample A a finite set of A aircraft: A = {1, 2, . . ., A} α the index of an aircraft in the given sample: α ∈ A G = (V, E) a directed graph with vertex set V and edge set E p a mapping that assigns to each aircraft in A a walk in G v ORIG;α the vertex in G that serves as the origin of aircraft α v DEST ;α the vertex in G that serves as the destination of aircraft α v α k the k-th vertex in the walk of aircraft α (v α k ∈ V ) G A the depth-coordinated product of the A copies of G (section II.1) u, v vertices of G A
+I. IntroductionUnder the Next Generation Air Transportation System (NextGen), flights will follow procedures called Area Navigation (RNAV) and Required Navigation Performance (RNP).RNAV and RNP procedures require a precise definition of the expected route of flight; see Ref. 1 for a detailed discussion.Thus, a necessary part of Air Traffic Management (ATM) under NextGen will be the routing of the flights, e.g. a specification of a path from origin to destination for each flight.If the airspace route network is modeled as a directed graph or digraph [2, section A.2], whose vertices are the waypoints and the runways, routing becomes a subclass of the problem of coordinating multiple moving agents subject to separation requirements. 3Once a routing is provided, the flights must proceed along their routes with speed profiles that assure separation at all times 3 and comply with the feasible speed ranges of the aircraft.The term speed profile refers throughout this paper to a function that gives a time parameterization x α (t) of the path of a flight α, where x α is the arc length distance from the aircraft to some reference point along its path.Aircraft separation and compliance with the aircraft's feasible range of airspeed are among a relatively large number of operational requirements imposed on speed profiles in ATM; see Ref. 1 for a comprehensive survey.If a feasible solution cannot be found for a given routing, a new routing must be determined that does allow for compliance with all constraints a .In today's Air Traffic Operations (ATO), the task of separation assurance falls mostly on the human personnel of Air Traffic Control (ATC).This task is most challenging in a terminal airspace: while standard published routes have been specified in the en-route airspace, air traffic procedures used in terminal airspace seldom specify a continuous route of flight to the aircraft destination or to the exit from terminal airspace.From Top of Descent (i.e., the completion of the cruise stage of flight) to the start of the final approach to landing, arriving flights today navigate by procedures rather than by a fixed set of routes.Arrival and departure procedures may include constraints on speed and altitude, but usually do not specify a continuous route from Top of Descent to the destination airport (or from the origin airport to cruise altitude for departing aircraft).These procedures and practices require the Controller to make determinations of, and changes to, paths and speeds tactically, i.e. on relatively short notice.The necessity for tactical ATC adds to the Controller's workload and to such operational costs as fuel consumption and throughput loss.It is therefore worthwhile to research ways of routing aircraft with a foresight that will help separation assurance.One direction of such research, envisioned in NextGen, is development of automated decision support tools for Precision Air Traffic Operations (PATO).The purpose of such tools is to enable the existing airspace infrastructure to accommodate safely the forecast rapid increase in air traffic demand.Recent work on the problem of automating speed profile advisories in terminal airspace can be found in Refs. 5,6 n both of the latter papers, a speed profile is sought simultaneously for the entire set of flights, i.e. as a vectors(t) = s 1 (t), s 2 (t), . . . , s A (t) , (1)where A is the number of flights and s k (t) is the speed of the k-th flight along its path at time t.For this reason, such a speed profile will be henceforth called a collective speed profile.Automation of speed profile advisories under operational constraints falls under the general problem of multi-agent coordination, with time-continuous motion in a fixed route network.While this general problem has been researched, the focus has been mainly on applications outside of ATM.One such application is multi-robot coordination; see, e.g., 7,8 and references therein.In the latter two references, however, a routing is assumed, and only the speed profiles are sought.In the past few decades of ATM research, the questions of routing and of designing a route network have received considerably more attention in air Traffic Flow Management (TFM), 9-14 concerned mainly with en route airspace, than in terminal airspace.Problems in TFM have been studied using graph theory, network flows, mathematical programming, and machine learning.A more recent publication on ATM in en route space is Ref., 15 where a hierarchical framework for en route traffic planning and a decentralized traffic planning algorithm are proposed using a traffic regulation function.The ATO are modeled using discrete dynamics and decomposing the entire problem into hierarchical layers to achieve tractability.Aircraft separation is left to the human ATC.The discrete dynamical model formulated at the end of section II.C in Ref. 15 indicates that sending an aircraft into holding is allowed.This allowance is a key distinction between ATM problems in an en route airspace as opposed to a terminal airspace: while the former has holding capacity and is concerned mainly with traffic flows, the latter lacks such capacity and is concerned first and foremost with aircraft separation.Work on ATM in terminal airspace has appeared in Refs., 13,[16][17][18][19][20][21][22] which use inherently discrete models and treat separation as a constraint.In the context of ATM in terminal airspace, however, such models have a number of shortcomings, summarized in Ref. 5 as follows (the references in the quote are re-numbered to match the present paper's bibliography):In such a model, aircraft are scheduled only at specific points (the vertices of the graph), with no time stamps maintained or imputed of the aircraft's position or speed away from such a point.One weakness of such inherently discrete models is their principal inability to assure, without adding artificial constraints, pairwise separation between the aircraft continuously in time, as is operationally required. 3Another weakness, specific to the models that lead to a mixed-integer program (MIP), 23 is the difficulty of finding an algorithm that performs sufficiently better than the N P -hard worst case of a general mixed-integer linear program (MILP), 24 although a number of the algorithms developed for solving a MILP modeling air traffic have been shown to perform a The feasible speed range of an aircraft is specified as an interval with endpoints the minimal and maximal airspeeds. 1onsequently, this range depends on the wind conditions (winds aloft).Wind conditions can therefore affect the space of feasible solutions for a given routing and, in particular, can require another routing.A mathematical concept of air traffic schedule robustness to unexpected wind conditions and to other stochastic perturbations is being developed in. 4ith a running time polynomial in the number of aircraft (see, for example, Refs. 19,25 .However, while sufficient constraints can be imposed in a discrete model to assure separation at all times, the authors are unaware of published discrete models that assure such separation and show computational performance suitable for aircraft traffic in a terminal airspace.For further discussion of the problems and a survey of past research, see Ref. 1 and references therein.The challenge and operational requirement of providing aircraft separation at all times in terminal space ATM problems call for treating the motion of the aircraft as a continuous function of time, as is done in Refs. 7,8 or abstract moving agents.The last three years have seen research efforts to address this need: models where the positions and velocities of the moving agents are continuous functions of time, have been used in Refs. 5,6 o capture the separation constraint continuously in time by computing a collective speed profile (1).Such a speed profile has no meaning until one has specified for each aircraft a spatial route to follow: the speed profile describes the motion of the aircraft along the given route.This specification of routes (called more briefly, routing) is a problem in its own right.If the route network is modeled as a directed graph (described in more detail below), then the routing problem is the discrete problem of finding paths in a graph, which must be solved before the collective speed profile is sought.Navigation of a given set of aircraft in an airspace can, therefore, be thought of as a two-part problem:Part I: Routing (a discrete problem).Part II: Computation of (1) (a continuous problem).()2The feasibility of a collective speed profile corresponding to a given routing depends on a number of factors, including those that can change as the profile is being executed by the aircraft.Examples of such changes include those in the wind conditions and in the availability of the various parts of the airport (e.g., a runway may become non-functional because of unexpected debris).It is therefore desirable not only that the speed profile be feasible, but also that its feasibility be as robust as possible to such random perturbations.If an aircraft is forbidden to deviate from a given route network, then such robustness translates into having sufficient time to assure aircraft separation for the rest of the operation.An attempt at quantifying this sufficiency is made by introducing the urgency metric in section III, below.The focus of this paper is Part I of problem (2) (formulated in detail as Problem I.1, below).The central motivation is to approach this part in a way that would facilitate a solution of the second part.In detail, the focus here is on routing a finite set A = {1, 2, . . ., A} of A flights in a route network, each flight α ∈ A to go from its origin to its destination, both specified as an input to the problem.The route network is modeled as a directed graph, or digraph [2, section A.2], G = (V, E).The vertices v ∈ V are points in a Euclidean space of dimension 2 or 3, which models the physical airspace, and correspond to waypoints 1 and runways in the airspace.To each edge e = (u, v) ∈ E corresponds a rectifiable curve 26 which, therefore, has a well-defined arc length.Henceforth, an edge e ∈ E will be identified with the corresponding curve.A graph G = (V, E) with this additional geometric setting will be called an airspace graph.The construct of airspace graph allows to model the route of a flight as a walk 2 in G (i.e., a finite sequence of vertices, not necessarily distinct, with each consecutive pair an edge in G) and to furnish the route with an arc length coordinate.This coordinate will be used to specify unambiguously the current location of the aircraft conducting the flight.Thus, a routing ofA in G = (V, E) is, essentially, a mapping p that for each flight α ∈ A specifies a walk p(α) : v α 1 , v α 2 , . . . , v α N α ,(3)of some length N α , where v α 1 is the origin, and v α N α the destination, of α.For clarity, we note that: • a routing of A in G involves no temporal component, i.e. says nothing about the speeds with which the aircraft are to proceed along their routes, and• collective speed profiles (which, as indicated, are functions of time) are not explicitly computed in this paper.The first bullet implies, in particular, that even if the routes assigned to two aircraft overlap, this does not necessarily indicate a loss of separation, although certainly introducing the potential for such a loss.Separation is assured only if the collective speed profile, computed after a routing is specified, satisfies the appropriate set of constraints. 5,6 n a number of publications, such a collective speed profile is computed as a control strategy (classical or hybrid) to minimize a cost functional that may include such terms as fuel consumption, airport throughput, and excess separation; see, for example, Refs., 6,15,22,27 and references therein.Furthermore, the continuous parameterization of each walk (3), as a rectifiable curve, by its arc length coordinate, allows to enforce the separation constraint for every pair of points that come from two different curves, whether or not these points are vertices of the graph.An essential requirement of the problem will be that a sought and found routing p make it "as easy as possible" to find, subsequently, separation-compliant collective speed profiles that fit into the feasible speed ranges of the aircraft.This "ease" will be quantified in section III and used to construct a weighting on a digraph whose shortest paths (a path 2 is a walk with all vertices distinct) will give a routing.Assuming a rigorous definition of this quantification is available, the problem that motivates this paper can be formulated as follows:Problem I.1 Given an airspace graph G = (V, E), a set A = {1, 2, . . ., A} to be routed in G, and the specification of the origin v ORIG;α ∈ V and the destination v DEST ;α ∈ V , reachable from the origin, of each flight α ∈ A, construct a routing p of A in G such that• for each flight α ∈ A, the route p(α) starts with v ORIG;α ∈ V and ends with v DEST ;α ∈ V , and• the routing makes the construction of separation-compliant collection-compliant and feasible speed profile as easy as possible.The approach taken herein to Problem I.1 consists of three steps, described in the following three paragraphs.The first step is to useG to construct a certain new digraph G A = (V A , E A ), with the vertex set V A a subset of the Cartesian product [26, section 12.7-1] of A copies of V : V × V × . . . × V , V occurs A times (4)and with the edge set E A , analogously, a subset of E × E × . . .× E (E occurs A times).Each vertex v ∈ V A will, therefore, be an ordered A-tuple v = (v 1 , . . ., v A ) of vertices from V .It will be more convenient, however, to use the column vector-like notationv =     v 1 . . . v A     ,(5)whose advantage will be made clear in remark II.2.The definition and essential properties of the graph G A will be given in section II.The second step is to furnish each edge in E A with a scalar weight (see weighted graph in Ref. 2 ).One functional form for these weights, suitable for either arrivals only or departures only, is given in section III.The third step is to solve the resulting shortest-path problem 2 on G A .Here, one seeks shortest paths fromv A;ORIG =     v ORIG;1 . . . v ORIG;A     to v A;DEST =     v DEST ;1 . . . v DEST ;A     .The contribution of this paper is, therefore, a model that reduces Problem I.1 to the well-known shortestpath problem on G A .This reduction comes at the expense of forming a data set of a size that in the worst case grows exponentially with A; this potential computational cost is addressed in appendix B. The central object of research in this approach is the construction of a weighting function on G A to reflect the difficulty of separation assurance and, it is hoped, to give routings (computed as shortest paths in the sense of this weighting, e.g. using Dijkstra's algorithm-see section IV) that make finding a separation-compliant and speed range-compliant collective speed profile as easy as possible.
+II. A construction and analysis of G AA. Depth-coordinated products of rooted digraphs: an abstract graph-theoretic concept This section is an introduction to an abstract graph-theoretic concept-the depth-coordinated product of rooted digraphs-that will be used in a later section to construct and analyze G A .The ATM context is temporarily abandoned here (and in appendix B) and is re-entered in the next section.A rooted digraph is a digraph with one of the vertices chosen to be distinguished from all the others and called the root of the graph.In this paper, the notation for a rooted digraph will be an ordered triple of the form (the vertex set, the edge set, the root).( 6)Definition II.1 Given two rooted digraphs,G (1) = V (1) , E (1) , v 1 root , G (2) = V (2) , E (2) , v 2 root ,(7)with no cycles that have two or more edges, their depth-coordinated product is defined as the graph whose vertex set, V DCP ⊂ V (1) × V (2) , and edge set, E DCP ⊂ E (1) × E (2) , meet all of the following conditions:(a)    v 1 root v 2 root    ∈ V DCP(8)(b) u 1 u 2 ∈ V DCP if and only if u 1 and u 2 are, each in its respective graph, reachable from the root by walks with the same number of edge occurrences.(c) e = u 1 u 2 , v 1 v 2 ∈ E DCP ifand only if all of the following conditions are met:u 1 u 2 ∈ V DCP and v 1 v 2 ∈ V DCP , u 1 , v 1 ∈ E (1) and u 2 , v 2 ∈ E (2) ,e is not a self-loop b .Remark II.1 (a) It can be proved that the depth-coordinated product of two rooted digraphs is thus defined uniquely.(b) While each of the constituent rooted digraphs, G (k) , is allowed to have self-loops (an allowance that will turn out instrumental in the routing application; see section B), their depth-coordinated product is allowed no self-loops.An example of two rooted digraphs and their depth-coordinated product is shown in figure 1  This restriction is imposed in anticipation of furnishing the depth-coordinated product with a weighting and computing shortest paths: absence of self-loops can help obtain a weighted graph which is acyclic, a property that facilitates a search for shortest paths.(c) The number of edge occurrences mentioned in condition (b) of definition II.1 is the "depth" used to "coordinate" the product of the two graphs.This use of the term "depth" is consistent with that in "the depth of a tree."In particular, if the rooted digraphs (7) are trees of respective depths D (1) and D (2) , then their depth-coordinated product is a tree of depth min{D (1) , D (2) }.The question arises whether the ATM application central to this paper is best served by coordinating the product by depth or by some other quantity, possibly with non-integral values allowed, or, more generally, by an equivalence relation 26 on V (1) ∪ V (2) (generalizing the criterion "at the same depth" to "in the same equivalence class").The author is aware of no prior research on this question.(A) [ ]2 7 [ ]2 6[ ]3 8 [ ]3 9[ ]3 10 [ ]4 8[ ]4 9 [ ]4 10[ ] One analogously defines the depth-coordinated product of any finite (or even countably infinite) collection of rooted digraphs.The task and potential costs of computing depth-coordinated products are addressed in appendix B.Remark II.2A walk in the depth-coordinated product of K rooted digraphs G (k) , k = 1, . . ., K, can thus be writtenu 1 =       u 1 1 u 2 1 . . . u k 1       , u 2 =       u 1 2 u 2 2 . . . u K 2       , . . . , u M =       u 1 M u 2 M . . . u K M       . (9)However, it will be also convenient to regard the walk (9) as the "column vectors" of a matrix, and to write the same walk in the form             u 1 1 u 1 2 . . . u 1 M u 2 1 u 2 2 . . . u 2 M . . . u K 1 u K 2 . . . u K M              . (10)The k-th row of the matrix is a walk in G (k) .B. An assumption about the airspace graph G = (V, E) (B) Inserting artificially the self-loops (v 4 , v 4 ) and (v 5 , v 5 ) allows a routing as the path(A) v 1 v 2 v 3 v 4 v 5 (B) v 1 v 2 v 3 v 4 v 5v 1 v 3 v 5 v 2 v 4 v 4 in G A .If a routing of A in G = (V, E) is sought as a path (10) in the depth-coordinated product of K = A rooted copies of G, where the α-th row of the matrix is the individual walk assigned to flight α, then such a routing must assign to all flights walks of the same length.There are airspace graphs, however, that do not allow this, because the maximum number of edges that one flight must traverse from origin to destination can be smaller than the minimum number of edges another flight must traverse from origin to destination.An example of such a situation is shown in figure 2(A) for a set of 2 aircraft with origins at v 1 and v 2 .Figure 2(B), on the other hand, illustrates that this obstacle can be overcome by inserting artificially a self-loop at each flight's destination.These considerations lead to the following assumption about the given airspace graph G = (V, E), made throughout the rest of the paper.Assumption II.1 (a) For every flight α ∈ A, the destination is reachable from the origin; i.e., there exists a walk in G from v ORIG;α to v DEST ;α .(b) If a vertex v ∈ V is the destination of a flight α ∈ A, then E contains the self-loop (v, v).(c) There are no other self-loops in G.
+C. Definition and essential properties of G ABy associating to each flight α a "copy" of the airspace graph G = (V, E) and designating v ORIG;α as the root, one obtains the rooted digraphsV, E, v ORIG;α , α ∈ A.Their depth-coordinated product will be taken as the definition of G A .The intuitive content of the following theorem is that, by finding all paths in G A from v ORIG to v DEST , one finds all possible routings (3).Theorem II.1 Suppose there exists a routing (3) such that v α 1 = v ORIG;α and v α N α = v DEST ;α for each α ∈ A. Then there exists a walku 1 =     u 1 1 . . . u A 1     , u 2 =     u 1 2 . . . u A 2     , . . . , u M =     u 1 M . . . u A M     , M = max α∈A N α ,(11)in G A = (V A , E A ) such that for each α ∈ A the following conditions are met:• u α k = v α k for k = 1, 2, . . . , N α , • u α k = v α N α for k = N α , .. ., M , and • u α M = v DEST ;α .Theorem II.1, proved in appendix A, implies that the flights α ∈ A can be routed all within the same algorithm by seeking paths in G A from v A;ORIG to v A;DEST .A weighting on G A will be constructed in section III in such a way that the shorter of the paths from v A;ORIG to v A;DEST are the ones that make subsequent computation of separation-compliant speed profiles easier.
+III. A weighting function on G A suitable for routing arrivals only or departures onlyThe main source of difficulty in enforcing separation between two aircraft in an airspace, represented by an airspace graph G = (V, E), is the increasing proximity of their routes, i.e. those portions of the routing that allow a simultaneous positioning of the aircraft in which at least two of the safety envelopes overlap.In particular, if the two aircrafts' routes merge or intersect at a point 28c , then the two aircraft are sure to constrain each other's motions spatially in the vicinity of the point.A point where two or more routes merge, or a merge point, would correspond to a vertex v ∈ V of indegree ≥ 2. 2 If the positions of two aircraft, α = 1 and α = 2, are specified by the arc length coordinates s (1) and s (2) along their respective routes, then the set of all pairs s (1) , s (2) corresponding to a loss of separation between the two aircraft can be calculated explicitly from the minimal separation requirements for the two aircraft types and from the shape of the route segments that merge.For the theoretically special (but operationally frequent) case when the two merging segments are rectilinear, this calculation is carried out in detail in 5,6 and confirms the following qualitative considerations:• The closer the merge point to the two aircraft, the smaller the space of separation-compliant collective speed profiles.• The smaller the angle between the two merging route segments, the smaller the space of separation-compliant collective speed profiles.      (12)Throughout this section, let d(v, v ′ ) denote the Euclidean distance between vertices v and v ′ of G.If these vertices constitute an edge, e = (v, v ′ ) ∈ E, then notation d(e) will also be sometimes used.In what follows, we adopt the following assumption.c The term critical point as defined in Ref. 28 is not used in the present work and occurs in other literature with a different definition; e.g., see Ref. 26 Assumption III.1 (a) All edges in E are rectilinear segments.(The main shortcoming of this part of the assumption is the difficulty of using a polygonal curve to approximate RNAV routes that will have curvilinear parts corresponding to turns. 29The requirement 29 that such routes accommodate all types of aircraft to fly that route and all wind conditions affects the turn radius designed into the route, thereby affecting the number of polygonal segments required for a good approximation.)(b) An intersection of two routes is either a vertex in G or set of edges in G.(c) No two routes share a pair of adjacent vertices with opposite edge orientations; i.e., there do not exist vertices u, v such that one route contains the edge (u, v), and another route, the edge (v, u).(Restrictive as this part of the assumption may seem, most current airport operations satisfy it by separating arrivals from departures by altitude.This fact, however, does not principally rule out the necessity to address the case of two mutually opposite edges, which is therefore addressed in remark III.1.)
+Suppose the verticesu A =     u 1 . . . u A     , v A =     v 1 . . . v A     constitute an edge e A = u A , v A ∈ E A (this is true if and only if e α = (u α , v α ) ∈ E for every α ∈ A).For a pair α 1 , α 2 of flight indices, the quantityd α1,α2 e A = 1 2 (d (u α1 , v α1 ) + d (u α2 , v α2 )) (13)is small if the edges (u α1 , v α1 ) and (u α2 , v α2 ) are both short.If, furthermore, the edges merge (d(v α1 , v α2 ) = 0), this merge hampers collective speed profiles that will keep the two aircraft on these edges properly separated.Finally, if at least one of the edges (u α1 , v α1 ), (u α2 , v α2 ) is a loop, then the weight of the edge pair is zero, because self-loops are introduced artificially, to allow repetition of vertices in an aircraft's walk that is shorter than another's (section B).Two distinct issues thus emerge: the shortage of time available for (or the urgency of) separation assurance, and the difficulty of separation assurance arising from the proximity of the two edges.The first issue will be addressed here by observing that quantity (13) measures the amount of room (and, therefore, the amount of time) available for the two aircraft to assure separation.The aforementioned urgency, then, will be defined as the reciprocal of (13).The second issue will be addressed by defining the proximity of the two edges as the quantity1 c 1 + d (u α1 , u α2 ) + c 3 d (u α1 , u α2 ) c 2 + d (v α1 , v α2 ), the c's positive constants.Quantity ( 14) increases for the following types of configurations (shown in figure 3), in that order: the two edges have no overlap, the two edges share the initial vertex only, the two edges coincide, the two edges share the final vertex only.Remark III.1 Part (c) of assumption III.1, while it makes the weighting function developed herein unsuitable for routing traffic that contains a mixture of arrivals and departures, is inessential to the approach proposed herein and is adapted mostly for computational convenience.One straightforward way to include a penalty for the case when the two edges (u α1 , v α1 ), (u α2 , v α2 ) that are mutually opposite, i.e. satisfy u α1 = v α2 and u α2 = v α1 , is as follows.Denote by µ α k the midpoint of (v α k , v α k ) , k = 1, 2, thinking of it as an artificially inserted vertex.Instead of assessing a separation-maintenance penalty for the edge pair (u α1 , v α1 ), (u α2 , v α2 ), assess and add such penalties for the edge pairs (u α1 , µ α1 ), (u α2 , µ α2 ) and (µ α1 , v α1 ), (µ α2 , v α2 ).This results in replacing ( 14) by the more cumbersome expression1 c 1 + d (u α1 , u α2 ) + c 3 d (u α1 , u α2 ) c 2 + d (µ α1 , µ α2 ) + 1 c 1 + d (µ α1 , µ α2 ) + c 3 d (µ α1 , µ α2 ) c 2 + d (v α1 , v α2 )A potential shortcoming of the latter functional form is that it may penalize a pair of mutually opposite edges on the same scale as a pair of merging edges, hence perhaps insufficiently.The parameters c 1 , c 2 , c 3 in ( 14) should generally be chosen to take into account the following factors:(a) minimal separation requirements for the flight pair (α 1 , α 2 ) (b) the feasible speed ranges of the two aircraft (c) any available information about stochastic phenomena that may hamper the execution of a speed profile (e.g., winds)        (15)Of these, only (a) is addressed in this paper.The other two factors are discussed briefly in section VI.One functional form of a weighting for e A that captures these considerations isW e A =                0 if (u α1 = v α1 and u α2 = v α2 ) α1 =α2 1 d α1,α2 (e A ) 1 c 1 + d (u α1 , u α2 ) + c 3 d (u α1 , u α2 ) c 2 + d (v α1 , v α2 ) otherwise urgency difficulty arising from edge proximity(16)The quantities c 1 , c 2 , and 1/c 3 are in the units of distance, so W is in the units of distance squared, reflecting the fact that costs are assessed for each pair of aircraft.The heaviest contributions to ( 16) come from the summands corresponding to a pair of edges both short and coming near each other.Figure 3 shows four benchmark configurations of an edge pair (u α1 , v α1 ) and (u α2 , v α2 ) with the corresponding values of ( 16) computed with c 1 = 0.05, c 2 = 0.01, c 3 = 1.00.(A) -0.5 -0.4 -0.3 -0.2 -0.1 0 0.1 0.2 0.3 0.4 0.5u α 1 u α 2 v α 1 v α 2 (B) -0.u α 1 = u α 2 v α 1 v α 2 (C) -0.5 -0.4 -0.3 -0.2 -0.1 0 0.1 0.2 0.3 0.4 0.5 -1 -0.8 -0.6 -0.4 -0.2 0 0.2 0.4 0.6 0.8 1 W = 20 u α 1 = u α 2 v α 1 = v α 2 (D) -0.5 0 0.5 1 -1 -0.8 -0.6 -0.4 -0.2 0 0.2 0.4 0.6 0.8 1 W = 63.8479 u α 1 u α 2 v α 1 = v α 2
+IV. Sample numerical resultsWith the graph G A constructed and the weighting (16) defined, one can seek shortest paths using any of the known suitable algorithms; e.g., Dijkstra's. 30The following examples were solved using the Matlab software. 31In each example, the Shortest-Path Problem was solved using Dijkstra's algorithm in the implementation, 32 using the weighting function (16), and the result recorded in the form (10) and accompanied by the physical run time of the entire computation (of G A , the weighting function, and a Dijkstra shortest path), carried out on a Mac OS X 10.6.8.Each solution is briefly discussed from the point of view of the qualitative considerations (12).The algorithms used here for computing G A , the weighting on it, and shortest paths, are only a prototype, aimed at proof of concept.An automated tool that computes the same objects to aid Air Traffic Control in real operations would require that all the algorithms underlying all computations made in real time are scalable.Appendix B offers a detailed analysis of the complexity of computing G A , which grows exponentially with A, and of some possible ways to either expedite this computation (e.g., using such a parallelization paradigm as map-reduce 33 ) or to carry out as much of it as is possible off-line (i.e., to precompute a sufficient collection of the G A 's).Remark IV.1 All examples below except the last are "abstract," in the sense that no particular scale of airspace is specified for them.Thus, the units of length and physical time are left unspecified.One can, however, obtain a realistic spatial scale of an airspace in the examples of sections C-E by taking the unit of length to equal 3 nmi.The last example (section F) is for the LAX arrival airspace, and the unit of length is 1 nmi.The number of aircraft in each example is small, compared to air traffic demand observed in real operations, to keep the computational load within the capabilities of Matlab.
+A. Four vertices, 2-D airspace, two aircraftThe airspace graph used in this example has four vertices, labeled 1, 2, 3, 4. The vertex positions and edge structure of the airspace graph G = (V, E) (excluding the artificially inserted self-loops) are shown in figure 4. The weighting function (16) has favored a routing with a larger angle of merge (see (12)).
+B. Six vertices, 2-D airspace, two aircraftThe airspace graph used in this example has six vertices, labeled 1, 2, . . ., 6.The vertex positions and edge structure of the airspace graph G = (V, E) (excluding the artificially inserted self-loops) are shown in figure 5.-0.5 0 0.5 1 1.5 The weighting function ( 16) has favored a routing with a merge farther from the origins of the aircraft (see (12)).
+D. Ten vertices, 3-D airspace, two aircraftThe airspace graph used in this example has ten vertices, labeled 1, 2, . . ., 10.The vertex positions and edge structure of the airspace graph G = (V, E) (excluding the artificially inserted self-loops) are shown in figure 7.   specifies the origins (leftmost column), destinations (rightmost column), and the computed routing (rows).The weighting function ( 16) has favored a routing with a merge farther from the origins of the aircraft (see (12)).
+F. Fifty-one vertices, 2-D LAX airspace, five aircraftThe airspace graph used in this example has fifty-one vertices, labeled 1, 2, . . ., 51, and was constructed from live recordings of air traffic data in LAX using the method proposed in Ref. 34 The vertex positions and edge structure of the airspace graph G = (V, E) (excluding the artificially inserted self-loops) are shown in figure 9.
+V. ConclusionsThe numerical evidence above suggests that the computation separation-compliant speed profiles can be facilitated by first selecting a routing.Namely, for the examples considered, the Shortest-Path model for routing the given set of aircraft has yielded those routings that leave the most time for assuring aircraft separation.The main advantages of such routings are two: ease of finding feasible speed profiles and robustness of these profiles to unexpected changes.
+VI. DiscussionFrom the viewpoint of PATO safety, the key desired property of a weighting function on the graph G A is for the resulting routing to maximize the chances that a separation-compliant and speed range-compliant collective speed profile exists; refer to (15.a,b).In addition to this requirement, one must consider the phenomena, generally stochastic, that hamper the execution of a given collective speed profile (e.g., a tail wind that alters the aircraft's feasible range of ground speed); refer to (15.c).Research into suitable forms of the weighting function can be approached using different methods.It appears generally true, however, that with a specific functional form of the weighting chosen, the goal is to fit the coefficients in the form so as to meet the requirements stated in the previous paragraph.Such a fitting problem has arisen in many fields and has been approached using various theoretical frameworks, such as statistics and machine learning.Given a collection of instances of problem I.1 and a computational method that, for a given routing, seeks collective speed profiles compliant with all constraints (separation, speed ranges) and, possibly, optimal to a given objective function (see, e.g., 5,6 ), one may pursue the statistical problem of finding maximum-likelihood estimates 26 of the desired coefficients that increase the probability that a feasible (i.e., compliant with the separation requirements and speed ranges) collective speed profile exists for the given routing.A weakness of this approach, however, can be seen as follows.The sample space for this approach would consist of pairs of the form (the initial collective position of the aircraft in A, a speed range-compliant collective speed profile (1)).A suitable probability measure, required for the aforementioned maximum-likelihood estimates, is not readily defined on this sample space.Methods of resolving this issue are a topic for future research.As an alternative to statistical methods, one may consider the following machine learning approach.Assuming a collective speed profile, for a given routing, can be quantitatively measured for robustness (research aimed at defining such a quantity rigorously is progress 4 ), pose the problem of classifying pairs of the form (routing, collective speed profile)as "robust" if their value of robustness is at or above the threshold, and as "non-robust" otherwise.The form of the weighting function developed above does not include the capability to route a mixture or arrivals and departures; see remark III.1.A desired next step is a weighting function capable of serving such mixed traffic.and, in particular, illustrates this point: while the graph in panel (A) of the figure has the self-loop(3, 3), and the graph in panel (B) has the self-loop(11, 11), the depth-coordinated product shown in panel (C) does not have the self-loop
+3 11 Figure 1 .3111Figure 1.(A), (B) An example of two rooted digraphs (the roots are shown in boxes), and (C) their depthcoordinated product.
+Figure 2 .2Figure 2. (A) A (fictitious) airspace graph for two aircraft with respective origins v 1 , v 2 and respective destinations v 5 , v 4 .The only routing is the path v 1 , v 3 , v 5 for the first aircraft and the path v 2 , v 4 for the second.The two paths have different lengths, hence the routing for the two aircraft cannot be computed as a path in G A .
+Figure 3 .3Figure 3.The values of the weighting function (16) for four benchmark configurations of the edge pair (u α 1 , v α 1 ) and (u α 2 , v α 2 ).Parameter values used: c 1 = 0.05, c 2 = 0.01, c 3 = 1.00.
+Figure 4 .(4Figure 4.The airspace graph for the numerical example of section A.
+Figure 5 .5Figure 5.The airspace graph for the numerical example of section B.
+Figure 6 .6Figure 6.The airspace graph for the numerical example of section C. For a realistic interpretation of length units, see remark IV.1.
+Figure 7 .7Figure 7.The airspace graph for the numerical example of section D. For a realistic interpretation of length units, see remark IV.1.
+Figure 8 .8Figure 8.The airspace graph for the numerical example of section E, modeling a terminal airspace for arriving traffic.Vertex 14 is the runway threshold.For a realistic interpretation of length units, see remark IV.1.
+Figure 9 .9Figure 9.The airspace graph for the numerical example of section F, modeling the LAX terminal airspace for arriving traffic.Vertices 50 and 51 are the runway thresholds.
+Fiveaircraft are routed in the airspace.The matrix run time: 1022.94s)specifies the origins (leftmost column), destinations (rightmost column), and the computed routing (rows).
+			of 19 American Institute of Aeronautics and Astronautics
+		
+		
+
+			
+AcknowledgmentThanks go to the following colleagues at the NASA Ames Research Center: J. Rios, D. Isaacson, and W. Malik for deep discussions that heavily influenced the paper; J. Love and D. Thipphavong for valuable editorial suggestions; S. Zelinski for providing the airspace data for the numerical example in section F. The
+			
+
+			
+open-source Matlab subroutine arrow.mused in the generation of some of the graphics above was contributed by Dr. Erik A. Johnson.A. Proof of theorem II.1.For each α, extend the walk (3) by appending (M -N α ) occurrences of v α N α = v DEST ;α at the end, to obtain:Take the walk u α 1 , . . ., u α M to be (17).This construction results in the sequence (11).It remains to be proved that, (i), eachthus constructed is a vertex in V A , and that, (ii), each consecutive pair u k , u k+1 constitutes an edge in E A .Both (i) and (ii) will now be proved by induction on k.The base case k = 1 follows immediately from the observation thatB. The graph G A : complexity, sparsity, and an approach to pre-computing Throughout this appendix, let G DCP = V DCP , E DCP be the depth-coordinated product of a finite collection of rooted digraphs G (k) = V (k) , E (k) , v k root , k = 1, 2, . . ., K. Definition II.1 implies directly that if all G (k) 's are trees, with G (k) having arity d R (k) and depth N (k) , for k = 1, . . ., K, then G DCP is a tree with root (8), arity R := k R (k) , and depth N := min k N (k) .Thus, in the worst case (full tree),shows that the size of this tree grows in the worst case exponentially with the number A of flights.In general, some (possibly all) of the G (k) 's may fail to be trees.If at least G (k) fails to be a tree, so does G DCP .The following definition will be instrumental in estimating the size of G DCP in this, general, case.in G DCP will be called destination-tight if at least one of the walksis a path (i.e., has all vertices distinct) in the corresponding graph G (k) .d The arity of a tree is the largest of the outdegrees 2 of its vertices.Note that a destination-tight path by definition begins at the vertex in G DCP that is the Cartesian tuple of the v k root 's.In what follows, the term vertex length of a walk will refer to the number of vertex occurrences in that walk.
+Theorem B.1The vertex length of a destination-tight path in G DCP cannot exceed the largest of the vertex lengths of the paths in the G (k) 's that start with the root.Proof.For, suppose N is the largest vertex length of a path in any of the G (k) 's that starts with the root.If (18) were destination-tight with M > N , then there is a k such that v k root , . . ., v k M is a path.This path starts at the root in G (k) , but has vertex length exceeding N .This contradiction completes the proof.Thus, a worst-case upper bound on the number of vertices inwhere N is as in the proof of theorem B.1, and "outdeg" denotes the outdegree [2, section A.2] of a vertex in a digraph.This bound, again, grows exponentially with N A. These bounds suggest that the worst-case cost of computing G A is exponential in the number of flights.It is therefore desirable to avoid the necessity to compute G A in real time, e.g. to pre-compute.One obstacle to pre-computing is the requirement to know the number A, the origins v ORIG;α , and the destinations v DEST ;α of the flights in advance of the ATM operation.Since this knowledge is generally unavailable, one possible workaround is the following, analogous to reducing a problem of maximizing flow in a network 2 to one with a single source 2 and a single sink, by inserting artificially new vertices and edges.For each commonly observed value of A, carry out the following computations offline:1. Insert into the airspace graph G = (V, E) a new, artificial, vertex v ORIG-ART , and insert artificial edges connecting it to all vertices in G with positive outdegree.After modifying G = (V, E) thus, denote the obtained graph by G ′ = (V ′ , E ′ ).2. Take the graph G A to be the depth-coordinated product of A copies of the rooted digraphBy this construction, the vertex v ORIG-ART is adjacent to every possible origin of a flight.Consequently, every possible routing of A flights in G is contained in a path in G A starting from the vertex that is the Cartesian A-tuple of the v ORIG-ART 's.A pair of artificially inserted edges would receive the weight of zero.Two other ways of saving computational resources are as follows:• Make use of the sparsity of G A , which is a consequence of the sparsity of a typical G = (V, E).For example, the densities (100% (number of edges) / (squared number of vertices)) of G A in the last two numerical examples were 0.04% and 0.08%, respectively.• When computing the required Cartesian products, use parallelization, e.g.map-reduce. 33stly, a circumstance that may alleviate the computational demand of using G A is that the number A of aircraft does not grow indefinitely.Rather, an upper bound exists on the total number A of aircraft that may come through a terminal airspace within a time window that may reasonably allow the use of the approach contributed in this paper.			
+			
+
+				
+
+
+	
+		Scheduling for Precision Air Traffic Operations: Problem Definition and Review of Prior Research
+		
+			DRIsaacson
+		
+		
+			AVSadovsky
+		
+		
+			DDavis
+		
+		
+	
+	in progress
+	Isaacson, D. R., Sadovsky, A. V., and Davis, D., "Scheduling for Precision Air Traffic Operations: Problem Definition and Review of Prior Research," (in progress).
+
+
+
+	
+		Combinatorial Optimization; Algorithms and Complexity
+		
+			CHPapadimitriou
+		
+		
+			KSteiglitz
+		
+		
+			1998
+			Dover Publications
+		
+	
+	Papadimitriou, C. H. and Steiglitz, K., Combinatorial Optimization; Algorithms and Complexity, Dover Publications, 1998.
+
+
+
+	
+		
+		
+			UF AAdministration
+		
+		
+			JOOrder
+		
+	
+	
+		Air Traffic Control , U.S. Dept. of Transportation
+		
+			7110
+			2012
+			Washington, D.C.
+		
+	
+	Administration, U. F. A., Order JO 7110.65U, Air Traffic Control , U.S. Dept. of Transportation, Washington, D.C., 2012.
+
+
+
+	
+		Control robustness of Scheduling Precision Air Traffic Operations (PATO)
+		
+			DRIsaacson
+		
+		
+			AVSadovsky
+		
+		
+	
+	in progress
+	Isaacson, D. R. and Sadovsky, A. V., "Control robustness of Scheduling Precision Air Traffic Operations (PATO)," (in progress).
+
+
+
+	
+		Efficient Computation of Separation-Compliant Speed Advisories for Air Traffic Arriving in Terminal Airspace
+		
+			AVSadovsky
+		
+		
+			DDavis
+		
+		
+			DRIsaacson
+		
+		CA 94035-0001
+	
+	
+		NASA
+		
+			2012
+			Ames Research Center, Moffett Field; USA
+		
+	
+	Technical Memorandum
+	Sadovsky, A. V., Davis, D., and Isaacson, D. R., "Efficient Computation of Separation-Compliant Speed Advisories for Air Traffic Arriving in Terminal Airspace," Technical Memorandum NASA/TM-2012-216033, NASA, Ames Research Center, Moffett Field, CA 94035-0001, USA, 2012.
+
+
+
+	
+		Optimal routing and control of multiple agents moving in a transportation network and subject to an arrival schedule and separation constraints
+		
+			AVSadovsky
+		
+		
+			DDavis
+		
+		
+			DRIsaacson
+		
+		CA 94035-0001
+		
+			Oct. 2012
+			NASA, Ames Research Center, Moffett Field; USA
+		
+	
+	Technical Memorandum
+	Sadovsky, A. V., Davis, D., and Isaacson, D. R., "Optimal routing and control of multiple agents moving in a transporta- tion network and subject to an arrival schedule and separation constraints," Technical Memorandum NASA/TM-2012-216032, NASA, Ames Research Center, Moffett Field, CA 94035-0001, USA, Oct. 2012.
+
+
+
+	
+		Computing Pareto Optimal Coordinations on Roadmaps
+		
+			RGhrist
+		
+		
+			JMO'kane
+		
+		
+			SMLavalle
+		
+	
+	
+		The International Journal of Robotics Research
+		
+			24
+			11
+			
+			2005
+		
+	
+	Ghrist, R., O'Kane, J. M., and LaValle, S. M., "Computing Pareto Optimal Coordinations on Roadmaps," The Interna- tional Journal of Robotics Research, Vol. 24, No. 11, 2005, pp. 997-1010.
+
+
+
+	
+		Pareto optimal multi-robot coordination with acceleration constraints
+		
+			JBJung
+		
+		
+			RGhrist
+		
+	
+	
+		Robotics and Automation, ICRA. IEEE International Conference on
+		
+			may 2008
+			1947
+		
+	
+	Jung, J. B. and Ghrist, R., "Pareto optimal multi-robot coordination with acceleration constraints," Robotics and Au- tomation, ICRA. IEEE International Conference on, may 2008, pp. -1947.
+
+
+
+	
+		The Traffic Flow Management Rerouting Problem in Air Traffic Control: A Dynamic Network Flow Approach
+		
+			DBertsimas
+		
+		
+			SSPatterson
+		
+	
+	
+		Transportation Science
+		
+			
+			2000
+		
+	
+	9 Bertsimas, D. and Patterson, S. S., "The Traffic Flow Management Rerouting Problem in Air Traffic Control: A Dynamic Network Flow Approach," Transportation Science, 2000, pp. 239-255.
+
+
+
+	
+		Graph Coloring for Air Traffic Flow Management
+		
+			NBarnier
+		
+		
+			PBrisset
+		
+		10.1023/B:ANOR.0000032574.01332.98
+	
+	
+		Annals of Operations Research
+		
+			130
+			
+			2004
+		
+	
+	Barnier, N. and Brisset, P., "Graph Coloring for Air Traffic Flow Management," Annals of Operations Research, Vol. 130, 2004, pp. 163-178, 10.1023/B:ANOR.0000032574.01332.98.
+
+
+
+	
+		A multicommodity Eulerian-Lagrangian Large capacity cell transmission model for en route traffic
+		
+			DSun
+		
+		
+			ABayen
+		
+	
+	
+		AIAA Journal on Guidance, Control and Dynamics
+		
+			31
+			
+			2008
+		
+	
+	Sun, D. and Bayen, A., "A multicommodity Eulerian-Lagrangian Large capacity cell transmission model for en route traffic," AIAA Journal on Guidance, Control and Dynamics, Vol. 31, 2008, pp. 616-628.
+
+
+
+	
+		Central East Pacific Flight Routing
+		
+			SGrabbe
+		
+		
+			BSridhar
+		
+		
+			NCheng
+		
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		Keystone, Colorado
+		
+			August. 2006
+			
+		
+	
+	Grabbe, S., Sridhar, B., and Cheng, N., "Central East Pacific Flight Routing," AIAA Guidance, Navigation, and Control Conference and Exhibit, 21 -24 August, Keystone, Colorado, 2006.
+
+
+
+	
+		An Approximation Algorithm for Scheduling Aircraft with Holding Time
+		
+			ABayen
+		
+		
+			CTomlin
+		
+		
+			YYe
+		
+		
+			JZhang
+		
+	
+	
+		IEEE Conference on Decision and Control (CDC)
+		
+			2003
+		
+	
+	Bayen, A., Tomlin, C., Ye, Y., and Zhang, J., "An Approximation Algorithm for Scheduling Aircraft with Holding Time," IEEE Conference on Decision and Control (CDC), 2003.
+
+
+
+	
+		A Dual Decomposition Method for Sector Capacity Constrained Traffic Flow Optimization
+		
+			DSun
+		
+		
+			AClinet
+		
+		
+			ABayen
+		
+		
+			WZKamgarpour
+		
+		
+			MSun
+		
+		
+			DTomlin
+		
+		
+			CJ
+		
+	
+	
+		Transportation Research Part B
+		
+			45
+			1
+			
+			2011. 2012
+		
+	
+	Proceedings of the IEEE
+	Sun, D., Clinet, A., and Bayen, A., "A Dual Decomposition Method for Sector Capacity Constrained Traffic Flow Optimization," Transportation Research Part B , Vol. 45, 2011, pp. 880-902. 15 0013, W. Z., Kamgarpour, M., Sun, D., and Tomlin, C. J., "A Hierarchical Flight Planning Framework for Air Traffic Management." Proceedings of the IEEE , Vol. 100, No. 1, 2012, pp. 179-194.
+
+
+
+	
+		Delay Exchanges in Arrival Sequencing and Scheduling
+		
+			GCCarr
+		
+		
+			HErzberger
+		
+		
+			FNeuman
+		
+	
+	
+		Journal of Aircraft
+		
+			36
+			
+			1999
+		
+	
+	Carr, G. C., Erzberger, H., and Neuman, F., "Delay Exchanges in Arrival Sequencing and Scheduling," Journal of Aircraft, Vol. 36, 1999, pp. 785-791.
+
+
+
+	
+		Polynomial Time Algorithms for Scheduling of Arrival Aircraft
+		
+			KRoy
+		
+		
+			ABayen
+		
+		
+			CTomlin
+		
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		
+			2005
+		
+	
+	Roy, K., Bayen, A., and Tomlin, C., "Polynomial Time Algorithms for Scheduling of Arrival Aircraft," AIAA Guidance, Navigation, and Control Conference and Exhibit, 2005.
+
+
+
+	
+		Scheduling models for air traffic control in terminal areas
+		
+			LBianco
+		
+		
+			PDell'olmo
+		
+		
+			SGiordani
+		
+	
+	
+		J. Scheduling
+		
+			9
+			3
+			
+			2006
+		
+	
+	Bianco, L., Dell'Olmo, P., and Giordani, S., "Scheduling models for air traffic control in terminal areas," J. Scheduling, Vol. 9, No. 3, 2006, pp. 223-253.
+
+
+
+	
+		Scheduling Aircraft Landings under Constrained Position Shifting
+		
+			HBalakrishnan
+		
+		
+			BChandran
+		
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		Keystone, CO
+		
+			2006
+		
+	
+	Balakrishnan, H. and Chandran, B., "Scheduling Aircraft Landings under Constrained Position Shifting," AIAA Guid- ance, Navigation, and Control Conference and Exhibit, Keystone, CO, 2006.
+
+
+
+	
+		A Study of Tradeoffs in Scheduling Terminal-Area Operations
+		
+			HLee
+		
+		
+			HBalakrishnan
+		
+	
+	
+		Proceedings of the IEEE
+		
+			96
+			12
+			
+			dec. 2008
+		
+	
+	Lee, H. and Balakrishnan, H., "A Study of Tradeoffs in Scheduling Terminal-Area Operations," Proceedings of the IEEE , Vol. 96, No. 12, dec. 2008, pp. 2081 -2095.
+
+
+
+	
+		Distributed scheduling for air traffic throughput maximization during the terminal phase of flight
+		
+			RChipalkatty
+		
+		
+			PTwu
+		
+		
+			ARahmani
+		
+		
+			MEgerstedt
+		
+	
+	
+		Decision and Control (CDC), 2010 49th IEEE Conference on
+		
+			dec. 2010
+			
+		
+	
+	Chipalkatty, R., Twu, P., Rahmani, A., and Egerstedt, M., "Distributed scheduling for air traffic throughput maximization during the terminal phase of flight," Decision and Control (CDC), 2010 49th IEEE Conference on, dec. 2010, pp. 1195 -1200.
+
+
+
+	
+		Modeling and Optimization of Terminal Airspace and Aircraft Arrival Subject To Weather Uncertainties
+		
+			MKamgarpour
+		
+		
+			WZhang
+		
+		
+			CJTomlin
+		
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		Portland, OR
+		
+			Aug 2011. 23
+		
+	
+	Kamgarpour, M., Zhang, W., and Tomlin, C. J., "Modeling and Optimization of Terminal Airspace and Aircraft Arrival Subject To Weather Uncertainties," AIAA Guidance, Navigation, and Control Conference, Portland, OR, Aug 2011. 23
+
+
+
+	
+		
+			SBradley
+		
+		
+			AHax
+		
+		
+			TMagnanti
+		
+		Applied Mathematical Programming
+		
+			Addison Wesley
+			1977
+		
+	
+	Bradley, S., Hax, A., and Magnanti, T., Applied Mathematical Programming, Addison Wesley, 1977.
+
+
+
+	
+		Approximation Algorithms
+		
+			VVVazirani
+		
+		
+			March 2004
+			Springer
+		
+	
+	Vazirani, V. V., Approximation Algorithms, Springer, March 2004.
+
+
+
+	
+		MILP formulation and polynomial time algorithm for an aircraft scheduling problem
+		
+			AMBayen
+		
+		
+			JZhang
+		
+		
+			CJTomlin
+		
+		
+			YYe
+		
+		
+			2003
+		
+	
+	Bayen, A. M., Zhang, J., Tomlin, C. J., and Ye, Y., "MILP formulation and polynomial time algorithm for an aircraft scheduling problem," 2003.
+
+
+
+	
+		Mathematical Handbook for Scientists and Engineers: Definitions, Theorems, and Formulas for Reference and Review
+		
+			GAKorn
+		
+		
+			TMKorn
+		
+		
+			1961
+			McGraw-Hill
+			New York
+		
+	
+	Korn, G. A. and Korn, T. M., Mathematical Handbook for Scientists and Engineers: Definitions, Theorems, and Formulas for Reference and Review , McGraw-Hill, New York, 1961.
+
+
+
+	
+		Optimal Time Advance in Terminal Area Arrivals: Throughput vs. Fuel Savings
+		
+			ASadovsky
+		
+		
+			HSwenson
+		
+		
+			WHaskell
+		
+		
+			JRakas
+		
+	
+	
+		IEEE 30th Digital Avionics Systems Conference (DASC)
+		Seattle, WA
+		
+			2011
+		
+	
+	Sadovsky, A., Swenson, H., Haskell, W., and Rakas, J., "Optimal Time Advance in Terminal Area Arrivals: Throughput vs. Fuel Savings," IEEE 30th Digital Avionics Systems Conference (DASC), Seattle, WA, 2011.
+
+
+
+	
+		Defining Critical Points for Dynamic Airspace Configuration
+		
+			SZelinski
+		
+	
+	
+		International Council for the Aeronautical Sciences (ICAS)
+		Congress, Anchorage, AK
+		
+			2008
+		
+	
+	Zelinski, S., "Defining Critical Points for Dynamic Airspace Configuration," International Council for the Aeronautical Sciences (ICAS) Congress, Anchorage, AK , 2008.
+
+
+
+	
+		Order 8260.54A, The United States Standard for Area Navigation (RNAV)
+		
+			UF AAdministration
+		
+		
+			2012
+			U.S. Dept. of Transportation
+			Washington, D.C.
+		
+	
+	Administration, U. F. A., Order 8260.54A, The United States Standard for Area Navigation (RNAV), U.S. Dept. of Transportation, Washington, D.C., 2012.
+
+
+
+	
+		Introduction to Algorithms
+		
+			TCormen
+		
+		
+			CLeiserson
+		
+		
+			RRivest
+		
+		
+			1990. 2010
+			The MathWorks Inc
+			Cambridge, MA
+		
+	
+	31 MATLAB, Version 7.7.0.471 (R2008b
+	Cormen, T., Leiserson, C., and Rivest, R., Introduction to Algorithms, The MIT Press, Cambridge, MA, 1990. 31 MATLAB, Version 7.7.0.471 (R2008b), The MathWorks Inc., 2010.
+
+
+
+	
+		Models and Algorithms for PageRank Sensitivity
+		
+			DFGleich
+		
+		
+			September 2009
+		
+		
+			Stanford University
+		
+	
+	Ph.D. thesis. on gaimc
+	Gleich, D. F., Models and Algorithms for PageRank Sensitivity, Ph.D. thesis, Stanford University, September 2009, Chapter 7 on gaimc.
+
+
+
+	
+		
+			ARajaraman
+		
+		
+			JUllman
+		
+		Mining of Massive Datasets
+		
+			Cambridge University Press
+			2011
+		
+	
+	Rajaraman, A. and Ullman, J., Mining of Massive Datasets, Cambridge University Press, 2011.
+
+
+
+	
+		A Graph-Based Approach to Defining Nominal Terminal Routing
+		
+			SZelinski
+		
+	
+	
+		31st Digital Avionics System Conference
+		Williamsburg, VA
+		
+			2012
+		
+	
+	Zelinski, S., "A Graph-Based Approach to Defining Nominal Terminal Routing," 31st Digital Avionics System Conference, Williamsburg, VA, 2012.
+
+
+				
+			
+		
+	

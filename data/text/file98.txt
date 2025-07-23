@@ -1,0 +1,929 @@
+
+	
+	
+		
+NOMENCLATURE
+ACSet of aircraft j, j ∈ AC C Set of weight class p, p ∈ C, C = {H, 7, L, S} O Set of operations q, q ∈ O, O = {A, D} T Aircraft type T pq , p ∈ C, q ∈ O K Set of aircraft type, K = {T pq , p ∈ C, q ∈ O} I air Set of air waypoints i air , i air ∈ I air I surf ace Set of surface waypoints i surf ace , i surf ace ∈ I surf ace I Set of all waypoints i, i ∈ I and I = I air ∪ I surf ace entry Entry waypoint, entry ∈ I exit Exit waypoint, exit ∈ I r jRelease time of aircraft j d jDue date of aircraft j t ji Time of aircraft j at waypoint i α j , β j Earliness, Tardiness of aircraft j at entry waypoint γ j , δ j Earliness, Tardiness of aircraft j at exit waypoint R jOrdered set of waypoints for aircraft j v ji Speed of aircraft j at waypoint i l i↔i+1 Length of segment linking waypoint i and i + 1 sep In the National Airspace System, terminal airspaces and airport surfaces are characterized by high traffic volume evolving through narrow portions of space in which many flights are scheduled to depart and arrive in short periods of time.In these constrained environments, most aircraft are moving on the surface or changing altitude in the air at various speeds.With the growth of air traffic, airport surfaces and terminal areas are congested and the efficiency of air traffic operations is impaired and disrupted by the formation of bottlenecks on the surface.Therefore, the development of decision support algorithms that coordinate air and surface operations is needed to help improve the efficient use of terminal and airport surface resources.In current air-side operations, spatial separation strategies are applied to reduce interactions between traffic flows and to guarantee proper flight spacing.To manage the use of shared resources such as waypoints or route segments, controllers assign independent routes and fixes to arrival and departure flows.This separation strategy may introduce inefficiencies in the airspace usage with longer departure and arrival routes and altitude constraints.Over the past few decades, the air traffic management community has been conducting research to help improve the efficiency of terminal airspace operations by separately solving arrival scheduling problems [1][2][3][4][5] and departure scheduling problems [6][7][8].Recently, researchers have been investigating the integration of arrival and departure operations and its ability to improve operations efficiency has been demonstrated [9][10][11][12][13][14][15].Stochastic schedulers that optimize schedules under uncertain flight arrival/departure times were developed to find robust solutions [14,15].It was shown that compromise schedules can be identified that reduce both delays and the number of associated controller interventions [14].In current ground-side operations, wake vortex and traffic flow management separation requirements are imposed to separate aircraft on the runway and controllers issue advice on visual spatial separation to aircraft that are moving on the airport surface.Typically, as soon as aircraft are ready and cleared for pushback, they leave the gates to meet ontime airline metric performance.However, this often results in uncoordinated movements and traffic congestion during peak hours because of the limited amount of airport surface space available.As a consequence, bottlenecks build up on the airport surface and the resulting delays propagate into the National Airspace System and affect its efficiency.In past years, several research efforts have aimed at mitigating airport surface congestion by independently solving taxiway scheduling problems [16][17][18][19] and runway sequencing and scheduling problems [20,21].In more recent work, because taxiways and runways are undeniably linked in airport systems, researchers have been investigating scheduling and routing optimization models for the integrated taxiway and runway operations [22][23][24].To reduce aircraft taxi times, optimization models have been applied at several airports such as the Dallas Forth Worth International Airport in the United States [17,19] and the Amsterdam Airport Schiphol in Europe [16].Optimal taxi schedules and take-off times were computed and significant potential for taxi time reduction was shown for various traffic condition scenarios.To compute the schedule, however, most of the models developed so far assume exact knowledge of gate pushback and take-off times for surface operations and flight schedules for air operations.Then as more accurate estimates of these times are generated, the schedule is typically recalculated periodically.In reality, aircraft displacement times from the surface (gate, taxiway, runway) to the air (arrival/departure fixes) are sensitive to uncertainty.Uncertainty can be caused by many sources such as perturbations affecting the boarding process, low visibility conditions on the taxiway system, inaccurate wind predictions, errors in aircraft dynamics or human factors.A few research endeavors attempted to include uncertainty in the traffic operations optimization computation by the use of buffering techniques [25,26] or sampling methods [14,15].To optimize surface operations, several attempts investigated historical data of pushback times, taxi-out and runway schedules and applied linear regression techniques to compute their models and predict taxi times [27].Whereas considering uncertainty allows for more realistic computations, it usually induces an increased computational effort that compromises real time implementations.To address inefficiencies of both air and surface procedures and support improved operational efficiency, this paper proposes a fast time decision support algorithm that computes optimal air and surface routings and schedules in the presence of uncertainty and uses a time-based separation strategy to manage integrated terminal airspace and surface operations.The first objective of this paper is to bridge terminal airspace and surface operations scheduling models.The second objective of this paper is to provide an efficient algorithm that simultaneously solves the integrated arrival and departure routing and scheduling problem with the integrated taxiway and runway routing and scheduling problem.The problem formulation and solution methodology presented in this paper are based on previous work [15] performed by the authors which is extended to accommodate surface operations.The algorithm is applied to a model of the Los Angeles International airport (LAX) and surrounding terminal airspace.A preliminary case study is conducted for a set of thirteen aircraft.To assess the benefits of optimal solutions, comparisons are made with solutions obtained from a First-Come-First-Served (FCFS) algorithm.The remainder of this paper is organized as follows.Section II provides background information about previous work that was performed on integrated terminal airspace operations and presents the problem setup of this current research.The optimization model and methodology adopted to solve the problem are described in Section III.Section IV details the preliminary case study that was conducted and its associated results.Section V concludes this paper with final remarks and suggestions for future work.
+II. BACKGROUND AND PROBLEM SETUPThis paper addresses the integrated terminal airspace and airport surface operations problem by extending to the surface operations previous work performed by the authors [15].This section provides background information about previous work and the problem setup of this current research.
+A. BackgroundThe authors [15] previously built a scheduler that computes optimal flight schedules and routings for terminal airspace waypoints that are shared by both arrivals and departures.Inspired from manufacturing operations, the scheduler was modeled using a machine job-shop scheduling problem formulation with probabilistic release times and due dates.To make the analogy between machine job-shop and terminal airspace scheduling operations, jobs and machines respectively were represented by aircraft and waypoints.Moreover, a release time was considered as the earliest time an aircraft could be processed by its first flight plan waypoint and a due date was considered as the latest date an aircraft should be processed by its last flight plan waypoint.To separate aircraft, temporal controls were computed through the use of speed varying constraints and wake vortex separation requirements were imposed at the runway.To solve the problem and account for uncertainty considerations, a multistage stochastic programming approach was formulated and several sample average approximation problems were solved to compute candidate solutions.The scheduler was applied to arrival and departure flows in the Los Angeles terminal airspace and results showed that allowing aircraft to share waypoints and fly more direct routes may allow greater savings in flight time.
+B. Problem SetupThis research extends the scheduler previously developed for integrated terminal airspace operations to airport surface activities.The connection is made at the runway and the formulation is prolongated to integrate airport surface operations.Operations on the airport surface are characterized by aircraft movements in gate areas, along the taxiway system and at the runways, which are strongly influenced by terminal area operations.Therefore, in addition to arrival/departure air-route scheduling and runway scheduling, the scheduler now includes gate scheduling and taxiway routing and scheduling.For illustration purposes, the different air and surface components considered in this research are represented in Figure 1.For the air-side operations, aircraft are advised to fly along paths that are characterized by different flight plans each defined by an ordered sequence of air waypoints.On the airport surface, aircraft are guided on the taxiway system from a surface origin to a surface destination.In particular, arrival flights are routed from runways to assigned gates whereas departure flights are routed from departure gates to runways.Taxi routes are specified by a sequence of surface waypoints that often include taxiway intersections.The potential start and end times of an aircraft's taxi operations are constrained by gate and runway schedules.These schedules are determined by a combination of airline schedules and gate turnaround operations and are therefore affected by uncertainty.As previously mentioned, this paper addresses the integrated terminal airspace and airport surface operations problem with uncertainty considerations.Given a set of aircraft navigating in a defined terminal airspace containing both arrival and departure flights to and from a given airport, the objective is to compute optimal schedules and routings for each aircraft such that both the total flight plus taxi times of all aircraft and the impact of uncertainty are minimized, subject to the following constraints:1) Waypoint Capacity Constraints: both in the air and on the surface, waypoints can only process one aircraft at a time and aircraft must be separated at any time by a minimum distance (or time) from any other aircraft.2) Waypoint Precedence Constraints: when assigned to a route (air or surface), aircraft have to follow the waypoints defining the route in order.3) Runway Constraints: each aircraft must be separated by the minimum wake vortex separation requirements at the runway threshold.A runway can only be occupied by one aircraft at any time.4) Speed Constraints: both in the air and on the surface, aircraft speeds must remain appropriately limited by minimum and maximum allowable speeds.5) Schedule Timing Constraints: release times and due dates respectively define origin and destination times and must be met as closely as possible.In the problem setup, the following assumptions are made in modeling the airport surface operations:• The airport network layout is described using surface waypoints and taxiway segments.Gates, taxiway intersections and runway thresholds are represented by surface waypoints and taxiway segments do not necessarily all have the same length.In operations, airports have standard taxi routes, therefore a set of predefined taxi routes is generated connecting gates to runways and vice versa.Moreover in this paper, it is assumed that gates are already assigned to flights.• The minimum separations on the runway are computed using the combination of rules of wake vortex separation and one aircraft on the runway at any given time.• Aircraft must be separated on the surface from any other aircraft by a minimum distance that is converted into minimum separation time at the different surface waypoints using the length of taxiway segments and aircraft speeds.• Aircraft enter and leave the portion of considered surface/airspace through entry and exit waypoints.Departure flight trajectories originate at gates and finish at the last air waypoints of departure routes.Arrival flight trajectories originate at the first air waypoints of arrival routes and finish at gates.• A reference schedule for gate pushback, gate arrival and entry/exit air waypoint times are known.Probabilistic distributions of taxi-in and taxi-out times, drawn using historical data, are used to perturb the reference schedule and generate schedule scenarios.
+III. OPTIMIZATION MODELTo optimally integrate terminal airspace and airport surface operations, a single optimization model is created.The Mixed-Integer-Linear-Programming (MILP) model for scheduling and routing proposed in this paper is obtained by extending the approach proposed by Bosson et al. [15].The problem is formulated as a multistage stochastic programming and the solution methodology adopted uses the Sample Average Approximation (SAA).
+A. Problem FormulationThe problem formulation uses the following notations.The set of aircraft is denoted as AC and each aircraft j ∈ AC is defined by a type T .An aircraft type is twofold, it is represented by a weight class C = {H, 7, L, S} (FAA weight classification [28]) and an operation O = {A, D} where A stands for arrival and D for departure.The set of all weightoperation combinations forms the aircraft type set K, i.e.K = {T pq , p ∈ C, q ∈ O}.Air routes are defined by the Standard Instrument Departures (SIDs) and the Standard Terminal Arrival Routes (STARs) waypoints of the considered terminal airspace and each air waypoint i air ∈ I air .Surface routes are defined by operated taxi routes of the considered airport and each surface waypoint i surf ace ∈ I surf ace .The set of all air and surface waypoints combined is denoted as I = I air ∪ I surf ace .Denote respectively as entry and exit, the first and last waypoint of each aircraft route such that entry ∈ I and exit ∈ I.Moreover, define as release time and due date schedules, the aircraft schedules respectively at entry and exit waypoints.In the problem formulation, denote respectively as r j and d j , a scheduled release time and a scheduled due date for aircraft j ∈ AC.The optimization will compute for each aircraft j ∈ AC an optimized release time at entry and an optimized complete date at exit, and they are respectively referred as t jentry and t jexit .
+1) Decision Variables:The optimization model has two types of decision variables.Temporal variables are used to save aircraft times at waypoints along flying paths and surface taxi routes and are denoted t ji where j ∈ AC and i ∈ I. Binary spatial variables are used to establish the aircraft routes in the air and on the surface.2) Objective: For efficient scheduling, the optimization model is designed to minimize the sum of total travel times in the air and on the surface, i.e. flying times plus taxi times, and maximize the on-time performance of the flights considered within a given time window for optimization.To maximize the on-time performance of the flights considered, the earliness and tardiness of each flight must be minimized.In this problem formulation, the earliness and tardiness of each flight is minimized at entry and exit waypoints.Because information about aircraft and schedules received by air traffic controllers becomes more certain the closer aircraft are to execution, the objective function of the stochastic scheduling is decomposed by stage.To tackle this optimization problem, a multistage stochastic programming problem is derived and expressed as an embedded 3-stage formulation as shown in Equation 1.Q = q 1 (travelT ime) +E q 2 (earlyT ardyRelease) + E[q 3 (earlytardyDue)](1)Stage 1 is a runway sequencer and uses a reference schedule to compute the optimal sequence of aircraft types (i.e.weight and operation) at the runway threshold such that the total sum of travel times is minimized.Stage 1 is purely deterministic and is not affected by uncertainty.Stage 1 is formulated as q 1 (travelT ime) = j∈AC (t jexit -t jentry ).Using an input set of perturbed release schedule scenarios, stage 2 assigns flights to the aircraft runway slots determined by stage 1 such that the earliness and tardiness of optimized release times are minimized.Stage 2 is formulated as q 2 (earlyT ardyRelease) = j∈AC (α j max{r jt jentry , 0} + β j max{t jentry -r j , 0}) where {α j , β j } represents the earliness and tardiness costs at entry waypoints.Stage 3 focuses on adjusting the flight assignments performed in stage 2 using an input set of perturbed due date schedule scenarios such that the earliness and tardiness of optimized complete times are minimized.Stage 3 is formulated as q 3 (earlyT ardyDue) = j∈AC (γ j max{d j -t jexit , 0} + δ j max{t jexit -d j , 0}) where {γ j , δ j } represents the earliness and tardiness costs at exit waypoints.Using the linear property of expectation value, the objective function of the MILP model becomes a weighted sum of three terms.3) Outputs: For each aircraft of the set considered, the outputs of the optimization provide feasible air and surface routes as well as feasible schedules.
+4) Constraints:The optimization model includes several constraints that need to be enforced to ensure feasible operations both in the air and on the surface.Waypoint precedence and speed constraints: The waypoint precedence and speed constraints expressed in Equation 2enforce that aircraft follow the sequence of waypoints in order defining the assigned route while ensuring aircraft speeds remain in a feasible range along the flight segments and taxiway segments.Define as R j the ordered set of waypoints along the route assigned to aircraft j, j ∈ AC.Given a waypoint i, i + 1 is the next waypoint in R j .Denote as v ji the speed of aircraft j, j ∈ AC at waypoint i, i ∈ I and let l i↔i+1 be the length of segment linking waypoint i and i + 1 in the assigned route.∀j ∈ AC, ∀i ∈ R j , v ji ∈ [v min i , v max i ], t ji+1 ≥ t ji + li↔i+1 vji (2)The minimum and maximum speeds [v min i , v max i ] differ depending on the aircraft type and on whether the route is on the surface or in the air.Waypoint capacity constraints: The waypoint capacity constraints expressed in Equation 3 impose that only one aircraft can be processed by a waypoint at a time.This is accomplished by imposing separation requirements between aircraft at each waypoint.Consider any two aircraft j 1 and j 2 of the aircraft set AC. Let sep j1j2 i be the minimum separation time that aircraft j 1 and j 2 must maintain when reaching waypoint i, i ∈ I. Waypoint i is a common waypoint between the routes assigned to aircraft j 1 and j 2 , therefore i ∈ R 1 ∪R 2 .∀j 1 , j 2 ∈ AC, j 1 = j 2 , ∀i ∈ R j1 ∪ R j2 , t j1i ≥ -M 1 + b(t j2i + sep j1j2 i ) t j2i ≥ -M 2 + b(t j1i + sep j2j1 i ) (3)where b is a binary variable that ensures only one of the two inequalities is verified at a time and, M 1 and M 2 are penalty terms used to ensure aircraft separation as a function of the route assigned.
+Runway constraints:The runway constraints expressed in Equation 4 connect air and surface timing variables and ensure that only one aircraft is on the runway at any time.In the modeling, the runway is represented by a single surface waypoint at the entrance denoted as rwy, rwy ∈ I. Therefore, if aircraft j 1 and j 2 are not both departures or not both arrivals, an additional time lag must be imposed to let the leading aircraft of the pair considered reach the end of the runway.∀j 1 , j 2 ∈ AC, j 1 = j 2 , q 1 = q 2 , i = rwy, rwy ∈ I t j1rwy ≥ -M 1 + b(t j2rwy + sep j1j2 rwy + τ rwy) t j2rwy ≥ -M 2 + b(t j1rwy + sep j2j1 rwy + τ rwy ) (4)where b is a binary variable that ensures only one of the two inequalities is verified at a time and, M 1 and M 2 are penalty terms used to ensure aircraft separation as a function of the route assigned.Schedule constraints: Release times at entry waypoint and due dates at exit waypoint constrain aircraft operation timing variables.Because of uncertainty, the actual aircraft release times and due dates might differ from schedule.On one hand, departing aircraft must reach their entry waypoint near their pushback times (∀q j = D, r j = P BT j ) whereas arriving aircraft must reach their entry waypoint near their scheduled arrival times (∀q j = A, r j = SAT j ).On the other hand, departing aircraft must reach their exit waypoint near their scheduled departure times (∀q j = D, d j = SDT j ) whereas arriving aircraft must reach their exit waypoint near their scheduled arrival gate time (∀q j = A, d j = SGT j ).In this problem formulation, it is assumed that optimized release times cannot be earlier than scheduled pushback times, therefore ∀q j = D, j ∈ AC, α j = 0. Similarly, it is assumed that no arrival can reach its assigned gate before its scheduled gate time, thus ∀q j = A, j ∈ AC, δ j = 0.Remarks on constraints: The combination of waypoint capacity and waypoint precedence constraints ensures that aircraft are sequenced when two aircraft reach the same waypoint at the same time and that there is no overtaking of the waypoint.In particular, if two aircraft follow each other on the same segment and travel at different speeds, the aircraft order at the entrance of the segment is maintained at the exit of the segment.
+B. Solution MethodologyTo evaluate the solution of the optimization model formulation and obtain optimal candidate solutions, many schedule scenarios have to be generated and tested.However, this would require a significant computational effort.Therefore, a sampling method is introduced to reduce the size of the scenario set to a manageable size.The Sample Average Approximation (SAA) is chosen as the solution methodology and allows the replacement of the expectation formulation of the stochastic program by its sample average.As a consequence, assuming that the random variables used to perturb the schedule scenarios follow discrete distributions with finite support, the expectation formulation can be replaced by a finite sum and the probability of occurrence of each scenario is given by one over the total number of scenarios.Denote respectively as N 2 and N 3 the number of schedule scenarios tested in stage 2 and in stage 3. Using the SAA, Equation 1 can be transformed into Equation 5 as following.Q = q 1 (travelT ime) + 1 N2 n∈N2 q 2 (earlyT ardyP erturbedRelease) + 1 N3 n∈N3 [q 3 (earlytardyP erturbedDue)] (5)where q 1 is unchanged (i.e.deterministic) but q 2 and q 2 now include uncertainty in the timing variables.Using a similar algorithmic approach as developed in previous research [15], the solution methodology suggests solving several SAA problems with a smaller sample size rather than solving one SAA problem with a large number of samples.Let M be the number of replications for which the approximated problem is solved.Each replication m ∈ M leads to an optimal solution computed for a particular set of scenarios of size N 2 and N 3 run by stage 2 and stage 3.The final optimal solution is chosen amongst the M replication solutions and corresponds to the solution giving the smallest objective function value.
+C. ImplementationThe optimization model is implemented in the Python language [29] and Gurobi [30] is chosen as the optimization solver.The branch and bound algorithm is selected to solve the multistage stochastic program.The code is run on a Macintosh platform with 2.5GHz Intel Core i5 and 16 GB RAM.To accelerate the computation and take advantage of the formulation, a multi-threading approach is implemented to compute individually each replication with one thread.
+IV. EVALUATION AND RESULTSA preliminary case study is run in this paper for which the optimization model is applied to a model of the Los Angeles International Airport (LAX) and terminal airspace.The interactions between arrivals and departures in the Northwestern flows of the Los Angeles terminal airspace constitute an interesting study case because of their complex natures and layouts.This section provides the optimization setup used for evaluation, the First-Come-First-Served (FCFS) algorithm implemented for baseline comparison and the results of optimization computations.A. Optimization Setup 1) Airspace and Airport Network Layout: The terminal airspace and airport surface network layout is described by a set of nodes and links respectively denoted by waypoints (air and surface) and segments (flight and taxiway).In current procedures, altitude restrictions are imposed between arrivals and departures at GHART such that departures should maintain their altitude below 9, 000 feet and arrivals should keep theirs above 12, 000 feet.However, if there were no interactions, arrivals from FIM and departures to the North could fly more direct routes as shown in Figure 2. A direct route for arrivals would be FIM-WPT1-SMO and a direct route for departures would be RWY-WPT2-WPT1 where WPT1 and WPT2 are made-up waypoint names for simplicity.Although it is not necessarily common practice at LAX, departures and arrivals are considered to operate on the same runway 24L to show the benefits of integrated operations.In the modeling, runway 24L is represented by waypoint RWY.For the airport surface layout representation, the LAX airport diagram, provided in Figure 3, is spatially discretized in terms of gates and taxiway intersections.Because runway 24L is located in the northern airfield, this study only considers gates and taxiways that commonly connect runway 24L.Based on flight gate assignment observations and common practices, it is assumed in this study that terminals 1 (T1), 2 (T2), 3 (T3) and international (TBIT) are operated with flights operating on the northern airfield runways and other gates and taxiways that connect the southern airfield of the airport are not modeled.Figure 4 illustrates the corresponding node-link network layout of the LAX northern resources used in the optimization.It can be observed that there is no ramp area by terminal TBIT, which means that this is single lane and that aircraft enter the taxiway system only once cleared to do so.The grey area on Figure 4 indicates that only the northern gates of terminal TBIT are considered.
+Runway 24LTaxiways Ramps Gates Fig. 4. Node-link network layout for LAX northern resources2) Operational Concepts: To model airport surface operations that stick with current procedural factors and controller considerations, taxiways are considered unidirectional and dynamic aircraft routing is not investigated.Moreover, because taxi routes are generally generated based on runway and gate assignments, several taxi routes are determined for each gate and runway pair.A set of predefined taxi routes is generated before the scheduling and for each aircraft, optimal routes will be selected from the set.In Figure 4, ramp areas serve as aircraft sources and sinks and displacements in the ramp areas are not modeled.Once an aircraft has pushback from its gate, it will appear at a source point located in the ramp area close to the gate where the aircraft was parked.For arrivals, once aircraft reach the ramp area close to the assigned gate, they disappear and the gate is considered as used.3) Traffic Scenario and Aircraft Mix: An analysis of flight records was performed using data from the Bureau Transportation Statistics Airline On Time Performance database for LAX in 2012.The analysis shows that an average of 1, 238 flights operated daily that year.In December 2012, a total of 36, 334 flights were recorded with specifically 1, 143 flights on December 4th.This particular day, there were 572 arrivals and 571 departures.A more detailed analysis demonstrates that 37 flights were scheduled to depart and to arrive at LAX between 9 : 00AM and 9 : 30AM that day.To construct a realistic traffic scenario, flight numbers that operated at LAX on December 4, 2012 between 9 : 00AM and 9 : 30AM are extracted from the BTS Airline On Time Performance database.In this study case, only the northern airfield is considered therefore only flights operating at terminals T1, T2, T3 and TIBT (Tom Bradley Internation Terminal), are used to compose a representative traffic scenario.The analysis demonstrates that 13 flights with 7 arrivals and 6 departures were operating that day in the northern airfield.Therefore, the traffic scenario designed for this study is composed of 7 arrivals from FIM and 6 departures to the North.The aircraft types are found using the different flight numbers and a reference schedule scenario is formed using the corresponding flight schedules.The following Table I summarizes the constructed aircraft mix for the traffic scenario and shows respective aircraft weight and operation.4) Speed and Separation: On the airport surface, the speed range for all aircraft is set to be [8,16] kts, whereas in the air, aircraft speed ranges are different for departures and arrivals and these are respectively set to be [180, 250] kts and [280, 350] kts.These air speed ranges are used for any air route segment.Moreover, aircraft must be separated at any time to avoid any potential collisions.There are three types of separation requirements considered that depend on the aircraft situation.First, any pair of aircraft must always be separated by a minimum distance of 200 meters when moving along the taxiways [18].Second, minimum inter-operation spacings for wake separation must be enforced between any two aircraft on the runway.These separation minima depend on the aircraft weight class and whether aircraft are departures or arrivals.In this study case, a single runway is used for both arrivals and departures.Therefore, there are four different types of aircraft pairs that can potentially be formed: DD, AA, DA and AD.The wake vortex separation minima used in this implementation are obtained from [21,32].Finally, all aircraft pairs that are flying on the same traffic flow are separated using temporal controls.These temporal controls are obtained by converting a spacing distance of 4 nautical miles (nmi) (according to [9]) into time via the speed of the leading aircraft of each pair.
+5) Schedule Generation and Stochastic Characteristics:The reference schedule previously constructed represents scheduled pushback times for departures (i.e. release times) and reference scheduled gate times for arrivals (i.e.due dates).For a departure, a reference due date (i.e.scheduled flight time by WPT1) is computed by adding the unimpeded taxi time and the unimpeded flight time to the pushback time.For an arrival, a reference release time (i.e.scheduled arrival time by FIM) is computed by subtracting the unimpeded flight time and the unimpeded taxi time from the gate arrival time.For both computations, it is assumed that no other traffic is on the surface or in the air.As mentioned previously, arrival and departure schedules are affected by uncertainty and at the time of execution, schedule times are not known with certainty.In this research, it is assumed that on the airport surface scheduled runway departure times are impaired by pushback and taxi-out delays and that scheduled gate arrival times are altered by taxiin delays.Therefore, an uncertainty analysis is conducted using 881, 496 data points from the BTS Airline On-Time Performance Database for LAX and for the year 2012.An approximation of pushback delay distribution is obtained for departures by computing pushback delay as the difference between scheduled and actual pushback time.An approximation of arrival gate delay distribution is obtained by computing the difference between actual and scheduled arrival gate time.In order to generate schedule scenarios that will be used as inputs for stage 2 and stage 3, error sources drawn from these two obtained distributions are respectively added to reference departure release times and reference arrival due dates.It ensures that the scenario set tested in this study is composed of realistic schedule scenarios perturbed around the reference schedule.The resulting distributions and associated fits obtained from the BTS data are represented in Figure 5 and Figure 6.In the air, error sources drawn from normal distributions are added to both reference departure due dates and reference arrival release times.For the departure time error, a mean of 0 seconds and a standard deviation of 15 seconds are selected whereas for the arrival time error, a mean of 0 seconds and a standard deviation of 30 seconds are selected according to previous work on arrival prediction accuracy [33].Figure 7 provides an illustration for the terminal airspace.Therefore using the defined normal distributions, the perturbations of arrival release times at FIM are the results of adding arrival uncertainty error sources and the perturbations of departure due dates at WPT1 are the results of adding airspace uncertainty error sources.6) SAA setup: Using results that were obtained in previous work [15] after statistically assessing the used methodology,
+B. First-Come-First-Served Comparison ApproachTo assess the benefits of optimization, a FCFS surface scheduler algorithm is implemented as a baseline case.The FCFS algorithm is decoupled from integrated terminal airspace operations and only focuses on airport surface operations.In this algorithm, aircraft are handled in the order prescribed by the reference schedule such that no delay is permitted for the first scheduled flight.Moreover, it is assumed that each aircraft's route assignment is pre-specified.The set of constraints prescribed for the surface on waypoints and between aircraft is enforced in the algorithm formulation.The FCFS surface scheduler generates the runway sequence and schedules for both arrivals and departures.The consideration of uncertainty is handled by solving the FCFS algorithm for 100 different release schedule scenarios and 100 different due schedule scenarios.The candidate solution that corresponds to the smallest total taxi times value is chosen as the final FCFS baseline solution.
+C. Evaluation CriteriaTwo types of criteria are used to evaluate the performance of the optimization model proposed to solve the integrated terminal airspace and surface operations problem.The first criterion is the computational speed and in practice faster algorithms are preferred.However, the computational speed is affected by the implementation and traffic scenarios tested, the programming language chosen, the optimization solver selected and the machine or server used to run the program.The second criterion is related to the optimization to evaluate its performance.In this paper, an optimal solution, i.e. schedules and routings, is selected such that the objective function is the smallest.This translates into a solution that provides the smallest total travel time and schedule delay.
+D. ResultsThe following figures represent the results of the optimization model evaluation when using the optimization setup previously described.In all figures, outputs obtained with the MILP formulation are compared with the one obtained from the FCFS algorithm approach.In both MILP and FCFS solutions, all aircraft were successfully routed to their destinations without any spatial or temporal conflicts.The MILP formulation performs better than the FCFS algorithm.Moreover, the optimization model ran the 30-minute 13 flights stochastic scenario in about 240 seconds.To characterize its performance, runway times, taxi times and gate waiting times were computed for the selected optimal solution and these are respectively displayed in Figure 8, Figure 9 and Figure 10.In Figure 8, the results show the computed runway sequences by both evaluations and demonstrate that the runway schedule obtained from the optimization model is more compressed, i.e. a smaller makespan is obtained than with the FCFS approach.In addition, Figure 8 shows that in this study, the optimized schedule computed by the stochastic optimization induces arrivals and to land and takeoff respectively later and earlier than with the schedule of the FCFS approach.These observations clearly come from the objective function formulation that tries to compress the schedule to minimize overall travel time, i.e. sum of taxi and air travel times.Moreover, the FCFS algorithm does not have any knowledge of the downstream constraints and flight spacing requirements when it determines the runway sequence.However, the MILP formulation is aware of any potential shared resources in the flight paths and adjusts accordingly speeds and take-off/landing times to ensure safe separations between flights.Figure 9 compares the performance in terms of average taxi time per aircraft with the distinction between arrivals and departures.Overall with the traffic scenario evaluated, the average arrival taxi-in time is longer than the average departure taxi-out time.This is clearly explained by the location of the end of the runway and the locations of the terminals.Moreover, current procedures associated with the routing of arrivals to the international terminal impose a specific pattern that loops around the central airport platform (Figure 3).This ensures that no conflicts occur and the unidirectionality of the taxiways.For this specific traffic scenario, the computed average taxi times values by the FCFS approach are 425 seconds for departures and 663 seconds for arrivals and with the MILP formulation these are 414 seconds for departures and 655 seconds for arrivals.When comparing these values, the MILP formulation reduces average taxi times for both arrivals and departures but the reduction is small.When arrivals land, they are directly routed to their gates and this behavior is implemented in both the FCFS and MILP algorithms.Therefore, a large reduction of average taxi-in value was not expected.Moreover, in the FCFS algorithm, departing aircraft move as soon as possible and the shortest routing paths are encouraged whereas in the MILP formulation, departing aircraft start to move only when a feasible flight schedule has been found.Clearly the traffic scenario tested does not have enough flights to create taxiway congestion and it allows every flight to follow a shortest path to their destination.Therefore, a large reduction of average taxi-out value was also not expected.
+E. Discussion of ResultsThe obtained results in this study are closely linked to the considered probabilistic distributions of uncertainty and associated parameters.Therefore, if the probabilistic distributions were to be changed, a different solution behavior would be expected.From this study, it can be learned that integrating departure and arrival operations on a single runway induces gate waiting times.However, the stochastic optimization performed in this study can help identify a runway sequence that leads to smaller gate waiting time with no average taxi time increase when compared to the FCFS approach.The traffic scenario created for this study represented normal traffic conditions and thus it did not influence much the taxi times.It is expected to find solutions with longer routings when testing more dense traffic scenarios.
+V. CONCLUSIONSTo address inefficiencies of both air and surface procedures and support improved operational efficiency, this paper proposed a fast time decision support algorithm that bridges terminal airspace and surface operations scheduling.The algorithm simultaneously solves the integrated arrival and departure routing and scheduling problem with the integrated taxiway and runway routing and scheduling problem.It computes optimal air and surface routings and schedules in the presence of uncertainty.To manage integrated terminal airspace and surface operations, a time-based separation strategy was implemented through the use of speed varying constraints.The problem formulation and solution methodology presented in this paper were based on previous work performed by the authors that was extended to accommodate surface operations to bridge terminal airspace and surface scheduling models.The algorithm was applied to a model of the northern airfield of the Los Angeles International Airport (LAX) and surrounding terminal airspace.A preliminary case study was conducted for a set of thirteen aircraft and realistic traffic conditions were constructed using historical data.The algorithm computed a 30-minute stochastic scenario in about 240 seconds, a promising result for real time operational application.To assess the benefits of optimizing integrated terminal area and surface operations scheduling, optimal solutions were compared with solutions obtained from a First-Come-First-Served (FCFS) algorithm.In both optimization and FCFS solutions, all aircraft were successfully routed to their destinations without any spatial or temporal conflicts.Results showed that for the traffic scenario tested, the optimization produces a more compressed schedule than the FCFS algorithm does.Moreover it was observed that when bridging terminal airspace and surface scheduling models, the optimization can help identify a runway sequence that leads to smaller gate waiting time when compared to the FCFS approach.Average taxi times were similar to FCFS approach because the traffic scenarios in this study were not dense enough to introduce conflicts.In future work, a traffic variation analysis will be conducted to explore furthermore the benefits of integrated air and surface scheduling operations obtained with the proposed optimization model.Several traffic scenarios will be constructed and tested.The formulation will be gradually extended to capture more traffic flows and surface resources of the Los Angeles International Airport and surrounding terminal areas.j1j2 ij1j2Minimum separation time between aircraft j 1 and j 2 at waypoint i rwy Runway waypoint, rwy ∈ I P BT Pushback time SAT Scheduled arrival time SDT Scheduled departure time SGT Scheduled arrival gate time SAA Sample average approximation M Number of replications m, m ∈ M N 2 , N 3 Sizes of stage 2 and stage 3 scenario sets I. INTRODUCTION
+Fig. 1 .1Fig. 1.Schematic representation of terminal airspace and airport surface components
+Fig. 2 .2Fig. 2. Route interactions between SADDE6 arrivals and CASTA2 departuresFor the terminal airspace network representation, published standard arrival and departure procedures, i.e.STARs and SIDs are used.For the Northwest flows of the Los Angeles terminal airspace, SADDE6 and CASTA2 are selected respectively for arrivals and departures.It was shown in[31] that 28.1% of LAX arrivals follow SADDE6 and 10.4% of LAX departures follow CASTA2 in current operations.According to these procedures, arrival flights from FIM fix should follow the sequence of waypoints FIM-SYMON-SADDE-SMO and departure flights to the North should follow the sequence of waypoints RWY-NAANC-GHART-SILEX.An illustration is provided in Figure2in which it can be observed that GHART is a shared resource between SADDE6 and CASTA2.
+Fig. 3 .3Fig. 3. LAX airport diagram
+Fig. 5 .5Fig. 5. Pushback delay distribution
+Fig. 6 .Fig. 7 .67Fig. 6.Arrival gate delay distribution
+Fig. 8 .8Fig. 8. Runway schedule and sequence comparison between FCFS and MILP (sec) -Each line represents aircraft runway time modification between FCFS and MILP
+Fig. 9 .9Fig. 9. Average taxi times comparison between FCFS and MILP (sec)Figure10presents the averaged gate waiting times for departing flights.It can be observed that the runway sequence computed by the MILP formulation reduces the overall gate waiting time from 186 seconds to 63 seconds and shift the waiting time from terminals T1 and T3 to the international terminal TIBT.The MILP performance is illustrated in this figure.For this particular traffic scenario, delaying departing flights from terminal TIBT helps minimize the global objective.
+Fig. 10 .10Fig. 10.Gate waiting times comparison for departures between FCFS and MILP (sec)
+TABLE I .IAIRCRAFT MIXOperationWeightTotalArrivals1 Heavy + 6 Larges7Departures1 Small + 5 Larges6
+		
+		
+			
+
+				
+
+
+	
+		The dynamic scheduling of aircraft in the near terminal area
+		
+			RGDear
+		
+		10.1016/0041-1647(78)90133-8
+	
+	
+		Transportation Research
+		Transportation Research
+		0041-1647
+		
+			12
+			3
+			
+			1976
+			Elsevier BV
+			Cambridge, Massachusetts
+		
+	
+	Tech. Rep. R
+	R. G. Dear, "The dynamic scheduling of aircraft in the near termi- nal area," Flight Transportation Laboratory, Cambridge, Massachusetts, Tech. Rep. R76-9, 1976.
+
+
+
+	
+		Analysis of Delay Reducing and Fuel Saving Sequencing and Spacing Algorithms
+		
+			FNeuman
+		
+		
+			HErzberger
+		
+	
+	
+		NASA Ames Research Center
+		
+			1991
+			Moffett Field, California
+		
+	
+	Tech. Rep. 103880
+	F. Neuman and H. Erzberger, "Analysis of Delay Reducing and Fuel Saving Sequencing and Spacing Algorithms ," NASA Ames Research Center, Moffett Field, California, Tech. Rep. 103880, 1991.
+
+
+
+	
+		Scheduling Aircraft Landings—The Static Case
+		
+			JEBeasley
+		
+		
+			MKrishnamoorthy
+		
+		
+			YMSharaiha
+		
+		
+			DAbramson
+		
+		10.1287/trsc.34.2.180.12302
+	
+	
+		Transportation Science
+		Transportation Science
+		0041-1655
+		1526-5447
+		
+			34
+			2
+			
+			2000
+			Institute for Operations Research and the Management Sciences (INFORMS)
+		
+	
+	J. E. Beasley, M. Krishnamoorthy, Y. M. Sharaiha, and D. Abramson, "Scheduling Aircraft Landings-The Static Case," Transportation Sci- ence, vol. 34, no. 2, pp. 180-197, 2000.
+
+
+
+	
+		Scheduling Aircraft Landings Under Constrained Position Shifting
+		
+			HamsaBalakrishnan
+		
+		
+			BalaChandran
+		
+		10.2514/6.2006-6320
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		Keystone, Colorado
+		
+			American Institute of Aeronautics and Astronautics
+			Aug. 2006
+		
+	
+	H. Balakrishnan and B. Chandran, "Scheduling Aircraft Landings Under Constrained Position Shifting," in AIAA Guidance, Navigation, and Control Conference and Exhibit (GNC). Keystone, Colorado: American Institute of Aeronautics and Astronautics, Aug. 2006.
+
+
+
+	
+		Scheduling Aircraft Landings to Closely Spaced Parallel Runways
+		
+			MKupfer
+		
+	
+	
+		Eighth USA/Europe Air Traffic Management Research and Developement Seminar
+		Napa, California
+		
+			May 2009
+			
+		
+	
+	M. Kupfer, "Scheduling Aircraft Landings to Closely Spaced Parallel Runways ," in Eighth USA/Europe Air Traffic Management Research and Developement Seminar, Napa, California, May 2009, pp. 1-10.
+
+
+
+	
+		A Metaheuristic Approach to Aircraft Departure Scheduling at London Heathrow Airport
+		
+			JasonA DAtkin
+		
+		
+			EdmundKBurke
+		
+		
+			JohnSGreenwood
+		
+		
+			DaleReeson
+		
+		10.1007/978-3-540-73312-6_12
+	
+	
+		Lecture Notes in Economics and Mathematical Systems
+		Berlin Heidelberg, Berlin, Heidelberg
+		
+			Springer Berlin Heidelberg
+			2008
+			
+		
+	
+	J. A. D. Atkin, E. K. Burke, J. S. Greenwood, and D. Reeson, "A Metaheuristic Approach to Aircraft Departure Scheduling at London Heathrow Airport," Springer Berlin Heidelberg, Berlin, Heidelberg, 2008.
+
+
+
+	
+		A Mixed Integer Linear Program for Airport Departure Scheduling
+		
+			GautamGupta
+		
+		
+			WaqarMalik
+		
+		
+			YoonJung
+		
+		10.2514/6.2009-6933
+	
+	
+		9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO)
+		Hilton Head, South Carolina
+		
+			American Institute of Aeronautics and Astronautics
+			Sep. 2009
+		
+	
+	G. Gupta, W. Malik, and Y. C. Jung, "A mixed integer linear program for airport departure scheduling," in 9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO), Hilton Head, South Carolina, Sep. 2009.
+
+
+
+	
+		A Generalized Dynamic Programming Approach for a Departure Scheduling Problem
+		
+			SivakumarRathinam
+		
+		
+			ZacharyWood
+		
+		
+			BanavarSridhar
+		
+		
+			YoonJung
+		
+		10.2514/6.2009-6250
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		Chicago, Illinois
+		
+			American Institute of Aeronautics and Astronautics
+			Aug. 2009
+		
+	
+	S. Rathinam, Z. Wood, B. Sridhar, and Y. Jung, "A Generalized Dynamic Programming Approach for a Departure Scheduling Problem," in AIAA Guidance, Navigation, and Control Conference and Exhibit. Chicago, Illinois: Institute of Aeronautics and Astronautics, Aug. 2009.
+
+
+
+	
+		Towards Optimal Routing and Scheduling of Metroplex Operations
+		
+			BrianCapozzi
+		
+		
+			StephenAtkins
+		
+		
+			SeongimChoi
+		
+		10.2514/6.2009-7037
+	
+	
+		9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO)
+		South Carolina
+		
+			American Institute of Aeronautics and Astronautics
+			Sep. 2009
+		
+	
+	B. Capozzi, S. Atkins, and S. Choi, "Towards Optimal Routing and Scheduling of Metroplex Operations," in 9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO). Hilton Head, South Carolina: American Institute of Aeronautics and Astronautics, Sep. 2009.
+
+
+
+	
+		A Hybrid Optimization Approach to Air Traffic Management for Metroplex Operations
+		
+			BrianCapozzi
+		
+		
+			StephenAtkins
+		
+		10.2514/6.2010-9062
+	
+	
+		10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		
+			American Institute of Aeronautics and Astronautics
+			
+		
+	
+	B. Capozzi and S. Atkins, "A Hybrid Optimization Approach to Air Traffic Management for Metroplex Operations," in 10th AIAA Aviation Technology, Integration, and Operations Conference (ATIO).
+
+
+
+	
+		Multiple-Point Integrated Scheduling of Terminal Area Traffic
+		
+			HemingChen
+		
+		
+			YiyuanJZhao
+		
+		
+			ChrisProvan
+		
+		10.2514/1.c031332
+	
+	
+		Journal of Aircraft
+		Journal of Aircraft
+		0021-8669
+		1533-3868
+		
+			48
+			5
+			
+			Sep. 2011
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	H. Chen, Y. J. Zhao, and C. Provan, "Multiple-Point Integrated Schedul- ing of Terminal Area Traffic," Journal of Aircraft, vol. 48, no. 5, pp. 1646-1657, Sep. 2011.
+
+
+
+	
+		Optimal Integration of Departures and Arrivals in Terminal Airspace
+		
+			MinXue
+		
+		
+			ShannonZelinski
+		
+		10.2514/6.2012-4977
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		Minneapolis, Minnesota
+		
+			American Institute of Aeronautics and Astronautics
+			Aug. 2012
+		
+	
+	M. Xue and S. Zelinski, "Optimal Integration of Departures and Arrivals in Terminal Airspace," in AIAA Guidance, Navigation, and Control Conference and Exhibit. Minneapolis, Minnesota: American Institute of Aeronautics and Astronautics, Aug. 2012.
+
+
+
+	
+		Uncertainty Analysis of Integrated Departures and Arrivals: A Los Angeles Case Study
+		
+			MinXue
+		
+		
+			ShannonZelinski
+		
+		
+			DanielGMulfinger
+		
+		10.2514/6.2013-4347
+	
+	
+		2013 Aviation Technology, Integration, and Operations Conference
+		Los Angeles, California
+		
+			American Institute of Aeronautics and Astronautics
+			Aug. 2013
+			
+		
+	
+	M. Xue, S. Zelinski, and D. Mulfinger, "Uncertainty Study of Integrated Departures and Arrivals: A Los Angeles Case Study," in 13th AIAA Aviation Technology, Integration and Operations Conference (ATIO), Los Angeles, California, Aug. 2013, pp. 1-10.
+
+
+
+	
+		Optimization of Integrated Departures and Arrivals Under Uncertainty
+		
+			MinXue
+		
+		
+			ShannonZelinski
+		
+		10.2514/6.2013-4322
+	
+	
+		2013 Aviation Technology, Integration, and Operations Conference
+		Los Angeles, California
+		
+			American Institute of Aeronautics and Astronautics
+			Aug. 2013
+			
+		
+	
+	M. Xue and S. Zelinski, "Optimization of Integrated Departures and Ar- rivals Under Uncertainty," in 13th AIAA Aviation Technology, Integration and Operations Conference (ATIO), Los Angeles, California, Aug. 2013, pp. 1-9.
+
+
+
+	
+		Optimizing integrated terminal airspace operations under uncertainty
+		
+			ChristabelleBosson
+		
+		
+			MinXue
+		
+		
+			ShannonZelinski
+		
+		10.1109/dasc.2014.6979545
+	
+	
+		2014 IEEE/AIAA 33rd Digital Avionics Systems Conference (DASC)
+		Colorado Springs, Colorado
+		
+			IEEE
+			Oct. 2014
+			
+		
+	
+	C. Bosson, M. Xue, and S. Zelinski, "Optimizing Integrated Terminal Airspace Operations Under Uncertainty," in 33rd Digital Avionics System Conference, Colorado Springs, Colorado, Oct. 2014, pp. 1-19.
+
+
+
+	
+		An Optimization Model for Airport Taxi Scheduling
+		
+			JWSmeltink
+		
+		
+			MJSoomer
+		
+		
+			PRDe Waal
+		
+		
+			RDVan Der Mei
+		
+		
+			Jun. 2004
+			Elsevier Science
+			
+		
+	
+	J. W. Smeltink, M. J. Soomer, P. R. de Waal, and R. D. van der Mei, "An Optimization Model for Airport Taxi Scheduling," Elsevier Science, pp. 1-25, Jun. 2004.
+
+
+
+	
+		A Framework for Coordinated Surface Operations Planning at Dallas-Fort Worth International Airport
+		
+			HamsaBalakrishnan
+		
+		
+			YoonJung
+		
+		10.2514/6.2007-6553
+	
+	
+		AIAA Guidance, Navigation and Control Conference and Exhibit
+		
+			American Institute of Aeronautics and Astronautics
+			
+		
+	
+	H. Balakrishnan and Y. Jung, "A Framework for Coordinated Surface Operations Planning at Dallas-Fort Worth International Airport," in AIAA Guidance, Navigation, and Control Conference and Exhibit (GNC).
+
+
+
+	
+		Health hazard evaluation report: HETA-2003-0039-2914, Hilton Head Elementary School, Hilton Head Island, South Carolina.
+		
+			HiltonHead
+		
+		
+			CarolinaSouth
+		
+		10.26616/nioshheta200300392914
+		
+			2007
+			U.S. Department of Health and Human Services, Public Health Service, Centers for Disease Control and Prevention, National Institute for Occupational Safety and Health
+		
+	
+	Hilton Head, South Carolina: American Institute of Aeronautics and Astronautics, 2007.
+
+
+
+	
+		Optimal Airport Surface Traffic Planning Using Mixed-Integer Linear Programming
+		
+			PCRoling
+			0000-0001-8223-166X
+		
+		
+			HGVisser
+			0000-0002-5644-0430
+		
+		10.1155/2008/732828
+	
+	
+		International Journal of Aerospace Engineering
+		International Journal of Aerospace Engineering
+		1687-5966
+		1687-5974
+		
+			2008
+			1
+			
+			Jan. 2008
+			Hindawi Limited
+		
+	
+	P. C. Roling and H. G. Visser, "Optimal Airport Surface Traffic Planning Using Mixed-Integer Linear Programming," International Journal of Aerospace Engineering, vol. 2008, no. 1, Jan. 2008.
+
+
+
+	
+		An Optimization Model for Reducting Aircraft Taxi Times at The Dallas Fort Worth International Airport
+		
+			SRathinam
+		
+		
+			JMontoya
+		
+		
+			YJung
+		
+		
+			Jul. 2008
+			
+		
+	
+	in 26th Internation Congress of the Aeronautical Sciences. 26th International Congress of the Aeronautical Sciences
+	S. Rathinam, J. Montoya, and Y. Jung, "An Optimization Model for Reducting Aircraft Taxi Times at The Dallas Fort Worth International Airport," in 26th Internation Congress of the Aeronautical Sciences. 26th International Congress of the Aeronautical Sciences, Jul. 2008, pp. 1-14.
+
+
+
+	
+		Airport surface management and runways scheduling
+		
+			RDeau
+		
+		
+			J.-BGotteland
+		
+		
+			NDurand
+		
+	
+	
+		Eighth USA/Europe Air Traffic Management Research and Developement Seminar
+		Napa, CA
+		
+			Jan. 2009
+			
+		
+	
+	R. Deau, J.-B. Gotteland, and N. Durand, "Airport surface management and runways scheduling," in Eighth USA/Europe Air Traffic Management Research and Developement Seminar, Napa, CA, Jan. 2009, pp. 1-9.
+
+
+
+	
+		Runway Operations Optimization in the Presence of Uncertainties
+		
+			GustafSolveling
+		
+		
+			SenaySolak
+		
+		
+			John-PaulClarke
+		
+		
+			EllisJohnson
+		
+		10.2514/1.52481
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		Journal of Guidance, Control, and Dynamics
+		0731-5090
+		1533-3884
+		
+			34
+			5
+			
+			Sep. 2011
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	G. Sölveling, S. Solak, J.-P. Clarke, and E. Johnson, "Runway Operations Optimization in the Presence of Uncertainties," Journal of Guidance, Control, and Dynamics, vol. 34, no. 5, pp. 1373-1382, Sep. 2011.
+
+
+
+	
+		Optimization of Taxiway Routing and Runway Scheduling
+		
+			GillianClare
+		
+		
+			ArthurGRichards
+		
+		10.1109/tits.2011.2131650
+	
+	
+		IEEE Transactions on Intelligent Transportation Systems
+		IEEE Trans. Intell. Transport. Syst.
+		1524-9050
+		
+			12
+			4
+			
+			2011
+			Institute of Electrical and Electronics Engineers (IEEE)
+		
+	
+	G. L. Clare and A. G. Richards, "Optimization of Taxiway Routing and Runway Scheduling," IEEE Transactions On Intelligent Transportation Systems, vol. 12, no. 4, pp. 1000-1013, 2011.
+
+
+
+	
+		A Comparison of Two Optimization Approaches For Airport Taxiway And Runway Scheduling
+		
+			HLee
+		
+		
+			HBalakrishnan
+		
+	
+	
+		31st Digital Avionics Systems Conference (DASC)
+		
+			Oct. 2012
+		
+	
+	H. Lee and H. Balakrishnan, "A Comparison of Two Optimization Approaches For Airport Taxiway And Runway Scheduling," in 31st Digital Avionics Systems Conference (DASC), Oct. 2012.
+
+
+
+	
+		Integrated Optimization of Airport Taxiway and Runway Scheduling
+		
+			ChuhangYu
+		
+		
+			HenryY KLau
+		
+		10.12720/joace.2.4.338-342
+	
+	
+		Journal of Automation and Control Engineering
+		JOACE
+		2301-3702
+		
+			2
+			4
+			
+			Dec. 2014
+			EJournal Publishing
+		
+	
+	C. Yu and H. Lau, "Integrated optimization of Airport Taxiway and Runway Scheduling," Journal of Automation and Control Engineering, vol. 2, Dec. 2014.
+
+
+
+	
+		Robust runway scheduling under uncertain conditions
+		
+			AndreasHeidt
+		
+		
+			HartmutHelmke
+		
+		
+			ManuKapolke
+		
+		
+			FraukeLiers
+		
+		
+			AlexanderMartin
+		
+		10.1016/j.jairtraman.2016.02.009
+	
+	
+		Journal of Air Transport Management
+		Journal of Air Transport Management
+		0969-6997
+		
+			56
+			
+			Nov. 2014
+			Elsevier BV
+		
+	
+	A. Heidt, H. Helmke, F. Liers, and A. Martin, "Robust Runway Schedul- ing using a time-indexed model," in Fourth SESAR Innovation Days, Nov. 2014, pp. 1-8.
+
+
+
+	
+		Optimization of multiple objective gate assignments
+		
+			ShangyaoYan
+		
+		
+			Cheun-MingHuo
+		
+		10.1016/s0965-8564(99)00065-8
+	
+	
+		Transportation Research Part A: Policy and Practice
+		Transportation Research Part A: Policy and Practice
+		0965-8564
+		
+			35
+			5
+			
+			2001
+			Elsevier BV
+		
+	
+	S. Yan and C.-M. Huo, "Optimization of multiple objective gate assign- ments," Transportation Research Part A: Policy and Practice, vol. 35, no. 5, pp. 413-432, 2001.
+
+
+
+	
+		Impact of Arrivals on Departure Taxi Operations at Airports
+		
+			ReginaClewlow
+		
+		
+			IoannisSimaiakis
+		
+		
+			HamsaBalakrishnan
+		
+		10.2514/6.2010-7698
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		Toronto, Ontario Canada
+		
+			American Institute of Aeronautics and Astronautics
+			Aug. 2010
+		
+	
+	R. Clewlow, I. Simaiakis, and H. Balakrishnan, "Impact of Arrivals on Departure Taxi Operations at Airports," in AIAA Guidance, Navigation, and Control Conference and Exhibit. Toronto, Ontario Canada: Amer- ican Institute of Aeronautics and Astronautics, Aug. 2010.
+
+
+
+	
+		Validation of the Federal Aviation Administration Air Traffic Control Specialist Pre-Training Screen
+		
+			DanaBroach
+		
+		
+			JanBrecht-Clark
+		
+		10.2514/atcq.1.2.115
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			1
+			2
+			
+			Jun. 2014
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Federal Aviation Administration
+	Federal Aviation Administration, "ORDER JO 7110.659A Air Traffic Control Wake Turbulence Recategorization," Jun. 2014.
+
+
+
+	
+		Parts of Python Programming Language
+		
+			SGowrishankar
+		
+		
+			AVeena
+		
+		10.1201/9781351013239-2
+		
+	
+	
+		Introduction to Python Programming
+		
+			Chapman and Hall/CRC
+			
+			
+		
+	
+	"Python programming language." [Online]. Available: http://www.python.org
+
+
+
+	
+		Gurobi announces Gurobi Optimizer 3.0
+		
+			IGurobi
+		
+		10.1287/orms.2010.03.09
+		
+		
+			2014
+			Institute for Operations Research and the Management Sciences (INFORMS)
+		
+	
+	Optimization
+	I. Gurobi Optimization, "Gurobi optimizer reference manual," 2014. [Online]. Available: http://www.gurobi.com
+
+
+
+	
+		Super Density Operations Airspace Modeling for the Southern California Metroplex
+		
+			SebastianTimar
+		
+		
+			GauravNagle
+		
+		
+			AdityaSaraf
+		
+		
+			PeterYu
+		
+		
+			PeterHunt
+		
+		
+			AndrewTrapani
+		
+		
+			NickJohnson
+		
+		10.2514/6.2011-6535
+	
+	
+		AIAA Modeling and Simulation Technologies Conference
+		Portland, Oregon
+		
+			American Institute of Aeronautics and Astronautics
+			Aug. 2011
+		
+	
+	S. D. Timar, G. Nagle, A. Saraf, P. Yu, and P. Hunter, "Super Density Operations Airspace Modeling for the Southern California Metroplex," in AIAA Modeling and Simulation Technologies Conferebce, Portland, Oregon, Aug. 2011.
+
+
+
+	
+		Validation of Simulations of Airport Surface Traffic with the Surface Operations Simulator and Scheduler
+		
+			RobertDWindhorst
+		
+		
+			JustinVMontoya
+		
+		
+			ZhifanZhu
+		
+		
+			SergeiGridnev
+		
+		
+			KatyGriffin
+		
+		
+			AdityaSaraf
+		
+		
+			SteveStroiney
+		
+		10.2514/6.2013-4207
+	
+	
+		2013 Aviation Technology, Integration, and Operations Conference
+		
+			American Institute of Aeronautics and Astronautics
+			
+		
+	
+	R. D. Windhorst, J. V. Montoya, Z. Zhu, S. Gridnev, K. Griffin, A. Saraf, and S. Stroiney, "Validation of Simulations of Airport Surface Traffic with the Surface Operations Simulator and Scheduler," in 2013 Aviation Technology, Integration, and Operations Conference (ATIO).
+
+
+
+	
+		He graduated with a PhD in Aerospace Engineering from the University of Maryland at College Park (MD, USA) in 2006. In the past years, he has worked on various topics including trajectory optimization and prediction, optimal and dynamic airspace design, and optimal flight scheduling and routing. He also published 30 journal/conference papers in these areas. His research interests include optimization and control
+		
+			MXue
+		
+		
+			HErzberger
+		
+	
+	
+		Controls and Aerodynamics from Purdue University (IN, USA) and a Masters degree in Aeronautics Engineering from ESTACA
+		Virginia Beach, Virginia; Paris, France; Paris, France
+		
+			Sep. 2011. 2011. 2009
+		
+	
+	She is currently supported by the awarded Bisland dissertation fellowship. Miss Bosson is a student member of the AIAA. Min Xue is a research scientist at University Affiliated Research Center of UC Santa Cruz at NASA Ames research center. air traffic management, autonomous systems, and application of interdisciplinary techniques in aerospace. Dr Xue is a Senior member of the AIAA
+	M. Xue and H. Erzberger, "Improvement of Trajectory Synthesizer for Efficient Descent Advisor," in 11th AIAA Aviation Technology, Integration and Operations Conference (ATIO), Virginia Beach, Virginia, Sep. 2011. AUTHOR BIOGRAPHIES Christabelle Bosson is an Aeronautics and Astronautics PhD candidate at Purdue University. Her research interests are oriented in air traffic management and stochastic optimization. In 2011, she received a Masters degree in Controls and Aerodynamics from Purdue University (IN, USA) and a Masters degree in Aeronautics Engineering from ESTACA (Paris, France). In 2009, she received a Bachelors degree in Aeronautics Engineering from ESTACA (Paris, France). She is currently supported by the awarded Bisland dissertation fellowship. Miss Bosson is a student member of the AIAA. Min Xue is a research scientist at University Affiliated Research Center of UC Santa Cruz at NASA Ames research center. He graduated with a PhD in Aerospace Engineering from the University of Maryland at College Park (MD, USA) in 2006. In the past years, he has worked on various topics including trajectory optimization and prediction, optimal and dynamic airspace design, and optimal flight scheduling and routing. He also published 30 journal/conference papers in these areas. His research interests include optimization and control, air traffic management, autonomous systems, and application of interdisciplinary techniques in aerospace. Dr Xue is a Senior member of the AIAA.
+
+
+
+	
+		Department, Guizhou Normal University. He is a member of the Chinese Musicians’ Association and Director of the Society for Nuo-drama of China. Tsao Penyeh is Senior Lecturer in Ethnomusicology at the Chinese University of Hong Kong. His research interest in Chinese music includes singing-narratives, puppet theatre, and ritual music. Tsao heads the Ritual Music in China Research Programme at the Music Department of the Chinese University of Hong Kong, aiming to systematically investigate Taoist and Buddhist ritual music as well as ritual music of other ethnic nationalities in China. With a team of twenty scholars, the Research Programme is presently conducting a three-year project ‘Comparative Study of Regional and Transregional Taoist Ritual Music Traditions of Major Temples in China, Hong Kong and Taiwan’. Tian Lian-tao is an ethnomusicologist and composer, and professor of the Central Conservatory of Music, Beijing, China. He has conducted extensive research into the traditional music of China’s minority nationalities for more than forty years. Xiu Hailin was born in Shanghai in 1952 and graduated from the department of Musicology at the Central Conservatory of Music in 1983. He is currently the Assistant Professor and Assistant Director of the Institute of Music, Central Conservatory of Music. Tsui Ying is currently an ethnomusicology Ph.D. student in the University of Pittsburgh (Pennsylvania, USA). He received his B.A. in 1987 and his M.Phil. (Chinese music), in 1990 from the Chinese University of Hong Kong. His major field of interest in Chinese instrumental music. In Hong Kong, he has been active as a Chinese flute player as well as a conductor in the modernized Chinese folk orchestras, as well as a Western flute player, for over a decade. His master thesis studied amateur Chinese orchestras in Hong Kong in the seventies with reference to the musical characteristics of the kind of repertoire performed and the social context in which the orchestras emerged. Tsui’s doctoral dissertation is on the issues concerning the traditional Cantonese music ensemble. Ruth Wingyu Yee , a founder of the Shatin Cantonese Opera Troupe, Hong Kong, has for the past ten years been serving on its management committee and performing as a principal actress. She was a solo folksong singer
+		
+			ShannonJZelinski
+		
+		10.4324/9780203985656-17
+	
+	
+		Tradition & Change Performance
+		PA, USA; Berkeley (CA, USA; Ms
+		
+			Routledge
+			2001. 2003
+			
+		
+		
+			Electrical Engineering from Lehigh University
+		
+	
+	Zelinski is a Senior member of the AIAA
+	Shannon J. Zelinski received a Bachelors degree in Electrical Engi- neering from Lehigh University (PA, USA) in 2001 and a Masters degree in Electrical Engineering robotics and controls from UC Berkeley (CA, USA) in 2003. She began her career with NASA Ames Research Center Airspace System Division in 2003. Since then, she has published over 20 papers in the field of air traffic management. She started as a research engineer in the field of system modeling and assessment and led NASA's Airspace Systems research in dynamic airspace configuration from 2007-2011. From 2011-2014 she led Airspace Systems research at Ames in super density operations, with focused on terminal area arrival and departure management, integrated arrival- departure-surface (IADS) operations, and terminal area conflict detection and resolution. She currently supports the ATM Technology Demonstration-2 focused on maturing and demonstrating IADS scheduling technologies. Ms. Zelinski is a Senior member of the AIAA.
+
+
+				
+			
+		
+	

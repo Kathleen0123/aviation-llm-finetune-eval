@@ -1,0 +1,147 @@
+
+	
+	
+		
+I. INTRODUCTIONUnmanned Aircraft Systems (UAS) have played an important role in the global Aeronautics industry for the past few decades.Even so, most UAS operations within the National Airspace System (NAS) are restricted due to the possible risk that grand scale civil UAS operations may pose to the safety of aerial operations.There are currently few military UAS operating in the NAS.Without an onboard pilot, UAS lose the ability to "see and avoid" other aircraft, it is for this reason that having accurate models is necessary.There are currently several trajectory generators to support Air Traffic Management (ATM) applications and research.There are also a couple similar to what is here presented, such model as KTG [6] and HYBRIDGE [2].However, this model has as objective developing a stand-alone MATLAB tool in which the performance and behavior of several guidance, collision avoidance and sense and avoid algorithms can be observed.This will aid research in Next Generation ATM.II.BADA MODELS BADA provides a set of ASCII (American Standard Code for Information Interchange) files that contain performance parameters and coefficients for 399 types of aircraft.This data is used by EUROCONTROL to simulate standard operations on European airspace.There are present efforts in creating BADA compatible files for several unmanned systems.A brief explanation of the most important BADA models and parameters is now given.Refer to [1] for a broader explanation on each model.
+A. AtmosphereThis model provides expressions for temperature, pressure, density and speed of sound as a function of altitude.These expressions are based in the International Standard Atmosphere.It is dived by the tropopause, defined at 11000 m in terms of geopotential pressure altitude.This model also has temperature and pressure corrections for non-standard atmospheres.
+B. Total Energy MethodTotal Energy Method relates de rate of work done by forces acting on the aircraft to the rate of change in potential and kinetic energy.It is given by the following expression:  dt dV mV dt dh mg V D Thr TAS TAS TAS    0Where Thr means thrust, D is the aerodynamic drag force, V TAS is True air speed, m means the mass of the aircraft, g 0 is gravitational acceleration and finally h is geodetic altitude.From this equation, an expression for the Rate of Climb or Descent (ROCD) can be obtained.
+C. AerodynamicsBADA contains a simple Aerodynamic model in which the aircraft's angle of attack is always considered to be zero; there is a correction for bank angle nevertheless.Drag coefficient depends on flight configuration.Cruise drag coefficient is valid for all flight configurations except approach and landing, where additional coefficients must be used to simulate the use of flaps and extension of landing gear.
+D. Thrust ModelThrust produced by the aircraft depends directly on the engine type, which can be jet, turboprop or piston.Additionally, flight configuration such as Climb (CL), Cruise (CR) or Descent (DES) has a direct impact on the amount of thrust available.Several other parameters like altitude and speed influence this thrust model.
+E. Fuel ConsumptionFuel consumption is a direct result of the aircraft's thrust, which implies a direct relationship with engine type and flight configuration.Thrust Specific Fuel Consumption (TSFC) is determined via engine coefficients, speed and altitude.
+F. Airline Procedure ModelsAirline procedure models contain the speed schedules for CL, CR, and DES configurations and dictates Calibrated Air Speed at different altitudes.For each of these phases and each aircraft model, Airline procedure model requires default speeds, stall speed for take off and landing configurations and several other coefficients such as maximum operating Mach number.Figure 1 shows the speed schedule for a CR configuration of an Airbus A300 aircraft.
+III. AIRCRAFT'S EQUATIONS OF MOTIONThe aircraft dynamic model is given by three control inputs and seven differential equations, which represent the aircraft's states.The state vector is given by: ,,,,  Table 1 presents the system's control inputs as well as the equations of motion.ϒ and ϕ command are the guidance algorithm outputs, ψ is the aircraft's heading with respect to the north, the temperature factor (T-ΔT/T) is a correction for non standard atmospheres, f{M} is known as the energy share factor and it specifies how much of the available power is allocated to climb as opposed to acceleration while following a selected speed profile during climb, it has been shown that it is a function of Mach number, (refer to [6] for a broader explanation), ϕ is the aircraft's bank angle, η is the fuel consumption and k is the bank gain.                  t t m t t V t h t y t x t X TAS   , ,                                                   commandThrust in this case is more of a system constraint than a control input; there is no direct throttle input.The equation for ROCD is obtained from the TEM presented in previous sections.Aircraft's bank response is approximated as a first order response, while flight path angle is considered immediate.Future work on this model may improve these responses.Change in heading is assumed as level-turn flight.Change in mass in the aircraft is only given by the fuel consumption.Additional to these aircraft states, the variables "climb_mode" and "accel_mode" were created; these variables take the values of CL, CR and DES, and accelerate (A), cero acceleration (C) and deceleration (D) respectively.These values indicate the flight configuration and acceleration mode required for the aircraft to follow the predetermined speed schedule established in BADA's Airline Procedure Model.These variables have a direct impact on thrust, fuel consumption, aircraft speed and ROCD.
+IV. 3D GUIDANCE ALGORITHMThis algorithm outputs the necessary commands for the aircraft so that it follows a predetermined flight plan given by waypoints.The algorithm uses an X-Y-Z frame of reference in which positive X direction represents east, positive Y represents north and positive Z represents altitude.Guidance logic is non linear and creates lateral acceleration commands that can be easily translated into bank angle commands.This logic is based on the work presented in [3], the waypoint tracking and waypoint target switching presented in [4] is also used.In order to have a complete 3D guidance algorithm, a flight path angle command was added in the vertical plane.Its derivation is purely geometrical and is simply expressed as:           ground s h 1 tan
+Where Δh is the altitude difference between the aircraft's current position and the altitude of the target waypoint and s ground represents the distance on the horizontal plane between the aircraft and the target waypoint.Maximum normal acceleration values established in BADA's Aircraft Global Parameters must be taken into account.This value will limit the changes in flight path angle command and thus rate of climb or descent.This serves the purpose of simulating realistic aircraft behavior according to standard operations.
+V. BADA, EQUATIONS OF MOTION AND GUIDANCEALGORITHM INTEGRATION This section contains a brief explanation on how the different models are integrated forming the hybrid model.Figure 2 shows a block diagram indicating the flow of information within the models.The process begins with a preestablished flight plan that consists of a series of waypoints, the guidance algorithm takes this information as well as the aircraft's initial position to determine a target waypoint and compute the necessary control commands.The block labeled as "BADA Models" takes information from the initial condition and the control commands computed by the guidance algorithm to determine values of speed schedule, thrust, drag, fuel consumption, climb mode, acceleration mode and others.All this information is fed into the block labeled as "Equations of motion" which, as the name implies, contains the equations of motion that are solved using the Euler method with a time step of 1 second.The updated aircraft states are then fed to both the guidance algorithm and BADA models to determine the next set of commands.The hybrid trajectory generator here developed was compared to 10 flights in ACES background traffic to verify it performs adequately.Figures 3 and4 show the RMS error of the displacement in both the vertical and horizontal planes.It is worth mentioning that the mean distance between waypoints in these comparisons was approximately 13.23 nautical miles.It can be seen that the RMS error in the vertical plane is much greater than the error in the horizontal plane.This can be explained by the difference in the way ACES solves the climb and descent phases compared to the model here presented.While ACES takes in an altitude clearance and solves a boundary value problem, the hybrid trajectory generator takes in specific altitudes for each waypoint.Nevertheless, the mean RMS error in the horizontal plane for the 10 flights is approximately 17.6 ft.This is an acceptable result.VI. CONCLUSIONS This document showed a hybrid trajectory generator, which combines models, parameters and coefficients from the Base of Aircraft Data and a classic aircraft dynamics.Also, the implementation a 3D guidance algorithm was presented.This model will be a useful tool to simulate the interaction between conflicting aircraft according to aircraft's performance as well as standard operations.Present and future UAS research may benefit from this model.It has applications in Sense and Avoid research as well as testing the performance of new control and guidance algorithms.Fig. 11Fig.1 Speed Schedule on a cruise configuration for an Airbus A300 aircraft
+Fig. 22Fig. 2 Block Diagram of the Hybrid Model indicating the flow of information
+Fig. 3 RMS3Fig. 3 RMS Error on the Horizontal plane
+TABLE I CONTROLIINPUTS AND EQUATIONS OF MOTION1. Thr2. γ3. ϕ commandControlEquations of MotionInputs
+		
+		
+
+			
+ACKNOWLEDGMENTS [ft][ft] I would like to thank Universidad Autonoma de Nuevo Leon, and Facultad de Ingenieria Mecanica y Electrica for giving me the opportunity of undergoing this internship, especially Dr. Tania Paloma Berber for her incredible support.I would also like to thank Adriana Cardenas, Andres Martinez, Ali Guarneros and Jose Cortez for their constant support.I want to thank Tom Davis, Todd Farley, Eric Mueller, Aisha Bowe and especially Marcus Johnson for their patience, support and teachings.This has been an amazing experience in every level.Finally, I would like to thank all staff at NASA Ames Research Center.
+			
+
+			
+
+				
+
+
+	
+		User Manual for the Base of Aircraft Data (BADA) Revision 3.10, EUROCONTROL Experimental Centre
+		12/04/10-45
+	
+	
+		EEC Tech. Rep
+		
+			2012
+		
+	
+	User Manual for the Base of Aircraft Data (BADA) Revision 3.10, EUROCONTROL Experimental Centre, EEC Tech. Rep. No. 12/04/10-45, 2012.
+
+
+
+	
+		A Multi Aircraft Model for Conflict Detection and Resolution Algorithm Evaluation
+		
+			WGlover
+		
+		
+			JLygeros
+		
+		
+			Feb. 2004
+		
+	
+	W.Glover and J.Lygeros, "A Multi Aircraft Model for Conflict Detection and Resolution Algorithm Evaluation", Feb. 2004.
+
+
+
+	
+		A New Nonlinear Guidance Logic for Trajectory Tracking
+		
+			SPark
+		
+		
+			JDeyst
+		
+		
+			JPHow
+		
+		
+			Cambridge MA, 02139, USA
+		
+		
+			Massachusetts Institute of Technology
+		
+	
+	S. Park, J. Deyst and J. P. How, "A New Nonlinear Guidance Logic for Trajectory Tracking", Massachusetts Institute of Technology, Cambridge MA, 02139, USA.
+
+
+
+	
+		A Simple and Adaptive On-line Path Planning System for a UAV
+		
+			GDucard
+		
+		
+			KCKulling
+		
+		
+			HPGeering
+		
+	
+	
+		Proc. Of the 15 th Mediterranean Conference on Control & Automation
+		Of the 15 th Mediterranean Conference on Control & AutomationAthens, Greece
+		
+			Jul. 2007
+		
+	
+	G. Ducard, K.C. Kulling and H. P. Geering, "A Simple and Adaptive On-line Path Planning System for a UAV" in Proc. Of the 15 th Mediterranean Conference on Control & Automation, Jul. 2007, Athens, Greece.
+
+
+
+	
+		Base of Aircraft Data (BADA) Aircraft Performance Modelling Report
+		
+			2009-009, 2009
+		
+		
+			EUROCONTROL Experimental Centre, EEC Tech
+		
+	
+	Base of Aircraft Data (BADA) Aircraft Performance Modelling Report, EUROCONTROL Experimental Centre, EEC Tech. Rep. No. 2009-009, 2009.
+
+
+
+	
+		KTG: A Fasttime Kinematic Trajectory Generator for Modeling and Simulation of ATM Automation Concepts and NAS-wide System Level Analysis
+		
+			YZhang
+		
+		
+			GSatapathy
+		
+		
+			VManikonda
+		
+		
+			NNigam
+		
+	
+	
+		AIAA Modeling and Simulation Technologies Conference
+		Toronto, Canada
+		
+			Aug. 2010
+		
+	
+	Y. Zhang, G. Satapathy, V. Manikonda and N. Nigam, "KTG: A Fast- time Kinematic Trajectory Generator for Modeling and Simulation of ATM Automation Concepts and NAS-wide System Level Analysis", in AIAA Modeling and Simulation Technologies Conference, Aug. 2010, Toronto, Canada.
+
+
+				
+			
+		
+	

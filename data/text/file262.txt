@@ -1,0 +1,536 @@
+
+	
+	
+		
+Time (UTC) (or 7:00pm local time) on September 15 th , patches of fog were reported in the vicinity of the airport, and visibility steadily degraded to its lowest value of 0.12 miles due to fog almost two hours later at 04:48 UTC.Visibility returned to two miles at 20:20 UTC on September 16 th which is about 40 hours after the first time visibility dropped to 0.12 miles.Elements that make the ANC arrival scheduling problem challenging are: (1) the uncertainty in the Airport Arrival Rate (AAR) due to the errors in visibility forecasts, (2) the impact of non-weather-related factors on the AAR, such as the military operations from nearby Elmendorf Air Force Base, and (3) the uncertainty in the arrival demand, especially international arrivals.Given a visibility forecast, this forecast can be translated into an AAR forecast using weather translation models that have recently appeared in the literature (see for example, Refs. 2 and 3).For example, Liu et al. 2 recently proposed a methodology for generating airport capacity scenario trees from empirical data, while Kicinger et al. 3 describes an Integrated Airport Capacity Model that produces probabilistic predictions of airport arrival and departure capacities given forecast terminal weather conditions.Once forecasts of the airport demand and capacity are available, a variety of both heuristic-and optimization-based scheduling models have been presented in the literature for sequencing and scheduling arrivals into a capacity-constrained airport.For example, Mukherjee, Grabbe and Sridhar 4 , describe a linear programming model for assigning departure delays and pre-departure reroutes to flights under airspace capacity restrictions.Additionally, Swenson et al. 5 describes a decision support tool that was developed and operationally tested for sequencing and scheduling flights within about 200 nmi of the destination airport.To address the challenges associated with scheduling arrivals into ANC under uncertainty in the arrival demand under low-visibility conditions, a multi-stage scheduling process is employed that is iteratively executed as updated demand or capacity data become available.There are three components to the scheduling process: (1) a strategic arrival scheduler that assigns speed adjustments to aircraft, (2) an internal departure scheduler that assigns ground holds to aircraft, and (3) a tactical scheduler which assigns airborne holding to reactively account for system uncertainties.Real-world scenarios derived from the Jan. 16, 2012 ANC visibility observations were used to test the initial implementation of the scheduling algorithm.Numerous fast-time simulations were run to explore trade-offs between the strategic scheduling horizon and the use of pre-departure, strategic scheduling and tactical flight controls.The results of these experiments are presented in terms of variations in the delays and controls associated with satisfying the scheduling constraints as a function of the strategic scheduling horizon.A brief discussion of the traffic patterns in Anchorage and the fog-related meteorology impacting Anchorage is provided in Section II.Key components, inputs and outputs of the multi-stage scheduling process are described in Section III.A discussion of the experimental setup is presented in Section IV.Experimental results of the fast-time simulations are presented in Section V. Finally, a summary is presented in Section VI.
+II. BackgroundUnder a Space Act Agreement that was signed on Nov. 19, 2011 by NASA and the State of Alaska, a three-year partnership was established to collaborate on, "… advanced aviation, space exploration, education and science." 6s part of this collaboration, advanced technologies for improving operations at ANC under low-visibility conditions are being investigated.Not only does weather pose a challenge to ANC operations but so does operation in close proximity to other popular airports.Ted Stevens Anchorage International Airport is the largest airport in the state and is adjacent to the largest and most active seaplane base in the world. 7Lake Hood Seaplane Base is home to 437 aircraft of which 89% are local general aviation.It has, on average, over 100 operations per day.The following table lists the number of operations at other airports within 10 miles of ANC with more than 5 operations per day. 8Figure 2 shows a map of Anchorage and the surrounding area with the four airports listed in Table 1 highlighted.Further discussions with traffic management specialists at Anchorage are required to better understand the effect that these additional airports have on ANC AARs.The challenge of forecasting fog in and around the Anchorage area has been extensively studied by the United States Air Force Combat Climatology Center to improve fog forecasting at Elmendorf Air Force Base, which is in close proximity to Anchorage International Airport.That work was published as part of a Technical Forecasting Reference Notebook and is summarized in Reference 10.Typical types of fog in Anchorage include radiation fog, steam fog, and lowering stratus clouds.Radiation fog is formed by cooling of the moist air directly above the ground that becomes saturated resulting in fog.The longer the air is cooled, the greater the chance of fog.Steam fog is a type of evaporation fog, which occurs when water vapor is added to the drier air above due to a moisture source from below.Steam fog forms when cold air moves over warmer waters.The lowering of stratus clouds is due to radiative cloud-top cooling which causes the downward transport of cool air and produces water droplets, which lowers the cloud ceiling. 9At times, the fog at Anchorage may be categorized as a combination of all of them. 10n terms of the impact of low fog and ceilings at Anchorage, these conditions can impact the ability of a pilot to take off and land without the assistance of instrument landing systems. 11Additionally, as the visibility decreases, more reliable and precise navigation aids and aircraft equipage become necessary, as well as increased pilot training.Similarly, these conditions can also impact the ability of a controller to provide clearances, since maneuvers based on surface features or references to surrounding air traffic become more challenging.
+III. Modeling MethodologyThis section describes the overall integrated arrival-scheduling model.The individual components of the scheduling and weather translation model are subsequently described starting first with the scheduling algorithms.
+A. System ArchitectureThe major components of the integrated scheduling model that was developed to assign strategic, pre-departure and tactical flight controls to ANC arrivals are illustrated in Fig. 3. On the left side of this figure are the system inputs, which consist of the scheduled flights, historical airport arrival rates, the current airport weather observations and the weather forecasts.For the purpose of initial testing, the weather-impacted airport arrival rates were calculated from the current airport weather observations and the historical airport arrival rates, which will be described in more detail in Section III.C.The user schedules were extracted from historical Aircraft Situation Display to Industry (ASDI) data archives.These system inputs were processed directly by NASA's Future ATM Concepts Evaluation Tool (FACET). 12For every minute of simulation time, FACET provides updated state information, x(t), (e.g., latitude, longitude, speed, altitude, and heading) for all aircraft in the simulation via an Application Programming Interface (API) that has been described in previous studies. 13The "Arrival Demand Estimation" and the "Integrated Arrival Scheduler" subsequently use this state information.The "Arrival Demand Estimation" module uses this information to calculate the estimated time of arrival (ETA).It is important to note that this module uses a simplified version of the trajectory prediction algorithm in FACET to estimate the ETAs, which can lead to significant differences between the ETAs and FACET's actual times of arrivals.This was the most significant source of uncertainty encountered by the scheduling algorithms and will be discussed in more detail in Section IV.B.The output from this module, which is labeled as "(1)" in Fig. 3, is subsequently sent to the "Integrated Arrival Scheduler" along with the estimates of the weather-impacted AARs, which are the outputs of the "Airport Capacity Estimation" module in Fig. 3.Given the demand and capacity estimates at ANC, the "Integrated Arrival Scheduler" subsequently schedules the flights and generates aircraft-level controls that are labeled as u strat (t), u dept (t) and u tact (t).These controls are implemented in FACET via the FACET API.More details regarding the scheduling algorithms are provided in Section III.B.
+B. Scheduling AlgorithmsFigure 4 describes the overall scheduling process used by the algorithms labeled "Strategic Arrival Scheduler", "Internal Departure Scheduler" and "Tactical Arrival Scheduler" in Fig. 3. Key inputs to the scheduling algorithm are the aircraft demand and the airport capacity, which are shown to the right of Fig. 4. Additionally, select "Other Restrictions" have been included in the algorithm to add a degree of realism.For example, bounds on the maximum amount by which a flight can be slowed to absorb the delays assigned by the strategic arrival scheduler have been added and are discussed in detail in Section V. Similarly, the scheduled time of arrival of any given flight was not allowed to be revised more than five times to add a degree of stability to the schedule.As indicated by Fig. 4, scheduling is done in multiple stages.At each stage, updated flight schedules and airport capacities are obtained.In general, the scheduling algorithm can be based on an optimization model or a greedy heuristic.For initial testing, a simple first-scheduled-first-served heuristic, which is analogous to the ration-byschedule (RBS) algorithm that is used by the Federal Aviation Administration when implementing ground delay programs (GDP), 14 was implemented.As is done for GDPs, rationing of arrival resources is based on the scheduled arrival times of flights at their destination.This heuristic works as follows:Step 1: Order the original set of flights according to their scheduled arrival times at their destination airport.Step 2: For the f th flight in the ordered list, assign the earliest feasible arrival time that does not violate the airport arrival capacity restrictions at time t.Step 3: Reduce the capacity of the airport used by the f th flight by 1 aircraft during those time periods when the flight occupies the airport.Step 4: Repeat steps 2 -3 until all flights have been assigned feasible arrival times.As previously mentioned, the set of ANC arrivals are divided into three groups, as illustrated in Fig. 5, for scheduling and control purposes.These different sets of flights are subsequently used in "Step 1" of the scheduling algorithm described above.A description of these flights follows:• Internal Departures: all flights departing from within Anchorage Center (ZAN), which is represented by the green polygon in Fig. 5, are assigned a scheduled time of arrival (STA) with a corresponding pre-departure delay by the "Internal Departure Scheduler" algorithm that is shown in Fig. 3. • Strategically Controllable Flights: all airborne flights that are less than D strategic nmi from ANC (see the blue circle in Fig. 5) and more than D tactical nmi from ANC (see the beige circle in Fig. 5) are assigned a STA by the "Strategic Arrival Scheduler".Flights in this regime typically meet their STAs by either reducing their en route cruise speeds or through vectoring.The values of D strategic that were used are described in more detail in Section IV.D, but for all experimental runs D tactical = 250 nmi.It is worth noting that these are, in general, userselectable design parameters that should be selected based on the uncertainty in the airport capacity and the arrival demand.• Tactically Controllable Flights: airborne flights that are within D tactical nmi of ANC (see the beige circle in Fig. 5) that either have not been assigned an STA or have been assigned an STA that would result in an airport capacity violation are scheduled using the module labeled "Tactical Arrival Scheduler" in Fig. 3. To achieve the STAs imposed by this scheduling algorithm, flights will be vectored or assigned airborne holding controls.If the airborne delay required to satisfy the STA exceeds a user defined maximum value, which is typically 40 minutes, the flight can in principle be diverted to Fairbanks International Airport, as is done under current-day operations although this control has yet to be implemented in the current instantiation of the integrated arrival scheduler.
+C. Airport Capacity EstimationTo determine the airport arrival rates that are input to the scheduling algorithm, a decision tree-learning model was developed to relate current Meteorological Terminal Aviation Routine Weather Report (METAR) weather information and historical AARs from the FAA's Aviation System Performance Metric (ASPM) system to the weather-impacted AARs.Complementary data mining approaches for estimating the weather-impacted AARs have recently appeared in the following work.For example, in Cunningham et al. 15 , an ensemble bagging decision tree regression model was used to forecast AARs at Newark Liberty International airport.Similarly in Wang 16 , an ensemble bagging decision tree regression model and quadratic response surface linear regression models were used to forecast the AARs at Newark Liberty International airport, Chicago O'Hare International airport and Atlanta International airport.For initial testing, the model was used for estimating the weather-impacted AAR at the current instance of time, but in the future this model will be extended to make use of forecasted weather information from the Terminal Aerodrome Forecast (TAF) to predict the weather-impacted AARs beyond the current time.A list of the 11 features used in the model is presented in Table 2.These features were selected to capture the current weather and state of the airport.The relative importance of each of these features, as determined by the Orange software package 17 , is illustrated in Fig. 6.The most significant feature would have highest positive value.As illustrated from this figure, when estimating the AAR at the current time t, the most influential factor is the previous AAR which was at time (t-1), followed by the wind speed at time t and maximum wind gust at time t.Features that were least important included the visibility and pressure at the airport.The fact that visibility at the airport was of low importance is interesting since low-visibility is known to affect the AARs.A classic example of this is the marine stratus layer that routinely impacts operations at San Francisco International Airport (SFO) from May through October of every year. 18In the case of SFO, it is the stratus in the San Francisco Bay and not directly over the airport that results in the reduced AARs.A similar phenomenon might be present at ANC, and this is an area that will be investigated further in future studies.To validate the model, a ten-fold cross validation was performed using the Orange software package.For this validation, the 8,760 hourly METAR and AAR data samples from 2011 were randomly partitioned into ten subsamples.Of the ten subsamples, a single sample was retained for validation while the remaining nine samples were used as training data for building the model.The cross validation process was subsequently repeated ten times with each of the ten samples used once as the validation data.The results of the validation yielded an AAR classification accuracy of 93%, which was sufficient for the current study.
+IV. Experimental Setup
+A. Planning IntervalsAll fast-time experiments assumed a start time of 1:00 UTC and an end time of 23:59 UTC.Throughout this planning interval, the strategic scheduling algorithm was called every 15 minutes.The tactical scheduling algorithm was called every five minutes, and the pre-departure scheduling algorithm was run every minute.The high update rate associated with the pre-departure scheduling interval was selected to ensure that internal departures from within ZAN were assigned a controlled time of arrival prior to departure.The tactical scheduling algorithm was only run every five minutes to add some stability to the sequence of arrivals.This algorithm began scheduling flights when they were within 250 nmi of the airport.Finally, the strategic scheduling algorithm controlled long-haul domestic and international flights that were 500 to 2,000 nmi (see Section IV.D) from the airport, so a relatively low replanning frequency (e.g., 15 min.)was warranted.
+B. Demand and Demand UncertaintyFor all experimental runs, the unscheduled flight demand set was derived from the Jan. 12, 2012 Aircraft Situation Display to Industry (ASDI) file.Based on statistics available from the FAA's Operations Network (OPSNET) system, this was a relatively high volume day for ANC with a total of 590 operations.Using this data, a baseline, open-loop simulation was run in FACET to calculate the unscheduled arrival demand, which is shown in Fig. 7.Here the data were aggregated over a 15-minute interval, and the counts are found to vary between zero and 11 aircraft per 15-minute time interval.For reference, the blue line is the estimated, weather-impacted AAR, and the green curve with x-symbols is the actual AAR, as recorded in ASPM.For all simulations, the estimated AAR values were inputs to the scheduling algorithms described in Section III.B.These two curves are discussed in more detail in Section IV.C, but it is worth noting that the demand is well below the capacity for all but one of the 15minute periods.In future studies, additional scenarios will be developed with the assistance of traffic management specialists from Anchorage Center where larger imbalances between the arrival demand and the airport capacity are observed to better test the multistage scheduling algorithm.Actual airport AAR from ASPM (dashed green line) and estimated AAR (solid blue line).To add a degree of realism to the scheduling results, a different trajectory predictor, which was a simplified version of FACET's trajectory prediction algorithm, was used as shown in the box labeled "Airport Demand Estimation" in Fig. 3.As a result, the scheduling problem was not completely deterministic.This is illustrated by the ETA errors presented in Fig. 8.Here the ETA errors, which are calculated by subtracting the ETA from the actual time of arrival, are being plotted as a function of the distance to the destination over the 23-hr planning horizon for the 500 nmi strategic scheduling horizon scenario.As can be seen from this box-and-whisker plot, the median errors tended to grow almost linearly for flights that were observed to depart within 350 nmi of ANC.Beyond this distance, the median ETA errors dramatically increased since a significant number of flights that were first observed 400 nmi from the ANC were subject to pre-departure delays by the "Internal Departure Scheduler" that is illustrated in Fig. 3.It is worth noting that the results in Fig. 9 are being shown in discrete 50 nmi increments to improve readability of the figure.As a result, all ETA errors from 0 to 50 nmi are being shown at the 50 nmi location, the errors from 49 to 100 nmi are displayed at the 100 nmi marker, etc.In the current study, the tactical scheduling algorithm was responsible for rescheduling flights to account for this trajectory uncertainty.In future studies, the strategic and pre-departure scheduling algorithms will be updated to explicitly account for this demand uncertainty.
+C. Arrival CapacityA scatter plot of the hourly ANC visibility and AAR data from 2011 is shown in Fig. 9.A total of 8,760 hourly observations from ASPM were used in generating this figure and the size and color of the circles is used to represent the relative occurrence of each visibility and AAR combination.By far the dominant visibility and AAR combination that was observed in 2011 was a visibility of 10 miles and an hourly AAR of 26 aircraft/hr.This particular configuration occurred for 35% of the hourly observations.In contrast, only 0.9% of the observations occurred when the visibility of ANC was 0.0625 miles with an AAR of 24 aircraft (lower left point in Fig. 9).The data show a range of AARs for good visibility conditions over ANC which underscores the fact that (1) nonmeteorological conditions, such as operations at Elmendorf AFB, and (2) meteorological constraints away from the airport may reduce the AAR.For example, the AAR at ANC was observed to be 20 aircraft/hr when the visibility was 10 miles roughly 2.6% of the time (lower right point in Fig. 9).For reference, this is the same visibility data that was used as an input to the decision tree-learning model that was described in Section III.C.
+Figure 9. ANC hourly AAR versus the visibility in miles for January through December of 2011.Using the decision-tree learning method discussed in Section III.C, which was trained and validated using the 8,760 hourly METAR and AAR records from 2011, the weather-impacted AARs for Jan. 16, 2012 were estimated.For reference, the visibility at ANC on this day was seen to vary between 0.125 miles and 10 miles, and there was a period between 8:00 and 14:00 UTC where the visibility was consistently below one mile as shown in Fig. 10.The corresponding actual and estimated AARs for this date are shown in Fig. 7 by the green line with x-symbols and the solid blue lines, respectively.As can be seen from this plot, there is very good agreement between the actual and estimated AARs on this day, and there is only a single instance at 21:00 UTC when the estimated values lie below the actual values.For all experimental runs, the estimated AARs, which are represented by the solid blue curve in Fig. 7, were used as inputs to the scheduling algorithm.
+D. Strategic Scheduling HorizonOne of the key parameters that influences when and if a flight is scheduled by the strategic scheduling algorithm is the strategic scheduling horizon, which is represented by D strategic in Fig. 5.The larger D strategic is, the more delay can be absorbed en route; however, there is greater uncertainty in the flight arrival time.As D strategic decreases, the uncertainty in the arrival time decreases, but there is less opportunity to absorb delay in the en-route environment.To test the sensitivity of the integrated scheduling model to this parameter, the following four values of D strategic were selected: 500 nmi, 1,000 nmi, 1,500 nmi and 2,000 nmi.Each of these values of D strategic is represented in Fig. 11 along with select airports from which flights departed for ANC on Jan. 12, 2012.Although the rings in Fig. 11 show many of the scheduling horizons extending into Asia, the ASDI data feed that was used only included records for flights that entered U.S. controlled airspace.As a result, the scheduling algorithm did not detect many flights from Asia until they were within 1,000 nmi of ANC.This point is illustrated by Fig. 12, which shows the initial distance from ANC that each of the arrivals was detected in the ASDI data feed.Although most flights from Asia are well over 2,000 nmi from ANC, the majority of flights in this figure that originated 2,000 nmi or more from ANC were domestic U.S. departures.Interestingly, roughly 37% of ANC arrivals depart from within 500 nmi of the airport.The majority of these flights are internal departures from Anchorage Center that are assigned controlled times of arrival by the internal departure scheduling algorithm that is shown in Fig. 3. Figure 12.Initial distance of arrivals from ANC on Jan. 12, 2012.
+V. Arrival Scheduling ResultsThis section contains the results of the simulation experiments that were designed to test the ability of the integrated scheduling model to schedule flights into ANC under low-visibility conditions.Results are presented in terms of the number of controls assigned to flights, the delays assigned to flights by each scheduling algorithm, the speed controls assigned by the strategic scheduling algorithm and the temporal distribution of the flight delays.The number of controls assigned to the arrivals by each of the scheduling algorithms over the 23-hr planning horizon for each of the four strategic scheduling horizons is presented in Fig. 13.The following labels are used to describe each of the control combinations:• "No Delay": no flights were controlled • "Tact + Gnd": a flight first received a pre-departure scheduling delay and was subsequently assigned an airborne delay by the tactical scheduling algorithm • "Tact + Strat": a flight that was first assigned a speed control by the strategic scheduling algorithm and subsequently assigned a tactical scheduling control • "Gnd Only": a flight that was only controlled by the internal departure scheduling algorithm • "Strat Only": a flight that was only controlled by the strategic scheduling algorithm,• "Tact Only": a flight that was only controlled by the tactical scheduling algorithm.Over 90% of all flights were not delayed by the scheduling model, which is to be expected given the demand and capacity profiles presented in Fig. 7. Between four and six flights were first assigned a pre-departure, ground hold delay and subsequently assigned an airborne delay by the tactical scheduling algorithm.None of the flights scheduled by the strategic scheduling algorithm were rescheduled at the tactical level.There was nothing explicitly in the multi-stage scheduling model that would have precluded this from happening, and this is not a trend that is likely to hold true in general.As expected, the number of tactical controls assigned to flights tended to increase as the strategic scheduling horizon increased as the strategic scheduling horizon is increased, there is more uncertainty in the arrival times for the long-haul flights; so, tactical controls are required to reactively account for the system uncertainties.The distribution of the average delays per flight as a function of the strategic scheduling horizon is shown in Figure 14.By far the largest delays were assigned to the flights departing from within Anchorage Center that were first assigned a pre-departure (i.e."Gnd") delay and subsequently assigned a tactical scheduling delay (see top set of bars).The amount of delay assigned to flights by only the tactical scheduling algorithm (see bottom collection of bars) was not sensitive to the scheduling horizon.As expected, the average delay per flight assigned by the strategic scheduling algorithm tended to increase with increasing scheduling horizon, since more delay could be accommodated with speed changes.As previously mentioned, no flights were first assigned a strategic scheduling delay and subsequently assigned a tactical scheduling delay.This is an artifact of the scenario that was considered, and is not anticipated to be a general trend.Lastly, the average pre-departure delay per flight was relatively constant for scheduling horizons greater than 500 nmi, but these delays increased significantly when the scheduling horizon was reduced to 500 nmi.This is to be expected because as the scheduling horizon is reduced, en route flights are scheduled closer to ANC and there are fewer available arrival slots in which to schedule the flights departing from within Anchorage Center.The total pre-departure, tactical and strategic scheduling delays as a function of the strategic scheduling horizon are presented in Fig. 15.For the scenario that was considered, the total system delays were minimized by selecting a strategic scheduling horizon of 500 nmi.This is occurring because the closer that flights are to ANC the less uncertainty there is in their ETAs, so flights are less likely to be assigned unnecessary delay.A slight increase in the assignment of strategic scheduling delays is observed for scheduling horizons at or beyond 1,000 nmi, but this increase is far outweighed by the necessity for additional pre-departure and tactical delays required to compensate for the uncertainty in the ETAs for these long scheduling horizons.Additional demand and capacity scenarios are required in order to refine the selection of the strategic scheduling horizon, and determine if trend holds true in general.
+Figure 15. Total delays as a function of the strategic scheduling horizon.The speed controls, delays, original true airspeed (TAS) and controlled TAS assigned to the flights that were strategically scheduled under the four strategic scheduling horizon scenarios are shown in Fig. 16.Here the speed controls are shown in terms of a reduction in the TAS.For initial development and testing, the minimum cruise speed that could be assigned by the strategic scheduling algorithm was 250 kts calibrated airspeed (CAS). 19This value is based on the recommended minimum CAS that a controller can assign to an aircraft.This CAS was subsequently converted into a TAS for implementation in FACET assuming standard atmospheric conditions.With strategic scheduling horizons greater than 1,000 nmi, it was possible to absorb between ten and 12 minutes of delay per flight (see Fig. 16a).As the scheduling horizon increased, the speed changes required to absorb these delays naturally decreased.For example, with a 2,000 nmi strategic scheduling horizon, a 21-kt change in the TAS was required in order to absorb 11 minutes of delay.However when the scheduling horizon was reduced to 1,000 nmi, a 40-kt speed reduction was required to absorb the same amount of delay.In general, the 500 nmi strategic scheduling horizon was likely too small, since large speed controls were required to absorb even modest amounts of delay.As can be seen from Fig. 16b, the majority of flights that were scheduled by the strategic scheduling algorithm required no change to the TAS, and the lowest TAS assigned to any of the controlled flights was 440 kts.The temporal distribution of the scheduling delays as a function of the time that each flight arrived at ANC is presented in Fig. 17 with the strategic scheduling horizon set to 500 nmi.The distribution of the delays with strategic scheduling horizons of 1,000, 1,500 and 2,000 nmi were found to exhibit very similar trends.As expected from the demand and capacity profile presented in Fig. 7, the most significant delays are seen for flights arriving at ANC around 22:00 UTC.These flights were delayed in order to resolve the imbalance occurring at roughly 21:30 in Fig. 7.
+VI. SummaryThis study presented a multi-stage scheduling process for controlling arrivals destined for Ted Stevens Anchorage International Airport (ANC) when low-visibility conditions are impacting the airport.Using real-world traffic and weather data sources, four 23-hr fast-time simulation experiments were run in which the strategic scheduling horizon was varied between 500 nmi and 2,000 nmi.Additionally, a simple decision-tree learning method was used to translate the weather and historic airport arrival rate data from the FAA's Aviation System Performance Metric database into a weather-impacted airport arrival rate scenario used in these experiments.For the scenario considered, over 90% of the flights arrived at ANC without receiving any delay.In general, this trend is not expected to hold under all reduced airport arrival rate scenarios.In future studies, additional scenarios will be developed with assistance from traffic management specialists where larger imbalances between the aircraft demand and the airport capacity are observed.In general, pre-departure scheduling was the dominant control used for scheduling flights into ANC.For long-haul flights, the strategic scheduling algorithm performed best when the scheduling horizon was greater than 1,000 nmi.In these cases, speed controls alone allowed flights to absorb as much as 12 minutes of delay.The use of tactical scheduling was found to increase with increasing strategic scheduling horizon.This was directly related to the increased levels of uncertainty in the aircraft arrival times, associated with the longer scheduling horizons.Although the tactical scheduling algorithm did not reschedule any of the long-haul, strategically scheduled flights, internal departures from within Anchorage Center were frequently observed to first receive a pre-departure scheduling delay and subsequently receive an airborne hold from the tactical scheduling algorithm to compensate for the arrival demand uncertainty.Finally, in terms of the overall performance of the multi-stage scheduling process, the system assigned the lowest levels of delays when the smallest strategic scheduling horizon was selected (i.e., 500 nmi).This occurred because the closer that flights are to ANC, the less uncertainty there is in their estimated times of arrival, so flights are less likely to be assigned unnecessary delay.Figure 1 .1Figure 1.Visibility in miles (filled gray curve) for ANC arrivals from Sept 13, 2010 through Sept 16, 2010.
+Figure 2 .2Figure 2. Airports in Anchorage.
+Figure 3 .3Figure 3. Integrated system architecture.
+Figure 4 .4Figure 4. Arrival scheduling algorithm.
+Figure 5 .5Figure 5. ANC arrival flight partitions for tactical, pre-departure and strategic scheduling.
+Figure 6 .6Figure 6.Relative importance of each weather and airport feature included in the decision tree-learning model.
+Figure 7 .7Figure 7. Unscheduled ANC arrival demand in 15-minute increments (filled gray bars) for Jan. 12, 2012.Actual airport AAR from ASPM (dashed green line) and estimated AAR (solid blue line).
+Figure 8 .8Figure 8. ETA Error in minutes as a function of the distance to ANC that flights were first detected.
+Figure 10 .10Figure 10.Visibility in miles at ANC based on the METAR for Jan. 16, 2012.
+Figure 11 .11Figure 11.Illustration of the four strategic scheduling horizons along with selected airports with flights destined for ANC on Jan. 12, 2012.
+Figure 13 .13Figure 13.Number of flights receiving delays from the strategic, tactical and pre-departure (e.g."Gnd") scheduling algorithms as a function of the strategic scheduling horizon.
+Figure 14 .14Figure 14.Delays assigned to flights by the strategic, tactical and pre-departure (e.g."Gnd") scheduling algorithms as a function of the strategic scheduling horizon.
+a) Reduced speed controls in knots versus the delay in minutes for the strategically controlled flights; and b) original cruise speed versus the controlled cruise speed in knots as a function of the strategic scheduling horizon.
+Figure 17 .17Figure 17.Delays as a function of the flight arrival time for a strategic scheduling horizon of 500 nmi.
+Table 1 . Operational information for airports near Anchorage.1AirportOperations per DayDistanceAircraft Based at Location(12 month periodfrom ANCfrom year)(miles)Anchorage793 (2011)091InternationalLake Hood108 (2011)< 1437Seaplane BaseElmendorf AFB237 (1979)584Merrill Field524 (2004)7966
+Table 2 . Weather and traffic features used in developing the decision tree-learning model.2FeatureFeatureFeatureFeatureIndexIndex1Ceiling [ft]7Wind Speed [knots]2Pressure [PA]8AAR(t-4)3Temperature [C]9AAR(t-3)4Visibility [miles]10AAR(t-2)5Wind Direction [deg]11AAR(t-1)6Wind Gust [knots]
+		
+		
+			
+
+				
+
+
+	
+		Fairbanks area
+		
+			TroyLPéwé
+		
+		
+			RichardDReger
+		
+		
+			JohnAWestgate
+		
+		10.1029/ft102p0003
+	
+	
+		Quaternary Geology and Permafrost Along the Richardson and Glen Highways Between Fairbanks and Anchorage, Alaska: Fairbanks to Anchorage, Alaska July 1–7, 1989
+		
+			FairbanksDaily News
+		
+		
+			JRichardson
+		
+		
+			American Geophysical Union
+			Sept. 15. 2010
+			
+		
+	
+	"Fog in Anchorage forces diverted flights to Fairbanks," Fairbanks Daily News, J. Richardson, Sept. 15. 2010.
+
+
+
+	
+		Scenario-based air traffic flow management: From theory to practice
+		
+			Pei-Chen BarryLiu
+		
+		
+			MarkHansen
+		
+		
+			AvijitMukherjee
+		
+		10.1016/j.trb.2008.01.002
+	
+	
+		Transportation Research Part B: Methodological
+		Transportation Research Part B: Methodological
+		0191-2615
+		
+			42
+			7-8
+			
+			2008
+			Elsevier BV
+		
+	
+	P. B. Liu, M. Hansen and A. Mukherjee, "Scenario-based Air Traffic Flow Management: From Theory to Practice," Transportation Research Part B, Vol. 42, pp. 685-702, 2008.
+
+
+
+	
+		Probabilistic Airport Capacity Prediction Incorporating the Impact of Terminal Weather
+		
+			RafalKicinger
+		
+		
+			CarolynCross
+		
+		
+			TimMyers
+		
+		
+			JimmyKrozel
+		
+		
+			CarlMauro
+		
+		
+			DavidKierstead
+		
+		10.2514/6.2011-6691
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		Portland, OR, AIAA Paper
+		
+			American Institute of Aeronautics and Astronautics
+			2011-6691, Aug. 8-11, 2011
+		
+	
+	R. Kicinger, C. Cross, T. Myers, J. Krozel, C. Mauro and D. Kierstead, "Probabilistic Airport Capacity Prediction Incorporating the Impact of Terminal Weather," AIAA Guidance, Navigation and Control Conference, Portland, OR, AIAA Paper 2011-6691, Aug. 8-11, 2011.
+
+
+
+	
+		Arrival Flight Scheduling through Departure Delays and Reroutes
+		
+			AvijitMukherjee
+		
+		
+			ShonGrabbe
+		
+		
+			BanavarSridhar
+		
+		10.2514/atcq.17.3.223
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			17
+			3
+			
+			2009
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Mukherjee, S. Grabbe and B. Sridhar, "Arrival Flight Scheduling Through Departure Delays and Reroutes," Air Traffic Control Quarterly, Vol. 17, No. 3, 2009.
+
+
+
+	
+		Design and Operational Evaluation of the Traffic Management Advisor at the Fort Worth Air Route Traffic Control Center
+		
+			HNSwenson
+		
+		
+			THoang
+		
+		
+			SEngelland
+		
+		
+			DVincent
+		
+		
+			TSanders
+		
+		
+			BSanford
+		
+		
+			KHeere
+		
+	
+	
+		1 st Eurocontrol/FAA ATM R&D Seminar
+		Saclay, France
+		
+			June 17-19, 1997
+		
+	
+	Swenson, H. N., Hoang, T., Engelland, S., Vincent, D., Sanders, T., Sanford, B., and Heere, K., "Design and Operational Evaluation of the Traffic Management Advisor at the Fort Worth Air Route Traffic Control Center," 1 st Eurocontrol/FAA ATM R&D Seminar, Saclay, France, June 17-19, 1997.
+
+
+
+	
+		Wyoming as an agricultural state; address on the reclamationof the arid lands before the Cheyenne Chamber of commerce, Jan. 16, 1894, by Elwood Mead, state engineer ; pub. by the Cheyenne Chamber of commerce.
+		
+			ElwoodMead
+		
+		10.5962/bhl.title.18503
+		cited: Jan. 13
+		
+	
+	
+		Community & Economic Development
+		
+			Nov. 22, 2010. 2012
+			Tribune job print,
+		
+	
+	State, NASA ink new agreement
+	"State, NASA ink new agreement," State of Alaska, Department of Commerce, Community & Economic Development, Nov. 22, 2010, http://commerce.alaska.gov/pub/PR-26-DCCED-NASA-112210.pdf, [cited: Jan. 13, 2012].
+
+
+
+	
+		Overview of environmental and hydrogeologic conditions at three Federal Aviation Administration facilities near Anchorage International Airport, Anchorage, Alaska
+		
+			AllanSNakanishi
+		
+		
+			DDGraham
+		
+		10.3133/ofr94712w
+		
+			2006
+			US Geological Survey
+		
+	
+	ASCG Incorporated of Alaska, "General Aviation Master Plan for Lake Hood Seaplane Base and Anchorage International Airport -Project Number 56639," 2006.
+
+
+
+	
+		Advances in Fish Tagging and Marking Technology
+		10.47886/9781934874271.ch7
+		
+	
+	
+		Advances in Fish Tagging and Marking Technology
+		Anchorage, Alaska
+		
+			American Fisheries Society
+			May 31, 2012. June 19 th , 2012
+		
+	
+	"Lake Hood Seaplane Base, Anchorage, Alaska, FAA Information, May 31, 2012," http://www.airnav.com/airport/PALH, [cited June 19 th , 2012]
+
+
+
+	
+		
+			WCotton
+		
+		
+			RAnthes
+		
+		Storm and Cloud Dynamics
+		London
+		
+			Academic Press
+			1989
+		
+	
+	Cotton, W. and Anthes, R., "Storm and Cloud Dynamics," Academic Press, London, 1989.
+
+
+
+	
+		Fog and Boundary Layer Clouds: Fog Visibility and Forecasting
+		
+			BHarbaugh
+		
+		10.1007/978-3-7643-8419-7
+		
+			2007
+			Birkhäuser Basel
+			Monterey, CA
+		
+		
+			Naval Post Graduate School
+		
+	
+	Master's Thesis
+	Harbaugh, B., "Freezing Fog Formation in a Supercooled Boundary Layer: Solving the Winter Fog Forecasting Challenge for Elmendorf Air Force Base, Alaska," Master's Thesis, Naval Post Graduate School, Monterey, CA, 2007.
+
+
+
+	
+		Causality Analysis for Aviation Weather Hazards
+		
+			JimmyKrozel
+		
+		
+			WilliamMcnichols
+		
+		
+			JosephPrete
+		
+		
+			TennyLindholm
+		
+		10.2514/6.2008-8914
+	
+	
+		The 26th Congress of ICAS and 8th AIAA ATIO
+		
+			American Institute of Aeronautics and Astronautics
+			Sept. 14-19, 2008
+		
+	
+	Krozel, J. McNichols, W. M., Prete, J., Lindholm, T., "Causality Analysis for Aviation Weather Hazards," AIAA Aircraft Technology, Integration, and Operations (ATIO) Conference, Sept. 14-19, 2008.
+
+
+
+	
+		FACET: Future ATM Concepts Evaluation Tool
+		
+			KarlDBilimoria
+		
+		
+			BanavarSridhar
+		
+		
+			ShonRGrabbe
+		
+		
+			GanoBChatterji
+		
+		
+			KapilSSheth
+		
+		10.2514/atcq.9.1.1
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			9
+			1
+			
+			March 2001
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Bilimoria, K. D., Sridhar, B., Chatterji, G., Sheth, K.S., and Grabbe, S. R., "Future ATM Concepts Evaluation Tool," Air Traffic Control Quarterly, Vol. 9, No. 1, March 2001.
+
+
+
+	
+		Sequential Traffic Flow Optimization with Tactical Flight Control Heuristics
+		
+			ShonGrabbe
+		
+		
+			BanavarSridhar
+		
+		
+			AvijitMukherjee
+		
+		10.2514/1.40300
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		Journal of Guidance, Control, and Dynamics
+		0731-5090
+		1533-3884
+		
+			32
+			3
+			
+			May-June 2009
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Grabbe, S., Sridhar, B., and Mukherjee, A., "Sequential Traffic Flow Optimization with Tactical Flight Control Heuristics," AIAA Journal of Guidance, Control and Dynamics, Vol. 32, No. 3, pgs. 810-820, May-June 2009.
+
+
+
+	
+		Supplement analysis, Southpoint power project
+		10.2172/353400
+		VNTSC-DTS56-TMS-002
+		
+			Oct. 2005
+			Office of Scientific and Technical Information (OSTI)
+			Cambridge, MA
+		
+	
+	Report
+	"Enhanced Traffic Management System (ETMS)," Report No. VNTSC-DTS56-TMS-002, Volpe National Transportation Center, U.S. Dept. of Transportation, Cambridge, MA, Oct. 2005.
+
+
+
+	
+		The Utilization of Current Forecast Products in a Probabilistic Airport Capacity Model
+		
+			JCunningham
+		
+		
+			LCook
+		
+		
+			CProvan
+		
+	
+	
+		92 nd Annual American Meteorological Society Meeting
+		New Orleans, LA
+		
+			Jan. 2012
+		
+	
+	Cunningham, J., Cook, L. and Provan, C., "The Utilization of Current Forecast Products in a Probabilistic Airport Capacity Model," 92 nd Annual American Meteorological Society Meeting, New Orleans, LA, Jan. 2012.
+
+
+
+	
+		Prediction of Weather Impacted Airport Capacity using RUC-2 Forecasts
+		
+			YWang
+		
+	
+	
+		IEEE/AIAA 31 st Digital Avionics System Conference (DASC)
+		
+			Oct 2012
+		
+	
+	Wang, Y, "Prediction of Weather Impacted Airport Capacity using RUC-2 Forecasts," IEEE/AIAA 31 st Digital Avionics System Conference (DASC), Oct 2012
+
+
+
+	
+		Microarray data mining with visual programming
+		
+			TomazCurk
+		
+		
+			JanezDemsar
+		
+		
+			QikaiXu
+		
+		
+			GregorLeban
+		
+		
+			UrosPetrovic
+		
+		
+			IvanBratko
+		
+		
+			GadShaulsky
+		
+		
+			BlazZupan
+		
+		10.1093/bioinformatics/bth474
+	
+	
+		Bioinformatics
+		1367-4803
+		1367-4811
+		
+			21
+			3
+			
+			February 2005
+			Oxford University Press (OUP)
+		
+	
+	Curk, T., Demsar, J., Xu, Q., Leban, G., Petrovic, U., Bratko, I., Shaulsky, G., Zupan, B., "Microarray data mining with visual programming," Bioinformatics, Vol. 3, No. 21, February 2005.
+
+
+
+	
+		A Model for Determining Ground Delay Program Parameters Using a Probabilistic Forecast of Stratus Clearing
+		
+			LaraSCook
+		
+		
+			BryanWood
+		
+		10.2514/atcq.18.1.85
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			18
+			1
+			
+			2010
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Cook, L. S. and Wood, B., "A Model for Determining Ground Delay Program Parameters Using a Probabilistic Forecast of Stratus Clearing," Air Traffic Control Quarterly, Vol. 18, No. 1, 2010.
+
+
+
+	
+		Current Aviation Statistics, Air Traffic Activity, Fiscal Year 1975. Office of Management Systems, Information and Statistics Division, Federal Aviation Administration, U.S. Department of Transportation, Washington, D.C. 20591. February 1976. 12p
+		10.1177/004728757601500198
+	
+	
+		Journal of Travel Research
+		Journal of Travel Research
+		0047-2875
+		1552-6763
+		
+			15
+			1
+			
+			February 9, 2012
+			SAGE Publications
+		
+	
+	"Air Traffic Control," Order JO 7110.65U, U.S. Department of Transportation, Federal Aviation Administration, February 9, 2012.
+
+
+				
+			
+		
+	

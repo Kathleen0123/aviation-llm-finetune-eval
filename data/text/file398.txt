@@ -1,0 +1,563 @@
+
+	
+	
+		
+I. IntroductionIRCRAFT taxi time, the travel time spent by a flight to move between gate and runway on the airport surface, accounts for a significant portion in the block time of the flight.According to the Airline Service Quality Performance (ASQP) data in 2011, about 17% of the total flight time was spent for taxiing on the ground. 1 This motivates research of efficient surface operations that can reduce the taxi delay, which is primarily due to the congestion.It is important to predict the taxi-out times of departures accurately to increase takeoff time predictability and improve efficiency of airport operations.Accurate taxi time prediction can help airport traffic controllers estimate when departures arrive at the assigned runways for takeoffs and reduce the uncertainty in actual wheels-off times of departures.This makes it possible for the controllers to find the better takeoff sequences and time schedules to maximize the runway throughput.Improved takeoff time prediction would also benefit air traffic flow management in the National Airspace System by providing more accurate arrival times at the destination airports.Estimating the accurate taxi times and wheels-off times of departures is one of the key functions required from the tactical surface scheduler like the Spot and Runway Departure Advisor (SARDA), a decision-support tool developed by National Aeronautics and Space Administration (NASA) to assist air traffic control tower personnel and airline ramp operators in managing and controlling airport surface operations. 2,3The SARDA concept for tactical surface scheduling is being further enhanced for NASA's Airspace Technology Demonstration -2 (ATD-2) project for technology demonstration of integrated arrival, departure, and surface operations at Charlotte Douglas International Airport (CLT). 4ue to the uncertainties in surface operations, it is not easy to achieve accurate taxi time prediction for individual flights.Each aircraft taxiing on the ground is operated in a different condition such as the level of traffic congestion and weather conditions, even when following the same taxi route from gate to runway.Previous research proposed several approaches to predicting taxi-out times for departures.Initially, a queuing model for taxi-out time estimation was introduced and applied to Boston Logan airport. 5Following this research, predictive queuing models were developed to estimate the taxi-out times from gates to the departure runways and improved by considering the effect of taxiway interactions. 6Simple linear equations derived from regression analysis using the Airport Surface Detection Equipment, Model X (ASDE-X) surface surveillance data were also used to predict departure taxi times at several major airports in the United States. 7,8here have been several attempts to apply the machine learning algorithms to the aircraft taxi time prediction problem.First, basic statistical approaches have been introduced to predict aircraft taxi times on the airport surface and takeoff times of departures.Linear regression models were used for modeling aircraft taxi times at Dallas/Fort Worth International Airport (DFW) with several independent variables such as taxi distance, airlines, gate group, the number of departures and arrivals. 9,10A neural networks model was also introduced to predict the gate to wheels-off times at DFW based on the correlation analysis between selected metrics and taxi times. 113][14] Various regression methods, including multiple linear regression, least median squared linear regression, support vector regression, model trees, and fuzzy rule-based systems, were also applied to several airports in Europe for taxi time prediction problems. 15,16Each machine learning method was independently applied to the limited test data at different airports under different conditions, and therefore the prediction performance varied with the prediction model.Recently, the aircraft taxi time predictions using four different machine learning techniques, including linear regression models, support vector machines, k-nearest neighbors, and random forest, have been applied to the traffic data collected from the human-in-the-loop simulations for CLT, and their prediction performances were evaluated by comparing the predicted taxi times with the simulated taxi times, as well as with the predictions from fast-time simulations. 17In this paper, we apply these machine learning algorithms, as well as a neural networks model, to actual traffic data obtained from the surface surveillance systems at CLT.Before implementing the taxi time prediction, we first investigate historical taxi-out time data at CLT in 2014 in detail so as to find key factors affecting the taxi times of departing aircraft and use them as features for supervised learning algorithms.We compare and evaluate the taxi time prediction performance of the five different machine learning techniques using the same training and test datasets to see which method is most competitive for taxi time prediction.For obtaining more accurate prediction results, we also consider runway configuration and weather conditions when defining the training and test datasets used in this study.This paper is organized as follows.In Section II, we will present the layout of Charlotte airport and describe the airport surveillance data showing the air traffic characteristics at CLT.We then show the taxi-out time variations from the analyses of the given flight data.Section III will describe the variables used in machine learning algorithms for the taxi time prediction and how to apply various machine learning techniques to the flight data.In Section IV, the taxi time prediction results are provided, and the prediction performances of the proposed machine learning methods are compared.Lastly, Section V concludes with future work.Figure 1.Airport layout at CLT (as of 2014).
+II. Charlotte Airport Traffic Data AnalysisA. Traffic Data at Charlotte Airport Charlotte Douglas International Airport (CLT) is one of the top 10 busiest airports in the United States.Figure 1 shows the airport layout of Charlotte airport.As can be seen in Figure 1, this airport has four runways (5/23, 18R/36L, 18C/36C, and 18L/36R) and one main terminal building for passengers with five concourses, A through E. There are eleven spots at the boundary between ramp area and active movement area.We analyzed flight data from the Aerobahn system at Charlotte airport.Aerobahn is an airport surface management system offered by Saab Sensis for better situational awareness on the airport surface and better resource management for airlines and airports. 18The Aerobahn system receives airport surveillance data via ASDE-X and inputs from air carriers.These data include flight call sign, air carrier, aircraft model, origination airport, destination airport, assigned gate, spot and runway, first fix, and scheduled and actual Out-Off-On-In (OOOI) times.According to the Aerobahn flight data, a total of 265,315 departures were operated at CLT in 2014.From closer observation, we found that some flights had missing data in either actual out or off times, resulting in no taxi time values.In addition, some departures had wrong values in the OOOI time fields, leading to zero or negative taxi times.These flights (7.25% of the whole year data) were excluded from the departure flight data analysis.After this data filtering, we obtained 246,083 departures in total and analyzed the taxi-out times of those flights in various aspects.
+B. Taxi-Out Time Variation AnalysisIn the 2014 Aerobahn data at CLT, there are many data elements that can make an impact on the taxi times.We selected several candidate data elements among the data fields available for the majority of departures in the whole year flight data and analyzed their effects on the taxi-out times.These selective factors include terminal concourse, spot, runway, departure fix, weight class, and month.By this analysis, it is expected that we can find the unique characteristics of this airport, which will be used to determine the variables for taxi time predictions later.First of all, we investigated the taxi time variations by terminal concourse.The pie chart in Figure 2 shows the percentages of departures moved out from each concourse in 2014 at CLT, and the bar graph shows the average taxi-out time of the departures by concourse.The flights having no gate information were categorized as 'Unknown', which were 6.7% of total departures.According to the departure distribution by concourse in Figure 2, the usage rate of each concourse is not proportional to the number of gates in each concourse.In 2014, the numbers of gates at CLT were 14 (13.6%),16 (15.5%),18 (17.5%),13 (12.6%),and 42 (40.8%),for concourses A, B, C, D, and E, respectively.Concourses B, C and E are actively used by American Airlines, the dominant air carrier at CLT, while concourse A is usually used by other airlines.Concourse D is primarily assigned to international flights.Although the assigned gates of individual departures and the distance from gate to runway are different, the bar graph in Figure 2 shows that the averaged taxi time by concourse seems to be insensitive to the concourse, except for the departures from concourse D. The average taxi time of flights using concourse D is slightly higher than the taxi times for other concourses because concourse D is primarily used by international flights, and they are heavy aircraft that take longer pushback processes.As a reference, the average value and standard deviation of the taxi-out times for all the aircraft departed from CLT in 2014 were 18.82 minutes and 8.66 minutes, respectively.Every departure passes through a spot when entering the movement area from the ramp area at CLT.Since the spot is one of the key factors determining the length of a taxi route, and the wait time to get a taxi clearance to enter the movement area may depend on the assigned spot, the taxi-out time by spot also needs to be investigated.Figure 3 shows the departure distribution by spot and the averaged taxi-out times of the departures using each spot.According to the pie chart, a few spots like S2, S7, S8, and S12 were frequently used for departures.Since the spot is not a necessary data element for a flight plan and assigned by a ramp controller, relatively large numbers of departures (19.3%) do not have the spot information.Despite the limitation of data availability, the bar graph in Figure 3 shows two distinct characteristics: (1) much longer taxi times for spot S3 and (2) shorter taxi times for spots S10, S11, and S12.One reason why the departures using spot S3 have longer taxi times is that most of the flights passing through S3 are held at the hardstand in the west ramp area, which is next to the spot S3, for Traffic Management Initiatives or other reason before moving to runway 18C/36C.Spots S10, S11, and S12, meanwhile, are primarily assigned to the flights taxiing from concourse D or E to runway 18L, resulting in shorter taxi times.Figure 4 illustrates the departure distribution by runway and the average taxi times of flights departing from each runway.From the observation of the pie chart in Figure 4, we can see that most departures used either runway 18C/36C or 18L/36R, which are the parallel runways close to the main terminal.Runways 18C and 18L are used for departures in south flow traffic conditions, whereas runways 36C and 36R are mainly used for north flow operations.The bar graph in Figure 4 shows that the average taxi time of departures toward runway 18L is relatively shorter because this runway is much closer to the main terminal, compared to the other runways.For a similar reason, the flights taking off from runway 18R or 36L have much higher taxi-out times due to the much longer taxi distance from terminal to runway, although these runways are rarely used for departures.Departure fix is also one of the selected elements.It is usually determined by the destination airport and also affects the runway assignment.In addition, some departures can have Traffic Management Initiatives (TMIs) constraints like miles-in-trail (MIT) over their departure fixes, which sometimes hold the departures on the ground for better traffic flow in the airspace.According to the pie chart in Figure 5, three departure fixes (MERIL, NALEY, BUCKL) were used by more than 50% of departures leaving CLT in 2014.The taxi-out times of the departures using these  fixes are very close to the average taxi times of all departures at CLT.A separate analysis about MIT constraints found that MERIL (51% out of the MIT constrained departures), BUCKL (21%), and BNA (7%) were top 3 fixes that the departures having a MIT constraint most frequently used in 2014.The MIT constraint would delay the departure on the ground, but the bar graph shows that the taxi times of the departures with the three fixes are not different from the average taxi time.In the bar graph in Figure 5, departures crossing LILLS, GANTS, and GIPPR fixes show relatively shorter taxi-out times because most of these flights taxied along short taxi routes from terminal C and E to runway 18L/36R.It also seems that the longer taxi times of the departures using ZAVER and VXV fixes, located in the western side of the Charlotte airport, are related to the runway assignment dedicated to runway 18C/36C. 19eight Class Description Small (S) U.S. designated aircraft of 12,500 lbs or less Small Plus (S+) U.S. designated aircraft weighing between 12,500 and 41,000 lbs Large (L) U.S. designated aircraft of more than 41,000 lbs and less than 255,000 lbs Heavy (H) U.S. designated aircraft of 255,000 lbs or more
+Table 1 Aircraft weight classesThe taxi-out time analysis by weight class was also conducted.As shown in Table 1, there are four aircraft categories depending on the weight classes: Small, Small Plus, Large, and Heavy.As can be seen in the pie chart in Figure 6, Large aircraft such as A320, B737, and MD-88 dominates the Charlotte airport.According to the bar graph in Figure 6, Heavy aircraft take longer time for taxiing, while Small Plus and Small aircraft show shorter taxi times.It seems that this difference is related to the different pushback procedures and engine start-up times depending on the aircraft model.Lastly, we analyzed the taxi times of departures by month.Figure 7 shows the departure distribution by month and the average taxi-out times of departures operated in each month.The uniform distribution of the pie chart means that the departure frequency in each month is proportional to the numbers of days of the corresponding month.The bar graph in Figure 7 also shows no significant differences on the average taxi times by month, ranging from 18.0 to 19.4 minutes.Therefore, it seems that there is no seasonal effect on the taxi-out time at CLT.
+III. Taxi Time Prediction for Departures at CLTVarious machine learning algorithms for predicting taxi-out times of individual flights can applied to the flight data.This section describes what data elements are selected as features for the taxi time prediction of departures and how to apply machine learning methods to the actual flight data at CLT.
+A. Variables for Taxi Time PredictionThere are lots of data elements characterizing individual flights in the flight data from the airport surface surveillance systems.Based on the taxi time analyses shown in Section II, we selected several variables that would be used for taxi time predictions using machine learning algorithms.Among the flight data elements available from the Aerobahn surveillance data, we considered the following features as variables that could have an impact on taxi processes and the taxi time prediction: terminal concourse, gate, spot, runway, departure fix, aircraft model, weight class, taxi distance from gate to runway, scheduled pushback time of day, number of departures on the surface by runway, number of arrivals on the surface by concourse, and unimpeded taxi time.It was already shown in Section II that the taxi-out time of a departure flight could be different by its concourse, spot, runway, departure fix and weight class.In addition to these factors, the taxi distance from gate to runway is known as a dominant factor that determines the unimpeded taxi-out time.The duration that a departing aircraft spends to complete its pushback process can be different depending on its gate.The wait times to get a taxi clearance to enter the movement area controlled by FAA Airport Traffic Control Tower (ATCT) and a take-off clearance from the tower may be dependent upon spot and runway, respectively.The aircraft model determines the physical performance and limitations in taxi operations on the ground.The departure time of day can also affect the taxi-out time because the taxi delay increases during peak periods in general.The number of departures and arrivals are also included in the variable list to account for the congestion level on the ground and the taxi delay added to the unimpeded taxi time.For more accurate predictions, the numbers of departures moving on the surface are categorized by the assigned runway, while the numbers of arrivals traveling on the taxiways are divided by the concourse in which the assigned gates are located.In addition, the unimpeded taxi time of each departing flight can be a prime determinant of its taxi time, especially in low traffic conditions.In this study, the unimpeded taxi time was defined to be the 10 th percentile of the taxi time distributions from the Aerobahn data for CLT in 2014 for aircraft with the same gate, spot and runway combination.Meanwhile, we did not consider the month information of the departures taken off from CLT as a feature for the taxi time prediction because the taxi time data analysis in the previous section showed weak correlation between taxi time and season.
+B. Machine Learning AlgorithmsIn this paper, we tried five different machine learning methods as follows: 1) Linear Regression (LR), 2) Support Vector Machines (SVM), 3) k-Nearest Neighbors (kNN), 4) Random Forest (RF) and 5) Neural Networks (NN).The five algorithms in the list above are the most popular machine learning methods that have been used for the travel time prediction for both cars and aircraft on the ground.Linear Regression (LR) is the simplest statistical prediction method, with which the predicted values are obtained by regression on the past observations with linear coefficients.Support Vector Machines (SVM) basically solves classification problems by mapping the training data from the input space into a higher dimensional feature space via a kernel function.The SVM method can be applied to time-series forecasting problems, which is called Support Vector Regression (SVR).k-Nearest Neighbors (kNN) algorithm is a non-parametric method used for classification and regression, which uses the k-th closest training examples in the feature space to predict the property values of the output.Random Forest (RF) is an ensemble learning method for classification and regression that operates by constructing a multitude of decision trees at training time and computing the class that is the mode of the classes output by individual trees.Neural Networks (NN) algorithm is the prediction model inspired by biological neural networks and comprised of an input layer, hidden layers, and an output layer, with the numeric weights for training in the connections.These machine learning algorithms were modeled in Python and run using scikit-learn library 20 for the first four methods and PyBrain library 21 for neural networks.Some parameters used in each machine learning algorithm were adjusted to obtain the best prediction performance while calibrating the prediction algorithms with the training datasets.In the SVM algorithm, the Radial Basis Function (RBF) was used as the kernel function for regression.For the number of the nearest neighbors (k value) in the kNN method, it was assumed to be k=5.For the RF algorithm, 20 estimators were used to form the decision trees.The NN model consisted of 18 nodes in the input layer, 3 hidden layers with a sigmoid function, and one node in the output layer with a linear function.For taxi time prediction, a backpropagation neural network model was built and trained with at most 500 iterations until convergence.
+IV. Taxi Time Prediction ResultsIn this section, we will describe how to apply the aforementioned machine learning algorithms to the actual flight data samples at CLT.Then, the taxi-out time prediction results from these prediction algorithms will be compared and evaluated with respect to several prediction performance metrics.
+A. Training and Test Data SelectionFor our taxi time prediction study, we first need to determine the training dataset to train the machine learning algorithms and the test dataset to evaluate their prediction performance.In this data selection process, we considered traffic flow and weather conditions, which could affect the taxi times on the surface.We should have taken these conditions into account as features for the taxi time prediction algorithms, but we couldn't because the flight data do not include these information for individual flights.Therefore, we reviewed the runway configuration changes and the weather information such as wind, temperature, precipitation and runway visibility independently, and then carefully selected the training and test datasets for each case among the three-month data from June to August, 2014.In general, runways 18C and 18L are used for departures operated in the south-flow traffic condition, whereas runways 36C and 36R are assigned for the north-flow departure traffic.Table 2 shows the selected dates for training and test datasets in each scenario considering the traffic flow and weather condition, as well as the average taxi-out time and standard deviation of each dataset.
+B. Taxi-out Time Prediction ResultsAfter implementing all the machine learning algorithms with the given datasets, we compared the predicted taxiout times of departures from five different machine learning algorithms in terms of several prediction performance metrics.Table 3 shows mean taxi time difference, Root Mean Squared Error (RMSE) and Mean Absolute Error (MAE) values in minutes for each prediction method.The mean taxi time difference is defined by the average value of actual taxi times minus the average value of predicted taxi times.The mean taxi time difference, RMSE and MAE values are calculated by the following equations:Mean Taxi Time Difference = 1 n T i - i=1 n ∑ 1 n T i * i=1 n ∑(1)RMSE = 1 n T i -T i * ( ) 2 i=1 n ∑(2)MAE = 1 n T i -T i * i=1 n ∑(3)where T i is the actual taxi time value of aircraft i, T i * is the predicted taxi time value of aircraft i, and n is the total number of departing aircraft.According to the prediction results for the given test datasets shown in Table 3, the mean taxi time differences between actual and predicted taxi times were less than 1 minute in most cases.In the north-flow, good weather condition, the average taxi times from several prediction algorithms were almost same as the actual taxi time average.Among the given five machine learning algorithms, the Linear Regression (LR) and Random Forest (RF) methods showed the best taxi time prediction performance, while Support Vector Machines (SVM) and Neural Networks (NN) had the highest errors on both RMSE and MAE metrics.The last column in Table 3 shows the performance metrics of the Dead Reckoning (DR) method as a reference.The DR method assumes that the predicted taxi time of a departure is equal to the unimpeded taxi-out time, which is based on the 10 th percentile value of the taxi time distributions for departures having the same gate, spot, and runway combination in 2014 Aerobahn data at CLT.Because the DR method does not account for the congestion on ramp area and taxiways and the wait times in departure runway queues, the mean taxi time from this method is about 8 minutes shorter than the actual mean taxi time, as shown in Table 3.Similarly, the RMSE and MAE metrics in the DR method also have greater values in all the test datasets, when compared to the other machine learning algorithms.Figure 8 illustrates four boxplots showing the taxi-out time difference distributions between actual taxi times and predicted taxi times depending on the prediction method, for each traffic flow and weather condition.As in the prediction results in Table 3, the Linear Regression (LR) and Random Forest (RF) methods show the least deviations from the actual taxi times among the six different prediction methods, including the machine learning algorithms and the Dead Reckoning (DR) method.Table 4 shows the percentage of departures within the absolute 5-minute taxi time prediction error window for each test dataset, depending on the prediction method.When following either LR or RF method, more than 65% of departures can be found within the +/-5-minute taxi time prediction error window for the four test datasets having different traffic flow and weather conditions.On the contrary, the DR method shows poor prediction accuracy, with less than 40% departures within the same prediction error window.
+C. DiscussionWe have considered various flight data elements that can affect the taxi times, as well as the runway configuration and weather conditions, but the prediction performance compared to the actual taxi times was not good enough.As can be seen in these results, it is difficult to predict the aircraft taxi times accurately because of operational complexity at each airport and various uncertainties in airport operations.Controllers often use alternative taxi routes for departures and arrivals to mitigate the surface congestion and increase the airport efficiency.They also send some flights to hardstands or designated holding areas to reduce the traffic congestion on the ground.Tower controllers sometimes allow takeoff sequence changes or intersection takeoffs to increase runway throughput.TMI constraints such as Expect Departure Clearance Time (EDCT) and Call For Release (CFR) for selected flights and miles-in-trail (MIT) restrictions over a departure fix also make the airport operations more complicated.To meet the given TMI constraints, those flights are controlled differently from normal flights, including long gate-holding, intersection takeoffs, and detoured taxi routes.However, most of these tactical actions are not recorded in the flight data, which was used by the machine learning algorithms for taxi time prediction in this paper.Most of the uncertainties in airport operations come primarily from human operators and external environment.Human factors from pilots, ramp and tower controllers, and ground crew contribute to the large variation in taxi times.Weather conditions such as wind, precipitation and visibility are also a major source of uncertainty in airport operations.These uncertainty factors can affect the duration for pushback processes, aircraft taxi speed and acceleration/deceleration, holding times on the taxiway and in departure queue, and separation times between consecutive departures over the runway, which would be accumulated to the entire taxi-out time from pushback to wheels-off.These uncertainties differentiate the taxi time of one flight from the taxi times of other flights, even with the exactly same flight information.The operational complexities and uncertainties mentioned above cause large variations in taxi times for daily flights having the same gate and runway assignment.Also, these make it hard to predict the taxi times of departures accurately, even though we considered as many features from available flight data as possible.
+V. ConclusionIn this paper, we proposed to use machine learning algorithms for predicting the taxi-out times of departures at Charlotte airport.To identify the unique operational characteristics of this airport and determine the key factors affecting the taxi times at this airport, we analyzed the taxi-out time variations by several elements in the flight data, including terminal concourse, spot, runway, departure fix, and weight class.Based on this data analysis, we defined the features used in the machine learning algorithms for supervised learning.Considering runway configuration and weather conditions, we selected training and test datasets from the actual flight data at CLT and applied five different machine learning algorithms to the datasets for the departing aircraft taxi time prediction.The taxi time prediction results showed that the machine learning algorithms predicted the mean taxi time of the whole day test data well and performed better than the dead reckoning method based on the unimpeded taxi times.Among the five machine learning techniques tested in this paper, the linear regression and random forest methods showed the best prediction performance, but their taxi time prediction accuracy for individual flights was not satisfactory.From the linear regression and random forest methods, only 65-74% departures were found within the +/-5-minute taxi time error window.It seems that this performance limit on the taxi time prediction stems from the operational complexity and uncertainties at Charlotte airport.We have tried to consider lots of data elements from the flight data currently available for the taxi time prediction in this paper, but we may be able to improve the prediction accuracy if we have more detailed data in the future.By integrating the TMI information into the flight data, we can expect the better taxi time prediction for the flights having the TMI constraints, as well as for the unrestricted flights.Aircraft track data would also be helpful for more accurate taxi time prediction by taking the detailed taxi routes of individual flights into account and detecting the use of alternate taxi routes, hardstands, and intersection take-off options.When we apply these prediction algorithms to the departures ready to push back from their gates in real time operations, subdividing the training datasets by time period of day on an hourly basis would be useful to reflect the precise traffic demand and reduce the computation time.Figure 2 .2Figure 2. Departure distribution (left) and average taxi time (right) by concourse from 2014 Aerobahn data.
+Figure 3 .3Figure 3. Departure distribution (left) and average taxi time (right) by spot from 2014 Aerobahn data.
+Figure 4 .4Figure 4. Departure distribution (left) and average taxi time (right) by runway from 2014 Aerobahn data.
+Figure 5 .Figure 6 .56Figure 5. Departure distribution (left) and average taxi time (right) by departure fix from 2014 Aerobahn data.
+Figure 7 .7Figure 7. Departure distribution (left) and average taxi time (right) by month from 2014 Aerobahn data.
+Figure 8 .8Figure 8.Comparison of distributions on the differences between actual and predicted taxi times for four different traffic flow and weather conditions.
+Table 2 Training and test dataset2Traffic flowWeather conditionDatasetDatesData sizeAverage taxi-out time (minutes)Standard deviation (minutes)South-flow trafficGood weather RainTraining Test Training6/1/2014, 6/2/2014, 6/4/2014, 6/7/2014, 6/15/2014 8/15/2014 6/11/2014, 6/12/2014, 6/25/2014, 7/9/2014, 8/11/20143,361 689 3,28017.11 17.78 17.986.65 6.59 6.99Test8/12/201464417.686.51North-flow trafficGood weather RainTraining Test Training Test6/6/2014, 6/20/2014, 8/25/2014 8/26/2014 7/21/2014, 8/1/2014, 8/23/2014 8/24/20142,134 684 1,944 62119.32 19.36 18.83 19.316.13 6.09 6.25 6.32
+Table 3 Comparison of performance metrics in minutes3Test datasetPerformance metricsLRSVMkNNRFNNDRSouth flow,Mean Taxi Time Difference0.371.780.880.42-0.398.04Good weatherRoot Mean Squared Error4.836.835.774.826.619.91(8/15/2014)Mean Absolute Error3.795.404.503.755.478.09South flow,Mean Taxi Time Difference-0.210.68-0.16-0.490.127.69Rainy dayRoot Mean Squared Error5.536.546.025.396.519.68(8/12/2014)Mean Absolute Error4.215.244.644.195.317.77North flow,Mean Taxi Time Difference-0.030.37-0.01-0.01-0.428.28Good weatherRoot Mean Squared Error5.296.105.915.476.1010.17(8/26/2014)Mean Absolute Error4.264.994.654.355.088.33North flow,Mean Taxi Time Difference-0.341.320.89-0.59-2.048.20Rainy dayRoot Mean Squared Error5.136.456.375.196.6510.20(8/24/2014)Mean Absolute Error4.115.235.094.145.648.34
+Table 4 Departures within +/-5-minute error window for taxi time prediction4Test datasetLRSVMkNNRFNNDRSouth flow, Good weather (8/15/2014)73.4%56.8%65.8%72.6%48.9%37.3%South flow, Rainy day (8/12/2014)67.6%57.5%64.4%69.4%53.1%38.5%North flow, Good weather (8/26/2014)67.0%56.4%62.1%64.9%52.9%34.8%North flow, Rainy day (8/24/2014)66.0%55.6%58.9%66.3%46.4%35.3%
+			Associate Research Scientist, UARC, Mail Stop
+			210-8, Moffett Field, CA 94035, hanbong.lee@nasa.gov.2Research Scientist, UARC, Mail Stop 210-8, Moffett Field, CA 94035, waqar.malik@nasa.gov.3Aerospace Engineer, NASA Ames Research Center, Mail Stop 210-6, Moffett Field, CA 94035, yoon.c.jung@nasa.gov,AIAA Senior Member.
+			Downloaded by NASA AMES RESEARCH CENTER on August 17, 2016 | http://arc.aiaa.org| DOI: 10.2514/6.2016-3910
+		
+		
+
+			
+AcknowledgmentsAuthors thank American Airlines for kindly providing NASA with access to the Aerobahn data for Charlotte airport.
+			
+
+			
+
+				
+
+
+	
+		Taxi time variation at major U.S. Airports
+		
+			DPRobinson
+		
+		
+			DJMurphy
+		
+		10.1109/icnsurv.2013.6548519
+	
+	
+		2013 Integrated Communications, Navigation and Surveillance Conference (ICNS)
+		Herndon, VA
+		
+			IEEE
+			April 2013
+		
+	
+	Integrated Communications
+	Robinson, D. P., and Murphy, D. J., "Taxi Time Variation at Major U.S. Airports," Integrated Communications, Navigation and Surveillance Conference (ICNS), Herndon, VA, April 2013.
+
+
+
+	
+		Performance Evaluation of Individual Aircraft Based Advisory Concept for Surface Management
+		
+			GGupta
+		
+		
+			WMalik
+		
+		
+			LTobias
+		
+		
+			YJung
+		
+		
+			THoang
+		
+		
+			MHayashi
+		
+	
+	
+		the Tenth USA/Europe Air Traffic Management (ATM) Research and Development (R&D) Seminars
+		Chicago, IL
+		
+			June 2013
+		
+	
+	Gupta, G., Malik, W., Tobias, L., Jung, Y., Hoang, T., and Hayashi, M., "Performance Evaluation of Individual Aircraft Based Advisory Concept for Surface Management," the Tenth USA/Europe Air Traffic Management (ATM) Research and Development (R&D) Seminars, Chicago, IL, June 2013.
+
+
+
+	
+		Evaluation of Pushback Decision-Support Tool Concept for Charlotte Douglas International Airport Ramp Operations
+		
+			MHayashi
+		
+		
+			THoang
+		
+		
+			YCJung
+		
+		
+			WMalik
+		
+		
+			HLee
+		
+		
+			VLDulchinos
+		
+	
+	
+		the 11th USA/Europe Air Traffic Management (ATM) Research and Development
+		Lisbon, Portugal
+		
+			R&D) Seminars
+			June 2015
+		
+	
+	Hayashi, M., Hoang, T., Jung, Y. C., Malik, W., Lee, H., and Dulchinos, V. L., "Evaluation of Pushback Decision-Support Tool Concept for Charlotte Douglas International Airport Ramp Operations," the 11th USA/Europe Air Traffic Management (ATM) Research and Development (R&D) Seminars, Lisbon, Portugal, June 2015.
+
+
+
+	
+		Identifying Key Issues and Potential Solutions for Integrated Arrival, Departure, Surface Operations by Surveying Stakeholder Preferences
+		
+			BimalLAponso
+		
+		
+			RichardACoppenbarger
+		
+		
+			YoonCJung
+		
+		
+			CorneliusJO'connor
+		
+		
+			GaryWLohr
+		
+		
+			LeightonKQuon
+		
+		
+			ShawnEngelland
+		
+		10.2514/6.2015-2590
+	
+	
+		15th AIAA Aviation Technology, Integration, and Operations Conference
+		Dallas, TX
+		
+			American Institute of Aeronautics and Astronautics
+			June 22-26, 2015
+		
+	
+	Aponso, B., Coppenbarger, R., Jung, Y., O'Connor, N., Lohr, G., Quon, L., and Engelland, S., "Identifying Key Issues and Potential Solutions for Integrated Arrival, Departure, Surface Operations by Surveying Stakeholder Preferences," AIAA 2015- 2590, the 15th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Dallas, TX, June 22-26, 2015.
+
+
+
+	
+		Queuing Model for Taxi-Out Time Estimation
+		
+			HusniIdris
+		
+		
+			John-PaulClarke
+		
+		
+			RaniBhuva
+		
+		
+			LauraKang
+		
+		10.2514/atcq.10.1.1
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			10
+			1
+			
+			2002
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Idris, H. R., Clarke, J. P., Bhuva, R., and Kang, L., "Queuing Model for Taxi-Out Time Estimation," Air Traffic Control Quarterly, Vol. 10, No. 1, 2002, pp. 1-22.
+
+
+
+	
+		Queuing Models of Airport Departure Processes for Emissions Reduction
+		
+			IoannisSimaiakis
+		
+		
+			HamsaBalakrishnan
+		
+		10.2514/6.2009-5650
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		Chicago, IL
+		
+			American Institute of Aeronautics and Astronautics
+			August 2009
+		
+	
+	Simaiakis, I., and Balakrishnan, H., "Queuing Models of Airport Departure Processes for Emissions Reduction," AIAA Guidance, Navigation, and Control (GNC) Conference, Chicago, IL, August 2009.
+
+
+
+	
+		Departure Taxi Time Predictions Using ASDE-X Surveillance Data
+		
+			JLegge
+		
+		
+			BLevy
+		
+		
+			September 14-19, 2008
+			Anchorage, AK
+		
+	
+	the 26th Congress of International Council of the Aeronautical Sciences (ICAS
+	Legge, J., and Levy, B., "Departure Taxi Time Predictions Using ASDE-X Surveillance Data," the 26th Congress of International Council of the Aeronautical Sciences (ICAS), Anchorage, AK, September 14-19, 2008.
+
+
+
+	
+		Improving departure taxi time predictions using ASDE-X surveillance data
+		
+			AmalSrivastava
+		
+		10.1109/dasc.2011.6095989
+	
+	
+		2011 IEEE/AIAA 30th Digital Avionics Systems Conference
+		Seattle, WA
+		
+			IEEE
+			October 16-20, 2011
+		
+	
+	Srivastava, A., "Improving Departure Taxi Time Predictions Using ASDE-X Surveillance Data," in Proceedings of the IEEE/AIAA 30th Digital Avionics Systems Conference (DASC), Seattle, WA, October 16-20, 2011.
+
+
+
+	
+		A statistical learning approach to the modeling of aircraft taxi time
+		
+			RichardJordan
+		
+		
+			MariyaAIshutkina
+		
+		
+			TomGReynolds
+		
+		10.1109/dasc.2010.5655532
+	
+	
+		29th Digital Avionics Systems Conference
+		Salt Lake City, UT
+		
+			IEEE
+			October 3-7, 2010
+		
+	
+	Jordan, R., Ishutkina, M., and Reynolds, T., "A Statistical Learning Approach to the Modeling of Aircraft Taxi Time," in Proceedings of the IEEE/AIAA 29th Digital Avionics Systems Conference (DASC), Salt Lake City, UT, October 3-7, 2010.
+
+
+
+	
+		Relationship Between Airport Efficiency and Surface Traffic
+		
+			MatthewKistler
+		
+		
+			GautamGupta
+		
+		10.2514/6.2009-7078
+	
+	
+		9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO)
+		Hilton Head, SC
+		
+			American Institute of Aeronautics and Astronautics
+			2009
+		
+	
+	Kistler, M. S., and Gupta, G., "Relationship between Airport Efficiency and Surface Traffic," the 9th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Hilton Head, SC, 2009.
+
+
+
+	
+		Wheels-Off Time Prediction Using Surface Traffic Metrics
+		
+			GanoChatterji
+		
+		
+			YunZheng
+		
+		10.2514/6.2012-5699
+	
+	
+		12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference and 14th AIAA/ISSMO Multidisciplinary Analysis and Optimization Conference
+		Indianapolis, IN
+		
+			American Institute of Aeronautics and Astronautics
+			September 17-19, 2012
+		
+	
+	Chatterji, G. B., and Zheng, Y., "Wheels-Off Time Prediction Using Surface Traffic Metrics," the 12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Indianapolis, IN, September 17-19, 2012.
+
+
+
+	
+		Estimating Taxi-out times with a reinforcement learning algorithm
+		
+			PoornimaBalakrishna
+		
+		
+			RajeshGanesan
+		
+		
+			LanceSherry
+		
+		
+			BenjaminSLevy
+		
+		10.1109/dasc.2008.4702812
+	
+	
+		2008 IEEE/AIAA 27th Digital Avionics Systems Conference
+		St. Paul, MN
+		
+			IEEE
+			October 26-30, 2008
+		
+	
+	Balakrishna P., Ganesan, R., Sherry, L., and Levy, B., "Estimating Taxi-Out Times with a Reinforcement Learning Algorithm," in Proceedings of the 27th Digital Avionics Systems Conference (DASC), St. Paul, MN, October 26-30, 2008.
+
+
+
+	
+		Accuracy of reinforcement learning algorithms for predicting aircraft taxi-out times: A case-study of Tampa Bay departures
+		
+			PoornimaBalakrishna
+		
+		
+			RajeshGanesan
+		
+		
+			LanceSherry
+		
+		10.1016/j.trc.2010.03.003
+	
+	
+		Transportation Research Part C: Emerging Technologies
+		Transportation Research Part C: Emerging Technologies
+		0968-090X
+		
+			18
+			6
+			
+			2009
+			Elsevier BV
+			Napa, CA
+		
+	
+	Balakrishna, P., Ganesan, R., and Sherry, L., "Application of Reinforcement Learning Algorithms for Predicting Taxi-Out Times," the 8th USA/Europe Air Traffic Management (ATM) Research and Development (R&D) Seminars, Napa, CA, 2009. 14
+
+
+
+	
+		Accuracy of reinforcement learning algorithms for predicting aircraft taxi-out times: A case-study of Tampa Bay departures
+		
+			PoornimaBalakrishna
+		
+		
+			RajeshGanesan
+		
+		
+			LanceSherry
+		
+		10.1016/j.trc.2010.03.003
+	
+	
+		Transportation Research Part C: Emerging Technologies
+		Transportation Research Part C: Emerging Technologies
+		0968-090X
+		
+			18
+			6
+			
+			2010
+			Elsevier BV
+		
+	
+	Balakrishna, P., Ganesan, R., and Sherry, L., "Accuracy of Reinforcement Learning Algorithms for Predicting Aircraft Taxi-Out Times: a Case-Study of Tampa Bay Departures," Transportation Research Part C: Emerging Technologies, Vol. 18 No. 6, 2010, pp. 950-962.
+
+
+
+	
+		A combined statistical approach and ground movement model for improving taxi time estimations at airports
+		
+			SRavizza
+		
+		
+			JA DAtkin
+		
+		
+			MHMaathuis
+		
+		
+			EKBurke
+		
+		10.1057/jors.2012.123
+	
+	
+		Journal of the Operational Research Society
+		Journal of the Operational Research Society
+		0160-5682
+		1476-9360
+		
+			64
+			9
+			
+			2013
+			Informa UK Limited
+		
+	
+	Ravizza, S., Atkin, J. A. D., Maathuis, M. H., and Burke, E. K., "A Combined Statistical Approach and Ground Movement Model for Improving Taxi Time Estimations at Airports," Journal of the Operational Research Society, Vol. 64, 2013, pp. 1347- 1360.
+
+
+
+	
+		Aircraft taxi time prediction: Comparisons and insights
+		
+			StefanRavizza
+		
+		
+			JunChen
+		
+		
+			JasonA DAtkin
+		
+		
+			PaulStewart
+		
+		
+			EdmundKBurke
+		
+		10.1016/j.asoc.2013.10.004
+	
+	
+		Applied Soft Computing
+		Applied Soft Computing
+		1568-4946
+		
+			14
+			
+			2014
+			Elsevier BV
+		
+	
+	Ravizza, S., Chen, J., Atkin, J. A. D., Stewart, P., and Burke, E. K., "Aircraft Taxi Time Prediction: Comparisons and Insights," Applied Soft Computing, Vol. 14, 2014, pp. 397-406.
+
+
+
+	
+		Taxi Time Prediction at Charlotte Airport Using Fast-Time Simulation and Machine Learning Techniques
+		
+			HanbongLee
+		
+		
+			WaqarMalik
+		
+		
+			BoZhang
+		
+		
+			BalajiNagarajan
+		
+		
+			YoonCJung
+		
+		10.2514/6.2015-2272
+	
+	
+		15th AIAA Aviation Technology, Integration, and Operations Conference
+		Dallas, TX
+		
+			American Institute of Aeronautics and Astronautics
+			June 22-26, 2015
+		
+	
+	Lee, H., Malik, W., Zhang, B., Nagarajan, B., and Jung, Y. C., "Taxi Time Prediction at Charlotte Airport Using Fast-Time Simulation and Machine Learning Techniques," the 15th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Dallas, TX, June 22-26, 2015.
+
+
+
+	
+		Aerobahn -Airport performance through optimal collaboration
+		
+			SaabSensis
+		
+		
+		
+			2015
+		
+	
+	Saab Sensis, Aerobahn -Airport performance through optimal collaboration, 2015. http://saab.com/region/saab- australia/security/integrated-tower-system/
+
+
+
+	
+		Air-Traffic Control
+		
+			MichaelSNolan
+		
+		10.1201/b10401-25
+	
+	
+		Handbook of Aviation Human Factors, Second Edition
+		
+			CRC Press
+			2010
+			20-1-20-20
+		
+	
+	Nolan, M. S., "Fundamentals of Air Traffic Control," Fifth Edition, Delmar Cengage Learning, 2010.
+
+
+
+	
+		Getting Started with Scikit-learn for Machine Learning
+		10.1002/9781119557500.ch5
+		
+	
+	
+		Python® Machine Learning
+		
+			John Wiley & Sons, Inc.
+			2010
+			
+		
+	
+	Scikit-learn Library for Machine Learning in Python, Version 0.16.1, 2015. http://scikit-learn.org/stable/tutorial/index.html 21 PyBrain Library for Machine Learning in Python, Version 0.31, 2010. http://pybrain.org
+
+
+				
+			
+		
+	

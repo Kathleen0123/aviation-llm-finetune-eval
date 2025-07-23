@@ -1,0 +1,700 @@
+
+	
+	
+		
+INTRODUCTIONToday, aircraft operating under Instrument Flight Rules (IFR) in the National Airspace System (NAS) are managed in a mostly manual process performed by air traffic controllers working in ground-based facilities.These controllers are responsible for ensuring safe separation between aircraft as well as maintaining expeditious flow of traffic from departure to arrival.This service is referred to as separation assurance.As we progress into an age of automation, new capabilities allow us to reexamine the current infrastructure and allow for the re-allocation of Air Traffic Management (ATM) functions and responsibilities among different agents in the NAS.This design space of alternative functional architectures provides the possibility for safer and more efficient operations in the future.However this leads to the new challenge of understanding this complex design space in order to inform the development and implementation of future separation assurance systems.The problem of function allocation for separation assurance is very complex, encompassing not only the technical performance and safety characteristics of a separation assurance system, but also broad questions such as costs, certification requirements, political feasibility, etc. that require extensive research [10].Previous studies have produced valuable insights related to the performance of specific "point designs" for alternative separation assurance systems as well as how these systems can be integrated together [16,7,19,3,17,23,2,21], but there are still many questions left to be answered.Since the problem is so broad, it is important to be able to explore the design space at a high level to understand the trade-offs and key relationships that drive the selection of a functional architecture.Essentially, limited time and resources drive the demand for a research "filter" to point the way for more detailed research into specific system designs.This paper presents a simulated testbed and application to rapid concept prototyping and preliminary investigation of a wide range of research issues for separation assurance function allocation.Specifically, it is a simulation platform designed to allow for different separation assurance functions to be allocated to different agents in the system, including ground-based and airborne agents.The purpose of this system is not to provide detailed design analyses but rather to add a broad understanding of how different system architectures compare and to highlight areas for more detailed study.In the following section, a thorough description of the simulation platform is presented along with the implementation details that enable function allocation.Following the implementation description, an example scenario was selected and simulated.This specific scenario is not considered illustrative of any direct comparison from which function allocation conclusions can be drawn, instead it was only selected to demonstrate the capabilities of the platform.
+SIMULATION PLATFORMThe ideal testbed needs to be able to rapidly evaluate large amounts of data with the modularity and flexibility needed to propel an idea from concept inception to simulation results with minimal time and effort.To evaluate system-wide concepts, it should be capable of simulating more than a few sectors or centers.The testbed must also balance the demands of fidelity with rapid prototyping.The goal is not to certify hardware or perform detailed design which would require high fidelity but rather to investigate system-level trends.To produce the testbed we made enhancements to an existing air-traffic simulation system known as the Airspace Concept Evaluation System (ACES) [9].In short, the modifications allowed aircraft to become conflict resolution agents.These autonomous agents act on their own best interests using decision-making rules and information available to them.ACES is an agent-based, fast-time airspace simulator that utilizes Eurocontrol's Base of Aircraft Data (BADA) [6] Aircraft Performance Model to create trajectories from departure fix to arrival fix across the NAS.ACES was designed as a research tool to compare and contrast different air-traffic management automation concepts [24,1,20].Agent-based models (ABMs) are uniquely suited to studying complex system behaviors that emerge from the interactions and operations of multiple autonomous agents.Specifically to this research, ABMs also allow us to assign functions or responsibilities to various agents.Since the research focus is separation-assurance function allocation, the majority of modifications can be summarized as fundamental changes to the conflict-detection and resolution (CD&R) process and the distribution of its responsibility.To produce a defensibly comparable baseline, the simulation agents were designed to be as similar as possible, sharing functions when their functionalities are comparable.The Advanced Airspace Concept [4,5] CD&R plug-in was modified to model the conflict resolution logic and information available for both ground-managed and self-separating aircraft.The details of these modifications are presented in the following section.
+GROUND-MANAGED AND SELF-SEPARATING CONFLICT RESOLUTIONIn current operations, ground-managed aircraft operating under Instrument Flight Rules are controlled by Air Route Traffic Control Centers (ARTCCs) and global information is used to make decisions.Weather, traffic, and intended routes are all generally available.The ground controller is able to maintain separation by maneuvering any managed aircraft or multiple aircraft.In contrast, it is proposed that self-separating aircraft will collect their information from onboard sensors and air/ground transmissions.Airborne operators may have limited knowledge of the surrounding environment but more accurate information about the ownship.Also, they can only maneuver their own aircraft.These distinctions amount to differences in information available and in the conflict resolution decision logic.In the simulation presented in this paper, these differences are captured by the aircraft and conflict resolution agent design; each agent has access to different information and implements a different set of decision-making rules.As depicted in Figure 1, the agents that provide separation assurance are distributed per-center for the ground-based alternative (GB) and peraircraft for the airborne alternative (AB).To get a better understanding of how information and rules differ between the agents, the conflict resolution process is functionally decomposed into five components: surveillance, trajectory prediction, conflict detection, resolution management, and resolution generation.To isolate the fundamental differences between ground-based and airborne separation assurance, the component functions are kept as similar as possible.In the following sections we discuss each component's real-world function along with details of its simulation implementation.A summary is presented in Figure 2.
+SurveillanceWithout the use of high-bandwidth data links, the method in which ground-based controllers and airborne operators collect information about their surrounding environment is fundamentally different.A vast network of radars and weather stations pass data to a centralized controlling agent while self-separating aircraft collect real-time data using on-board equipment.Technologies such as Automatic Dependent Surveillance Broadcast (ADS-B) In/Out allow aircraft to obtain the position and velocity of other aircraft and receive flight information such as flight number and aircraft type [12].The Minimum Aviation System Performance Standards (MASPS) for ADS-B [18] allow for broadcasting of the aircraft's intended trajectory.The self-separating aircraft's detection range is limited by the capabilities of their surveillance hardware.In the simulation, ground-based agents are able to see all the aircraft within their center as well as aircraft close to the boundary.For airborne agents, ADS-B surveillance is modeled as a fixed horizontal range.Only aircraft within
+Surveillance
+Conflict Detection
+Resolution Management
+Resolution" Generation[trajectories][conflicts][conflict, aircraft to maneuver, maneuver pattern]
+[resolution]Trajectory Prediction
+[aircraft state and intent]
+Per-centerPer-aircraft
+Ground-Based Airborne
+Accuracy of informationAll vs. all One vs. all Decision-making logic the disk-shaped region surrounding the aircraft are detected by the on-board agent.Broadcasted intent can be turned on or off for any aircraft.Figure 3 illustrates the two implementations.Note that each aircraft has a different "view" of the environment.Identical Inputs/Outputs
+Trajectory PredictionGround-based systems use the filed and amended route information with data gathered through surveillance to predict the future trajectories of all aircraft in the airspace.These predicted trajectories will contain errors due to uncertainties such as aircraft weight and the unknown wind field.Trajectory prediction on the aircraft will have more accurate information about the ownship (e. g., trajectory intent or weight estimate), but information about surrounding aircraft may be limited.As was demonstrated by Lauderdale et al. [14], varying levels of trajectory prediction errors can be simulated in the ACES system, ranging from zero prediction error to high levels of error in many different dimensions.This capability can be used to explore the impact on system performance of different agents performing trajectory prediction with varying information.
+Conflict DetectionThe trajectories are used to predict possible separation violations, or conflicts, in the future.A conflict is detected if the distance between two aircraft is predicted to be less than some standard separation criteria.This is also known as a loss of separation (LOS).The current implementation employs a geometric conflict detection algorithm, but others such as a probabilistic algorithm [13] could also be used.The conflict detection algorithm can determine the aircraft's location at any time along the trajectory.With this, the algorithm uses all of the provided trajectories to measure the distances between each aircraft at discrete time steps and determines if a conflict is predicted.The ground-based and airborne agents use the same conflict detection algorithm, however, airborne agents only search for conflicts involving the ownship.In the simulation, to help analyze possible function allocation scenarios, separation requirements can vary depending on the classes of aircraft in conflict.
+Resolution ManagementResolution management captures the decision-making logic of the ground-based and airborne agents and the rules of the airspace and is one of the most important differences between ground-based and airborne agents.It receives a list of conflicts and, with help of the resolution generator, issues maneuvers to ensure a conflict-free environment.It decides which maneuver patterns to consider and ultimately which ones to execute.Ground-based agents communicate with each other for control hand-offs and conflicts involving multiple centers.This is also where right-of-way rules are implemented to provide implicit coordination between self-separating aircraft.It is important to note that selfseparating aircraft will only maneuver themselves.Once the ground-based agent identifies the list of conflicts, the list is sorted by time to loss of separation (LOS) and other factors.The first conflict in the list is chosen for resolution (Figure 4(a)).The conflict, aircraft to maneuver, and maneuver (e. g., single-waypoint turn to the left or temporary altitude hold) is sent to the resolution generator and the "best" resolution is returned (Figure 4(b)).The resolution generator is called recursively for each aircraft and all available maneuvers to build a list of resolutions (Figure 4(c)).The resolution management process then selects the best solution (including which of the aircraft in conflict to maneuver) according to its own decision-making rules and repeats the entire process for each conflict in the list.Since the conflicts are resolved sequentially the maneuvers are explicitly coordinated.The airborne agent begins by sorting the conflicts involving the ownship and selecting the first conflict in which the agent does not have priority.The resolution maneuvers are limited by the right-of-way rule set.The available maneuvers and the resolution generator are used to find the best resolution for the conflict in a recursive fashion identical to the ground-based implementation.Since a successful resolution will resolve all conflicts, the airborne conflict resolution process ends after it resolves the first conflict.
+Right-of-Way RulesThe concept of right-of-way is used to provide implicit coordination with conflicts involving self-separating aircraft.An initial rule set has been developed based on the visual flight rules (VFR) right-of-way regulations [8].These rules are designed to be minimal.The rules are presented in order of precedence; the first one that applies is followed.• Ground-managed aircraft have priority.• If the self-separating aircraft are in different flight modes (e. g., cruise and descent), the aircraft with the lowest vertical component of velocity has priority.• If any of the self-separating aircraft are close to their final fix, the closest aircraft has priority.• If the self-separating aircraft are in a passing situation, the aircraft being passed has priority.• If head-on, both aircraft must move to their right.• The aircraft on the right has priority.
+Resolution GenerationThe resolution generation function returns the best resolution for a given conflict, aircraft to maneuver, and a specified maneuver.To determine the resolution, a discrete, iterative, heuristically-guided search algorithm is used to minimize a specified cost function subject to constraints provided by the maneuver.To be successful the resolution must be conflictfree within a given time horizon (typically ten minutes or longer).Ground-based and airborne conflict resolution implementations use the same resolution generation process since the heuristics are essentially the same.The resolver is an optimizer that generates the most efficient resolution it can for any given conflict, aircraft to maneuver and maneuver.There are various ways to obtain resolutions [11] (genetic algorithms, force-field methods, etc.); assuming that any chosen resolution algorithm lacks inherent bias, it is likely that the overall, system-level results for any concept will vary somewhat based on the selected algorithm, but the relative results should be largely independent of the resolution generation algorithm.
+EXAMPLE APPLICATIONA previous human-in-the-loop study investigated the interactions between ground-managed and self-separating aircraft [23].The simulation included twelve self-separating aircraft in an airspace comprised of six high-altitude sectors at varying traffic densities populated primarily by ground-managed aircraft.To demonstrate the capabilities of the testbed, a similar NAS-wide scenario was repeated using percentage of self-separating air traffic as the independent variable.The emergent trends of system-level metrics as a function of percentage of self-separating air traffic were examined.To further illustrate the flexibility of the tool, this research was expanded upon by enabling and analyzing different features of possible function-allocation concepts including different routing capabilities and different separation requirements.There are many different concepts, scenarios, and parameters being proposed or that could be envisioned.Instead of comparing realistic, concepts currently proposed, the scenarios presented in this paper were chosen to demonstrate the capabilities of the testbed.A fair comparison of competing concepts would need to look closely at realistic distributions of functions and based on available information and enabling technologies.The traffic data used for the study was taken from several hours of traffic recordings over a typical day in the NAS.The data included the aircraft type, departure airport, arrival airport, waypoints, and departure time.Approximately 4600 flights were modeled across the NAS from departure to arrival.A fixed surveillance range of 80 nmi.was used for self-separating aircraft.This value was chosen based on current and predicted near-term ADS-B transmission capabilities.For the ground-based agents an additional surveillance range of 40 nmi.was added beyond the edge of the ARTCC boundary to represent the radar coverage typically provided by the current radar installations.Both ground-based and airborne agents received perfect aircraft state and intent information although the testbed is capable of modeling several sources of trajectory uncertainty.In all cases, there were no meet-time requirements that the aircraft are obligated to comply with.Aircraft delay was calculated by comparing the original flight time with a maneuvered flight time.To represent en-route data, the results presented are for aircraft more than 30 minutes from landing and above flight level 150.
+Separation StandardsAs part of the self-separating concept, it has been proposed that the standard "one-size-fits-all" separation standard may not apply to self-separating aircraft [22].On-board sensors may allow self-separating aircraft to determine a safe distance from other self-separating aircraft, ostensibly allowing them to fly closer than current regulations allow.However, self-separating aircraft may have to maintain larger separation distances from ground-based aircraft to allow the ground system to issue maneuvers without regard for selfseparating aircraft (Figure 5).It is important to note that the same technological advances required to allow self-separating aircraft to fly closer together may also permit reduced separation standards for ground-managed aircraft.The reduced separation for selfseparating aircraft scenario was chosen to demonstrate the capabilities of the testbed by requiring different agents to obey distinct rules.The results from the previous scenario served as a baseline from which to compare the effects.Ground-managed Self-separating Ground-managed 5nmi, 1000 ft.-Self-separating 7 nmi., 2000 ft. 3 nmi., 800ft.Table 1: The separation requirements for the dynamic separation scenario.The distances depend on the aircraft classes involved in the conflict.To analyze the impact of varying the required separation distances, a class-based separation criteria was implemented and the results were compared to the baseline scenario.Selfseparating aircraft maintained a larger 7 nmi.horizontal and 2000 ft.vertical separation from ground-managed aircraft but only 3 nmi.horizontal and 800 ft.vertical separation from other self-separating aircraft (Table 1).Groundmanaged aircraft maintained a standard 5 nmi.horizontal and 1000 ft.vertical separation from other ground-managed aircraft.In Figure 6(a), the baseline scenario shows a generally linear increase in delay as a function of the percentage of selfseparating aircraft while the dynamic separation scenario shows a larger increase and then a significant decrease as the percentage of encounters requiring the large separation values is reduced.In Figure 6(b) it can be seen that the number of resolutions shows generally a shallow linear increase with increasing numbers of self-separating aircraft in the baseline case.By enabling dynamic separation requirements we see an increase in the number of resolutions for lower percentages of self-separating aircraft and a reduction for higher percentages as the most probable type of conflict interaction changes from airborne-to-ground-based to airborne-to-airborne.These data suggest that self-separating aircraft may receive a disproportionate share of the separation assurance burden when they make up a smaller percentage of the air traffic.These results are intuitive and one can imagine how the trends would shift by perturbations in the parameter-
+7:The simulation is capable of allowing selfseparating aircraft to fly direct routes (dotted) instead of structured routes (dashed).ized values.For example, we would expect the "hump" in both charts to grow or shrink by modifying the separation requirements between ground-managed and self-separating aircraft.
+Structured/Unstructured RoutesIn present-day operations, fixed waypoints and route structures are used, to make the air traffic complexity manageable by human controllers, among other reasons.As the system, including ground and airborne systems, becomes more automated, we can expect the requirement to follow fixed route to be removed.In the baseline scenario, all aircraft follow standard routing derived from the dataset.For this scenario, to illustrate the power of the tool, the waypoint and route structure restrictions were removed from self-separating aircraft and they were allowed to fly direct, great-circle routes (Figure 7).The selection of self-separating aircraft to fly great-circle routes was somewhat arbitrary as future automated systems may allow either ground-managed, selfseparating, or all aircraft to fly direct routes.The aircraft with direct routes saw a significant time savings on their overall flight time, about 4% on average.This result is not surprising and in fact could have been obtained by examining flight routes alone without the need of a simulation.However, with this platform we can see other clear trends and behaviors that emerge from the results.By allowing aircraft to fly direct routes, the traffic density is no longer concentrated along routes, reducing the chance for a conflict and therefore decreasing the number of maneuvers issued (Figure 8(a)).Also, comparing the results of the independent scenarios with the combined scenario, the outcome of both features enabled appears to superpose the change in maneuvers from each (Figure 8(b)).In the fully self-separating scenario with both features enabled, the vast majority of aircraft are able to fly without issuing en-route maneuvers.Another human-in-the-loop study correlated conflict convergence angles with conflict detection times [15].Figure 9 presents a radial histogram of initial-detection conflict angles for a few selected cases.Conflict angles around 0 • and 180 • represent passing encounters and head-on encounters respectively.Once again, clear system-level patterns surface from the data.For aircraft flying the structured routes, the passing encounter is the dominate scenario.For aircraft on direct routes the encounters are more distributed, with concentrations around 0 • and 180 • .
+SUMMARY AND FUTURE WORKIn this paper we presented a fast-time simulation platform designed to investigate function-allocation concepts for separation assurance in the NAS.The platform allows the researcher to control how the separation-assurance responsibilities are allocated between airborne and ground-based agents.This tool was designed to allow researchers to investigate a large spectrum of function-allocation concepts and parameters before investing further time and effort on detailed design and high-fidelity analysis.Key algorithmic and functional distinctions between the allocation of separation assurance functions to ground-based and airborne agents were highlighted along with the details of their implementation in this simulation platform.The agents' functions were kept as similar as possible in an effort to provide a defensibly comparable baseline.Key differences in the implementation arose from information availability, decision-making rules, and the extent of control.To illustrate the capabilities of the testbed, we posed a hypothetical research question and used the testbed to examine the trend of system-level metrics as functions of traffic control composition.Complex, yet intuitive, trends emerged from the data.Naturally, continued research leads to more questions.What impact will meet-time requirements have on airborne decisions?How does information accuracy affect efficiency of the agents?What effect does arrival-control handoffs have on airspace complexity?With a few modifications this testbed can be used to investigate the system-level trends associated with these function-allocation questions.Figure 1 :1Figure 1: The mixed air traffic environment (a) and its simulation implementation (b).There is an independent conflict resolution agent for each selfseparating aircraft and for each center.
+Figure 2 :Figure 3 :23Figure 2: The five functional components of the conflict resolution process along with a summary of the implementation differences and their inputs/outputs.
+Figure 4 :4Figure 4: The resolution generation process returns the best resolution per conflict, aircraft, and maneuver pattern.
+Figure 5 :5Figure 5: Dynamic separation standards require self-separating aircraft (gray) to maintain larger separation distances from ground-managed aircraft (black) (a) but allow for smaller distances with other self-separating aircraft (b).
+Figure 6 :6Figure 6: The delay and number of maneuvers for the baseline scenario and the dynamic separation requirements scenario.
+Figure 8 :Figure 9 :89Figure 8: The total number of maneuvers for the individual scenarios (a) and combined (b) compared to the baseline scenario.
+		
+		
+			
+
+				
+
+
+	
+		NASA System-Level Design, Analysis and Simulation Tools Research on NextGen
+		
+			JorgeBardina
+		
+		10.4271/2011-01-2716
+	
+	
+		SAE International Journal of Aerospace
+		SAE Int. J. Aerosp.
+		1946-3901
+		
+			4
+			2
+			
+			2011
+			SAE International
+		
+	
+	J. Bardina. NASA system-level design, analysis and simulation tools research on NextGen. SAE International Journal of Aerospace, 4(2):1357-1364, 2011.
+
+
+
+	
+		Can airborne self separation safely accommodate very high en-route traffic demand?
+		
+			HenkBlom
+		
+		
+			BertBakker
+		
+		10.2514/6.2012-5415
+		AIAA 2012-5415
+	
+	
+		12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference and 14th AIAA/ISSMO Multidisciplinary Analysis and Optimization Conference
+		Indianapolis, IN
+		
+			American Institute of Aeronautics and Astronautics
+			2012
+		
+	
+	H. A. P. Blom and G. J. Bakker. Can airborne self separation safely accommodate very high en-route traffic demand? In 12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, AIAA 2012-5415, Indianapolis, IN, 2012.
+
+
+
+	
+		Impact of Wind Prediction Errors on an Automated Separation Assistance System
+		
+			MariaConsiglio
+		
+		
+			SherwoodHoadley
+		
+		
+			DanetteAllen
+		
+		10.2514/6.2009-7016
+	
+	
+		9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO)
+		Napa, CA
+		
+			American Institute of Aeronautics and Astronautics
+			2009
+		
+	
+	In 8th USA
+	M. Consiglio, S. Hoadley, and B. D. Allen. Estimation of separation buffers for wind-prediction error in an airborne separation assistance system. In 8th USA/Europe Air Traffic Management R&D Seminar, Napa, CA, 2009.
+
+
+
+	
+		Automated conflict resolution for air traffic control
+		
+			HErzberger
+		
+		
+			2006
+		
+	
+	In 25th Iternational Congress of the Aeronautical Sciences
+	H. Erzberger. Automated conflict resolution for air traffic control. In 25th Iternational Congress of the Aeronautical Sciences, 2006.
+
+
+
+	
+		Automated conflict resolution, arrival management, and weather avoidance for air traffic management
+		
+			HErzberger
+		
+		
+			TALauderdale
+		
+		
+			Y-CChu
+		
+		10.1177/0954410011417347
+	
+	
+		Proceedings of the Institution of Mechanical Engineers, Part G: Journal of Aerospace Engineering
+		Proceedings of the Institution of Mechanical Engineers, Part G: Journal of Aerospace Engineering
+		0954-4100
+		2041-3025
+		
+			226
+			8
+			
+			2010
+			SAGE Publications
+			Nice, France
+		
+	
+	H. Erzberger, T. A. Lauderdale, and Y. Cheng. Automated conflict resolution, arrival management and weather avoidance for ATM. In 27th Iternational Congress of the Aeronautical Sciences, Nice, France, 2010.
+
+
+
+	
+		Sensitivity Analysis of Aviation Environmental Impacts for the Base of Aircraft Data (BADA) Family 4
+		10.2514/6.2021-0457.vid
+		No. 2009-003
+	
+	
+		EUROCONTROL Experimental Centre
+		
+			American Institute of Aeronautics and Astronautics (AIAA)
+			April 2009
+		
+	
+	Technical Report
+	Revision 3.7.
+	EUROCONTROL Experimental Centre. User Manual for the Base of Aircraft Data (BADA), Revision 3.7. Technical Report No. 2009-003, April 2009.
+
+
+
+	
+		Automated Conflict Resolution: A Simulation Evaluation Under High Demand Including Merging Arrivals
+		
+			ToddFarley
+		
+		
+			MichaelKupfer
+		
+		
+			HeinzErzberger
+		
+		10.2514/6.2007-7736
+	
+	
+		7th AIAA ATIO Conf, 2nd CEIAT Int'l Conf on Innov and Integr in Aero Sciences,17th LTA Systems Tech Conf; followed by 2nd TEOS Forum
+		
+			American Institute of Aeronautics and Astronautics
+			2007
+		
+	
+	T. C. Farley and H. Erzberger. Fast-time simulation evaluation of a conflict resolution algorithm under high air traffic demand. In 7th USA/Europe ATM 2007 R&D Seminar, 2007.
+
+
+
+	
+		Conducting Unmanned Aircraft Flight Operations Under Federal Aviation Administration Regulations
+		10.13031/aim.20152147654
+	
+	
+		2015 ASABE International Meeting
+		
+			American Society of Agricultural and Biological Engineers
+			2004
+			113
+		
+	
+	Federal Aviation Administration. 14 cfr 91
+	Federal Aviation Administration. 14 cfr 91.113: Right-of-way rules: Except water operations. Federal Aviation Regulations, 2004.
+
+
+
+	
+		Build 8 of the Airspace Concept Evaluation System
+		
+			SapaGeorge
+		
+		
+			GoutamSatapathy
+		
+		
+			VikramManikonda
+		
+		
+			KeePalopo
+		
+		
+			LarryMeyn
+		
+		
+			ToddLauderdale
+		
+		
+			MichaelDowns
+		
+		
+			MohamadRefai
+		
+		
+			RichardDupee
+		
+		10.2514/6.2011-6373
+		AIAA 2011-6373
+	
+	
+		AIAA Modeling and Simulation Technologies Conference
+		Portland, OR
+		
+			American Institute of Aeronautics and Astronautics
+			2011
+		
+	
+	S. George, G. Satapathy, V. Manikonda, K. Palopo, L. Meyn, T. A. Lauderdale, M. Downs, M. Refai, and R. Dupee. Build 8 of the Airspace Concept Evaluation System. In AIAA Modeling and Simulation Technologies Conference, AIAA 2011-6373, Portland, OR, 2011.
+
+
+
+	
+		Joint Planning and Development Office (JPDO) Unmanned Aircraft Systems (UAS)
+		
+			YogiShah
+		
+		10.1109/icnsurv.2013.6548689
+	
+	
+		2013 Integrated Communications, Navigation and Surveillance Conference (ICNS)
+		
+			IEEE
+			October 2012
+			15
+		
+	
+	Joint Planning and Development Office (JPDO). Integrated Work Plan for the Next-Generation Air Transportation System, FY15, October 2012.
+
+
+
+	
+		A review of conflict detection and resolution modeling methods
+		
+			JKKuchar
+		
+		
+			LCYang
+		
+		10.1109/6979.898217
+	
+	
+		IEEE Transactions on Intelligent Transportation Systems
+		IEEE Trans. Intell. Transport. Syst.
+		1524-9050
+		
+			1
+			4
+			
+			2000
+			Institute of Electrical and Electronics Engineers (IEEE)
+		
+	
+	J. Kuchar and L. Yang. A review of conflict detection and resolution modeling methods. Intelligent Transportation Systems, IEEE Transactions on, 1(4):179-189, 2000.
+
+
+
+	
+		The Effects of Passive Coordination of Distributed Separation Assurance
+		
+			ToddALauderdale
+		
+		10.2514/6.2009-6908
+		AIAA 2009-6908
+	
+	
+		9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO)
+		Hilton Head, SC
+		
+			American Institute of Aeronautics and Astronautics
+			September 2009
+		
+	
+	T. A. Lauderdale. The effects of passive coordination on distributed separation assurance. In AIAA Aviation Technology, Integration, and Operations Conference, AIAA 2009-6908, Hilton Head, SC, September 2009.
+
+
+
+	
+		Probabilistic Conflict Detection for Robust Detection and Resolution
+		
+			ToddALauderdale
+		
+		10.2514/6.2012-5643
+		AIAA 2012-5643
+	
+	
+		12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference and 14th AIAA/ISSMO Multidisciplinary Analysis and Optimization Conference
+		Indianapolis, IN
+		
+			American Institute of Aeronautics and Astronautics
+			September 2012
+		
+	
+	T. A. Lauderdale. Probabilistic conflict detection for robust detection and resolution. In 12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference and 14th AIAA/ISSM, AIAA 2012-5643, Indianapolis, IN, September 2012.
+
+
+
+	
+		Automated Separation Assurance with Weather and Uncertainty
+		
+			TALauderdale
+		
+		
+			HErzberger
+		
+		10.1007/978-4-431-54475-3_3
+	
+	
+		Lecture Notes in Electrical Engineering
+		th USA/Europe Air Traffic Management R&D Seminar
+		Berlin, Germany
+		
+			Springer Japan
+			2011
+			
+		
+	
+	T. A. Lauderdale, A. C. Cone, and A. R. Bowe. Relative significance of trajectory prediction error on an automated separation assurance algorithm. In 9th USA/Europe Air Traffic Management R&D Seminar, Berlin, Germany, 2011.
+
+
+
+	
+		Free flight simulation: An initial examination of air-ground integration issues
+		
+			SLozito
+		
+		
+			AMcgann
+		
+		
+			PCashion
+		
+		
+			MDunbar
+		
+		
+			MMackintosh
+		
+		
+			VDulchinos
+		
+		
+			KJordan
+		
+		
+			2000-209605, NASA, 2000
+		
+	
+	Tech. Memorandum
+	S. Lozito, A. McGann, P. Cashion, M. Dunbar, M. Mackintosh, V. Dulchinos, and K. Jordan. Free flight simulation: An initial examination of air-ground integration issues. Tech. Memorandum 2000-209605, NASA, 2000.
+
+
+
+	
+		Air Traffic Concept Utilizing 4D Trajectories and Airborne Separation Assistance
+		
+			ThomasPrevot
+		
+		
+			VernolBattiste
+		
+		
+			EverettPalmer
+		
+		
+			StephenShelden
+		
+		10.2514/6.2003-5770
+		AIAA 2003-5770
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		Austin, TX
+		
+			American Institute of Aeronautics and Astronautics
+			2003
+		
+	
+	T. Prevot, V. Battiste, E. Palmer, and S. Shelden. Air traffic concept utilizing 4D trajectories and airborne separation assistance. In Proceedings of the AIAA Guidance, Navigation, and Control Conference, AIAA 2003-5770, Austin, TX, 2003.
+
+
+
+	
+		Evaluation of High Density Air Traffic Operations with Automation for Separation Assurance, Weather Avoidance and Schedule Conformance
+		
+			ThomasPrevot
+		
+		
+			JoeyMercer
+		
+		
+			LynneMartin
+		
+		
+			JeffreyHomola
+		
+		
+			ChristopherCabrall
+		
+		
+			ConnieBrasil
+		
+		10.2514/6.2011-6890
+	
+	
+		11th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Napa, CA
+		
+			American Institute of Aeronautics and Astronautics
+			2009
+		
+	
+	In 8th USA
+	T. Prevot, J. Homola, J. Mercer, M. Mainini, and C. Cabrall. Initial evaluation of air/ground operations with ground-based automated separation assurance. In 8th USA/Europe Air Traffic Management R&D Seminar, Napa, CA, 2009.
+
+
+
+	
+		Minimum aviation system performance standards for automatic dependent surveillance broadcast (ADS-B). Document No. RTCA/DO-242A
+		
+			RtcaSc-186
+		
+		
+			2002
+		
+	
+	RTCA SC-186. Minimum aviation system performance standards for automatic dependent surveillance broadcast (ADS-B). Document No. RTCA/DO-242A, 2002.
+
+
+
+	
+		A Performance Assessment of a Tactical Airborne Separation Assistance System Using Realistic, Complex Traffic Flows
+		
+			JeremySmith
+		
+		
+			FrankBussink
+		
+		
+			KurtNeitzke
+		
+		
+			JasonSolimani
+		
+		
+			GregoryWarren
+		
+		
+			CesarMunoz
+		
+		10.2514/6.2008-8884
+		AIAA 2008-8884
+	
+	
+		The 26th Congress of ICAS and 8th AIAA ATIO
+		Anchorage, AK
+		
+			American Institute of Aeronautics and Astronautics
+			September 2008
+		
+	
+	J. C. Smith and F. J. L. Bussink. A performance assessment of a tactical airborne separation assistance system using realistic traffic flows. In The 26th Congress of International Council of the Aeronautical Sciences (ICAS), AIAA 2008-8884, Anchorage, AK, September 2008.
+
+
+
+	
+		Projected Demand and Potential Impacts to the National Airspace System of Autonomous, Electric, On-Demand Small Aircraft
+		
+			JCSmith
+		
+		
+			JKViken
+		
+		
+			NMGuerreiro
+		
+		
+			SMDollyhigh
+		
+		
+			JWFenbert
+		
+		
+			CLHartman
+		
+		
+			T.-SKwa
+		
+		
+			MDMoore
+		
+		10.2514/6.2012-5595
+		AIAA 2012-5595
+	
+	
+		12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference and 14th AIAA/ISSMO Multidisciplinary Analysis and Optimization Conference
+		Indianapolis, IN
+		
+			American Institute of Aeronautics and Astronautics
+			September 2012
+		
+	
+	J. C. Smith, J. K. Viken, N. M. Guerreiro, S. M. Dollyhigh, J. W. Fenbert, C. L. Hartman, T.-S. Kwa, and M. D. Moore. Projected demand and potential impacts to the national airspace system of autonomous, electric, on-demand small aircraft. In 12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference and 14th AIAA/ISSM, AIAA 2012-5595, Indianapolis, IN, September 2012.
+
+
+
+	
+		Pilot and controller evaluations of separation function allocation in air traffic management
+		
+			DWing
+		
+		
+			TPrevot
+		
+		
+			TLewis
+		
+		
+			LMartin
+		
+		
+			SJohnson
+		
+		
+			CCabrall
+		
+		
+			SCommo
+		
+		
+			JHomola
+		
+		
+			MSheth-Chandra
+		
+		
+			JMercer
+		
+	
+	
+		10th USA/Europe ATM 2013 R&D Seminar
+		
+			2013
+		
+	
+	D. Wing, T. Prevot, T. Lewis, L. Martin, S. Johnson, C. Cabrall, S. Commo, J. Homola, M. Sheth-Chandra, J. Mercer, et al. Pilot and controller evaluations of separation function allocation in air traffic management. In 10th USA/Europe ATM 2013 R&D Seminar, 2013.
+
+
+
+	
+		For Spacious Skies: Self-Separation with "Autonomous Flight Rules" in US Domestic Airspace
+		
+			DavidWing
+		
+		
+			WilliamCotton
+		
+		10.2514/6.2011-6865
+	
+	
+		11th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		
+			American Institute of Aeronautics and Astronautics
+			2011-217174, NASA, 2011
+		
+	
+	Tech. Publication
+	D. J. Wing and W. B. Cotton. Autonomous Flight Rules -a concept for self-separation in U.S. domestic airspace. Tech. Publication 2011-217174, NASA, 2011.
+
+
+
+	
+		Comparison of Ground-Based and Airborne Function Allocation Concepts for NextGen Using Human-In-The-Loop Simulations
+		
+			DavidWing
+		
+		
+			ThomasPrevot
+		
+		
+			JenniferMurdoch
+		
+		
+			ChristopherCabrall
+		
+		
+			JefferyHomola
+		
+		
+			LynneMartin
+		
+		
+			JoeyMercer
+		
+		
+			SherwoodHoadley
+		
+		
+			SaraWilson
+		
+		
+			ClayHubbs
+		
+		
+			JamesChamberlain
+		
+		
+			RyanChartrand
+		
+		
+			MariaConsiglio
+		
+		
+			MichaelPalmer
+		
+		10.2514/6.2010-9293
+		AIAA 2010-9293
+	
+	
+		10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Fort Worth, Texas
+		
+			American Institute of Aeronautics and Astronautics
+			2010
+		
+	
+	D. J. Wing, T. Prevot, J. L. Murdoch, C. D. Cabrall, J. R. Homola, L. H. Martin, J. S. Mercer, S. T. Hoadley, S. R. Wilson, C. E. Hubbs, J. P. Chamberlain, R. C. Chartrand, M. C. Consiglio, and M. T. Palmer. Comparison of ground-based and airborne function allocation concepts for NextGen using human-in-the-loop simulations. In AIAA Aviation Technology, Integration, and Operations Conference, AIAA 2010-9293, Fort Worth, Texas, 2010.
+
+
+
+	
+		Validating The Airspace Concept Evaluation System Using Real World Data
+		
+			ShannonZelinski
+		
+		10.2514/6.2005-6491
+	
+	
+		AIAA Modeling and Simulation Technologies Conference and Exhibit
+		San Francisco, CA
+		
+			American Institute of Aeronautics and Astronautics
+			August 2005
+			
+		
+	
+	S. Zelinski. Validating the airspace concept evaluation system using real-world data. In AIAA Modeling and Simulation Technologies Conference and Exhibit, AIAA 2005-6491, pages 15-18, San Francisco, CA, August 2005.
+
+
+				
+			
+		
+	

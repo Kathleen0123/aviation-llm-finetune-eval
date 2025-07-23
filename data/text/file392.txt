@@ -1,0 +1,721 @@
+
+	
+	
+		
+I. IntroductionT he ability to generate accurate, application-specific aircraft trajectories is essential to Air Traffic Man- agement (ATM).Trajectory-Based Operations (TBO) was identified as a key capability in achieving the goals of the Next Generation Air Transportation System (NextGen) in the United States. 1 Similarly in Europe, the Single European Sky Air Traffic Management Research (SESAR) embraces the concept of a 4-D trajectory as the core of the future ATM system. 2 Ground-based Decision Support Tools compute trajectories for tasks such as conflict detection (detecting a potential collision with another aircraft), conflict resolution (redirecting the aircraft to avoid the collision), scheduling, and re-routing (due to weather, traffic, airport conditions, etc.).Flight Management Systems (FMS), equipped by commercial jets, compute trajectories for aircraft flight planning and guidance.The systems performing these tasks are only as accurate as the trajectory predictions they are based on.Progress of ATM in recent years presents new challenges for trajectory generators.Firstly, advances in avionics, navigation, and guidance technologies allow aircraft to fly more precise routes and vertical profiles.These technologies encouraged the design of new flight procedures that can be more complex than previous ones. 3,4 econdly, trajectory communication/sharing between the ground, flight deck, and other components in the system, requires flexible yet interoperable trajectory input. 5This drives a need for a common interface to the trajectory generator that allows detailed specification of a flight's intent. 6Thirdly, the Unmanned Aircraft Systems (UAS) are expected to be integrated into the National Airspace (NAS) in the United States in the near future. 7The great diversity in the flight envelopes and mission profiles of these UAS can be difficult to accommodate by previous trajectory generators designed mainly for modeling commercial flights.As the mission profiles become more complex, the advisory and prediction trajectories generated for TBO such as scheduling and conflict avoidance will likely also become more complex.Therefore, a trajectory generator must reduce its usage of assumptions and hard-coded rules to provide enough flexibility to accommodate aircraft with diverse mission types, performance envelopes, and safety criteria.Recent advances in the Center TRACON Automation System (CTAS) 8 Trajectory Synthesizer (TS) software 9 have allowed flexible and detailed modeling of complex and diverse trajectories.The CTAS TS was designed originally to predict meter fix and runway arrival times for the Traffic Management Advisor (TMA). 10TMA provides air traffic controllers and Traffic Management Coordinators (TMCs) with a timebased metering function, arrival flow visualization and statistics, and runway allocation to increase capacity and reduce delay.TMA is now deployed in all 20 en-route Air Route Traffic Control Centers (ARTCCs, or Centers) and many major Terminal Radar Approach Control (TRACON) facilities in the US.Although the TS in its original form, called "TS Original" here, has the flexibility to model any horizontal route, it could only handle six distinct types of en-route climb and descent vertical profiles.This limitation prevented the TS Original from handling new flight procedures and additional constraints, hampering its usability for various ATM research areas.The Generalized Trajectory Profile (GenProf) framework 11 was developed to directly address this short-coming.The GenProf framework allows finer levels of granularity in trajectory specification, which leads to higher fidelity of trajectories in many situations.Successful applications of the TS and the GenProf interface in recent years include the modeling of descent trajectories and advisories for arrival flight guidance, 12-14 maneuver execution delay, 15 Required Navigation Performance,, 4,16 and flight path analysis. 17A previous paper documents the GenProf framework in detail but not its application. 11The goal of this paper is to demonstrate the application of the TS and the GenProf framework to various ATM research problems.Specifically, this paper will discuss the background of the TS and GenProf framework and demonstrate its application to:•
+II. BackgroundAircraft trajectory generation is based on diverse sources of information, including flight plans, flight procedures, airspace constraints, weather forecast, aircraft performance data, airlines' preferred speeds, and the aircraft state.Many trajectory generators model each trajectory by a sequence of segments. 6,18 pically, a segment begins at the end of the previous segment (except for the first segment which begins at the aircraft's current or initial state) and ends when certain criteria are met, e.g., the target altitude is reached or a turn is finished.Within each segment, a way of transitioning from the beginning state to the ending state must be specified.In some situations, transitions are modeled by pilot procedures observed in real flights.Although modeling of the real pilot procedures can potentially provide high level of fidelity for ATM purposes, in many other situations the exact pilot procedure is unknown.In these cases, the transition is modeled by typical pilot procedures with empirical parameters.These parameters can depend explicitly on the aircraft performance envelopes.For example, a maximum-climb engine setting is typically used for modeling a climb segment.The TS Original and the TS integrated with GenProf interface (which will now be referred to as TS GenProf) models an aircraft's trajectory by considering the horizontal path and vertical profile in a decoupled way. 9The horizontal path consists of segments of straight lines and arcs, whereas the vertical profile consists of segments with distinct pilot control settings (to be explained in Sec.II.A).TS first calculates the trajectory's horizontal path using a list of waypoints derived from the flight plan and flight procedures.Turns in the vicinity of a waypoint are characterized by turn types such as turning at the waypoint, turning inside the waypoint, or ending the turn at the waypoint.Rough estimates of the airspeed at each turn, as well as default bank angles are used to compute the turn radius around each waypoint.Alternatively, the turn radii can be specified for each waypoint by the client.The horizontal path expresses the trajectory's horizontal coordinate as a function of the path distance along the horizontal path.Once the horizontal path is determined, the TS then calculates the altitude and speed profile, refereed to as the vertical profile.The vertical profile usually must satisfy a series of altitude, speed, and path distance constraints.The types of constraints and the procedures for reaching these constraints can be very complex and diverse, depending on the types of aircraft, mission, and requirements of the application.The GenProf Interface was designed to handle such challenges presented to a trajectory generator.
+II.A. GenProf InterfaceThe GenProf Interface is the abbreviated name for the Generalized Profile Interface module.The GenProf Interface was designed to provide a flexible language to describe vertical trajectory profiles and was intended to replace and expand the older static set of predetermined vertical profiles that were part of the TS.With GenProf, no presumptions about the number of vertical segments and the arrangement of these segments are made.The language used by the GenProf interface bears similarities to the Aircraft Intent Description Language (AIDL) 19 but was developed independently.Although GenProf is currently implemented as a programming interface for the TS, it can potentially be implemented as an interface for other trajectory generators as well.More detail can be found in a previously published document. 11he GenProf description language uses a building block approach to provide flexibility.Each vertical segment contains a target constraint, which can be an altitude, a speed, a time, or a path distance.The procedure to achieve the target constraint, or capture the constraint, at the end of the segment is specified by control settings such as speed, engine control, speed brake, vertical rate, acceleration, and the (inertial) flight path angle.The choice of control settings can either reflect realistic pilot procedures or be purely empirical.For each segment, two control settings are held fixed while the aircraft state is integrated with respect to time.The following procedures are modeled most commonly for commercial flights:• Fixed speed (Calibrated Air Speed (CAS) or Mach) and fixed engine control -for modeling large commercial jets' climb and descent.The engine control setting can be maximum climb, maximumcruise, or idle thrust• Fixed speed and fixed flight-path angle (FPA) -for modeling small jets' descent trajectories 20• Fixed FPA and fixed engine control -for modeling acceleration/deceleration in level and descent segmentsIn GenProf terminology, a given aircraft state with a specified speed, altitude, path distance, and time is called an "Anchor".The target state to capture is called a "Stop".The procedure that transitions the aircraft state to achieve the "Stop" is called a "Profile".There can be multiple Anchors, Profiles, and Stops in a trajectory specification.The diagram in Figure 1 shows a simple example of a GenProf trajectory specification.Note how multiple Profiles and Stops can be chained together to specify a complex trajectory.To construct the vertical profile, the TS integrates each segment starting from the Anchor to the target constraint (Stop).When the target constraint is met, the remaining aircraft state values (speed, altitude, path distance, and/or time) are determined by integration.Once captured, the aircraft state at the Stop is completely solved, and this state becomes the starting point for the integration of the next segment.The process repeats until all the segments are solved for.Anchor! FL 330! Mach 0.8 Profile #1! Const Mach! Const Altitude Stop #1!A trajectory specification can have multiple Anchors.For example, a cruise-descent trajectory request ending at a meter fix, a point in space that has both altitude and speed restrictions, is specified with two Anchors, one at the beginning and one at the end of the trajectory.The TS processing in this case would involve both a forward integration (in time) of the cruise segment beginning from the start Anchor state and a reverse integration beginning from the end Anchor state.Both integrations would meet at the top-ofdescent Stop.Continuity of altitude, path distance, and speed is used to connect the two segments at the top-of-descent.See Figure 2  The GenProf Interface assumes procedures and default speeds if they cannot be derived from the input information.This may happen when the input information only has a modest amount of detail in regards to intent information.For example, when using CTAS to predict trajectories in real time, the descent speed of an arrival flight that is approaching its top-of-descent is modeled by an aircraft-type-specific, airlines' preferred descent speed.This is because the intended descent speed of a specific flight is generally unavailable in real time.On the other hand, if the trajectory is generated from a speed advisory that has a prescribed descent speed, then GenProf uses this speed in its trajectory generation.Other assumptions made by GenProf to fill in the missing information include the Mach-CAS transition in the climb and descent procedures, fixed flight path angle descent for arrival flights in the terminal area, etc.
+II.B. Software ArchitectureFrom a software architectural perspective, GenProf provides an interface between applications and the TS. Figure 3 shows the relationship between the tools and software modules.CTAS uses TS for scheduling and conflict detection and resolution. 21A number of different internal support tools for software testing and additional research also use the TS. 20One of these tools, the CmSimTrackComparer 22 derives intent information from aircraft track data and provides trajectory comparison capabilities.The CmSimTrackComparer plays an essential role in the example applications discussed in sections III.B and III.C.
+III. Research ApplicationsThe GenProf Interface enables the modeling of a variety of procedures and constraints used in Air Traffic Control (ATC) procedures.The next sections describe application of the TS and the GenProf Interface to various modeling tasks.They are presented in order starting with the least complex, progressing to more complex usage of the GenProf Interface.
+III.A. Modeling of Flight and Pilot Procedures
+III.A.1. Altitude Restrictions in the Center AirspaceTS with GenProf allows the specification of an arbitrary number of altitude and speed restrictions along a flight's route.This capability is crucial for accurate modeling of modern flight procedures.For example, in recent years many Standard Terminal Arrival Route (STAR) procedures for major airports have been redesigned to have multiple altitude and speed restrictions at waypoints along the route.A specific example is the Optimized Profile Descent procedure for the Los Angles Airport, 3 designed to achieve fuel-efficient descents, that specifies multiple altitude and speed restrictions, some even involving altitude ranges.Figure 4 shows the radar track of a Boeing 767 flight arriving to the JFK airport following an arrival route called the KINGSTON a STAR.This arrival route has an altitude constraint of Flight Level (FL) 200 at the waypoint LOLLY.After LOLLY, there are altitude and speed constraints of FL190 and 250 knots CAS, respectively, at LENDY.Prior to its top-of-descent, the aircraft received an altitude clearance of FL280 from ATC.Figure 5 shows the trajectories generated by TS Original and TS GenProf for the arrival flight down to the waypoint LENDY, the boundary at the terminal area.Wind forecasts from the Rapid Update Cycle by National Oceanic and Atmospheric Administration (NOAA) were used for computation of the predicted trajectories.For both TS Original and TS GenProf, the descent segments were modeled by fixing the engine setting to idle thrust and company-prefered descent CAS.Although TS Original can handle the temporary a KINGSTON is the name of a radio navigation station altitude of FL280, it cannot handle additional altitude restrictions at LOLLY.TS GenProf, on the other hand, allows the specification of multiple altitude constraints and therefore was able to create a trajectory that satisfied the altitude constraint at LOLLY.These improvements reduced the altitude error at LOLLY by 8,000 ft, which can be crucial if the trajectory is to be used in conflict detection.Note that the aircraft did not stay at FL280 because it received another clearance prior to reaching FL280 to change its target altitude to FL200.
+III.A.2. Fixed-FPA Descent with DecelerationAnother modeling task that would not be possible without the TS GenProf is the trajectory generation for a flight trial conducted at Denver in 2010.The objective of the flight trial was to evaluate the execution of the Three Dimensional Path Arrival Management clearances by regional jets in the transition airspace. 14escent planning for these regional jets typically utilizes the FMS Geometric Flight Path Angle capabilities.For each arrival flight, prescribed speed clearances were issued, and pilots used a predefined speed-FPA table to determine the appropriate FPA.On-board data and radar track data collected for the vertical descent profile were compared against predicted trajectories to quantify sources of error.For each participating arrival flight, controllers issued a speed clearance, asking the aircraft to maintain its cruise Mach number and transition to an issued descent CAS during descent.The clearance also instructed the aircraft to descend to a waypoint with altitude and speed constraints.In one flight, the aircraft was asked to descend at 300 knots CAS and cross the waypoint, RAMMS, at FL190 with a speed of 250 knots CAS.The FPA for the descent was 2.5 • for the descent speed of 300 knots CAS.The vertical profile of this flight was modeled by TS GenProf as consisting of the following four distinct segments:1.A constant Mach level segment 2. A constant Mach, constant FPA descent segment 3. A constant CAS, constant FPA descent segment 4. An idle thrust engine control, constant FPA descent segment for deceleration In GenProf terminology, an Anchor for the aircraft's initial state and another Anchor for the RAMMS waypoint were defined, similar to the diagram shown in Fig. 2.Figure 6 compares the predicted trajectory from TS GenProf to the actual trajectory recorded by the on-board Quick Access Recorder (QAR).The X-axis for all three plots represents the path distance of the aircraft from the waypoint RAMMS.The top plot in the figure indicates an excellent agreement between the predicted and actual trajectories in the location of top-of-descent and the descent profile above FL250.For the descent below FL250, the actual trajectory descended with a slightly steeper FPA and captured 19,000 ft at about two nautical miles before RAMMS.The middle plot shows comparison of CAS values.The four vertical segments of the predicted speed profile described above capture the essence of the actual speed profile.The actual speed profile shows a larger deceleration compared to the predicted, suggesting the use of speed brake not modeled in the pilot procedure.The use of speed brake is a potential source of prediction error since it is not a standardized pilot procedure.The trajectory generated by TS included fuel burn, which is shown in the bottom plot and is compared to the actual fuel burn recorded by QAR.The results show that the predicted trajectory overestimates the overall fuel burn by about 20% to 30%.This is partly due to the fact that, although TS has high-fidelity fuel burn model for large jet types, its fuel burn model for regional jets is not as accurate.An alternative fuel model, the Base of Aircraft DAta (BADA) performance model 23 has been integrated with TS 22 and can potentially give a better agreement for regional aircraft types.
+III.B. Fuel Burn Analysis of Aircraft Track DataAnother application of the TS GenProf is to estimate fuel burn from aircraft track data.The track data comprise of a series of track points:r i = (x i , y i , h i , t i ) ,(1)where i represents the index of a track point, r is a 4-D point of the aircraft, x and y are the Cartesian coordinates of the horizontal position of the aircraft, h is the altitude, and t is the time.This methodology creates a smoothed, synthesized TS trajectory based on the intent of the actual trajectory.A similar approach was proposed for estimating the fuel burn of simulated track data, 17 although the use of the GenProf interface was more cumbersome.In the approach presented in this paper, the horizontal path of an actual trajectory is fitted with a series of turn arcs and straight segments.The vertical profile of an actual trajectory is fitted with a series of vertical segments.If necessary, the fitting can be refined iteratively to reduce the difference between the synthesized trajectory and the actual trajectory.Due to noise in the track data, adequate segment lengths must be chosen to avoid overfitting.This methodology is implemented in the CmSimTrackComparer and is briefly described below.For modeling of the horizontal path, turns and straight segments are identified along the actual trajectory.The following parameters control the quality of the fitting:• A heading change tolerance between a reference track point and the current track point is used to determine if the aircraft is in a turn.This tolerance must be large enough to ignore heading noise and small enough to detect real turns.An adequate value is determined with a few rounds of trial and error.• A maximum heading change is used to determine if a turn is finished.A smaller value results in finer fitting at the cost of more segments.For example, a turn of 180 degrees can be modeled as one turn.Alternatively, it can be modeled as two turns of 90 degrees each if the maximum heading change is set to 90 degrees.In the latter case, the two turns can have different turn radii to better fit the actual track points, which in general do not form a perfect arc.Once the horizontal path is defined, a path distance for each track point is computed from its projection onto the (smoothed) horizontal path:s i = s (x i , y i , horizontal path)(2)For modeling of the vertical profile, a series of change points are identified along the actual trajectory by examining both altitude and speeds.These change points split the trajectory into segments.Each segment is then modeled by a specific pilot procedure characterized by fixed parameters.There are more than one way of selecting the change points and the pilot procedure.For the analysis in this section, the change point and pilot procedure selection was intended to best fit the actual trajectory.With this purpose, a change point was chosen by tracking the change of the acceleration and FPA along the trajectory until one of them exceeded the user-selected tolerances.The acceleration was based on the track data's estimated true airspeed, using weather forecast if available.The pilot procedure for each segment was assumed to have a constant acceleration and a fixed FPA.For each segment, the parameters of acceleration and FPA were computed from the beginning and end track points of the segment:a = v e -v b t e -t b(3)γ = arctan h e -h b s e -s b ,(4)where b and e stand for beginning and end, respectively, γ stands for the FPA, and a and v stand for acceleration and speed with respect to the air.In GenProf terminology, each Profile was characterized by the acceleration and the FPA, and each Stop had the end track points path distance as a capture variable.These vertical segments, combined with the horizontal path, specify a TS trajectory from which fuel burn can be estimated.The fuel burn estimation tool was applied to simulated track data generated in a Human-In-The-Loop (HITL) simulation. 24The tool can work with radar track data as well, although tolerance parameters must be adjusted to handle the greater noise in the radar track data.The goal of the HITL simulation was to evaluate the impact of a trajectory predictor's accuracy on controllers' acceptance of the decision support tools.The traffic scenario was time-based metering operations for arrival flights into the North-West corner of the Atlanta Airport terminal area.Controllers were required to deliver arrival traffic in accordance with scheduled times over the meter-fix.The Multi-Aircraft Control System (MACS) 25 was used for both controllers' automation system and the simulated aircraft.Since each arrival flight received multiple maneuvers involving both speed changes and altitude changes, the actual trajectory could have complex speed and altitude profiles.Figure 7 shows for one arrival flight the results of a synthesized trajectory, with a focus on the vertical profile.This flight was a CRJ7 aircraft type, which transitioned from cruise phase at about 207 nmi away from the meter fix to descend and crossed the meter fix at an altitude of 12,000 ft and 250 knots CAS.The path distance in the horizontal axis refers to the distance from the meter fix.The top two plots show very good agreement for altitude and ground speed between the synthesized and actual trajectories.In order to meet the time at the meter fix, controllers' multiple clearances guided the flight to reduce its CAS speed from 300 knots to 260 knots, back up in stages to about 290 knots, and finally down to 250 knots when crossing the meter fix.The progressive fuel burn was estimated by the synthesized trajectory and shown on the bottom plot of Figure 7.
+III.C. Validation of UAS Performance ModelThe U.S. Congress mandated the "safe integration" of UAS in the NAS beginning in September 2015.To support this goal, the Radio Technical Commission for Aeronautics (RTCA) is developing the technological requirements and minimum operational performance standards (MOPS) for a UAS Detect-and-Avoid (DAA) System.The ongoing research at NASA plays a critical role in development and validation of the MOPS by conducting closed-loop and HITL simulations for various UAS missions and scenarios.These simulations required developing aircraft performance models (APMs) for UAS.NASA and its research partners created the APMs for several UAS types in the format of the BADA Operation Performance Files. 23These files provide geometrical, aerodynamic, and physical aircraft parameters for calculation of aircraft trajectories for nominal speeds and operational procedures.However, these nominal APMs may be difficult to use because of large variety of UAS missions and operational procedures.This situation becomes even more extreme in context of DAA system simulations that require a correct modeling of UAS collision avoidance capabilities.To avoid a collision with another aircraft, a UAS would likely not use its nominal, but rather the fastest possible rate of turn, climb, or descent.Hence, validation of APMs for both nominal and off-nominal conditions is more important for UAS than it would be for commercial aircraft, and more challenging.Validation of the BADA aircraft performance models for commercial aircraft was done by comparing predicted trajectories and actual track data for thousands of flights recorded in CMSim files. 22However, the availability of track data for UAS is limited.This section demonstrates how TS GenProf can be used to validate the APM for a typical high altitude -long endurance UAS by comparison with track data for a single test flight.The flight had a complex horizontal path with multiple turns, including a series of loops, and a vertical profile with many climbs and descents in rapid succession at different altitude levels.The CmSimTrackComparer tool was used to derive horizontal and vertical intent from track data.Hence, the effect of intent errors on results of comparisons between TS predictions and track data was minimized.The remaining errors could be caused only by the differences between predicted and observed rates of turn, climb, and descent.The tool automatically extracted a noise-smoothed path from the horizontal path of the actual trajectory, specifying the flight path by a sequence of turn-inside waypoints, as described in section III.B.As shown in Figure 8, the predicted path was very close to the actual horizontal path.A detailed vertical profile, containing altitude and speed, along this horizontal path was generated by running CmSimTrackComparer splitting the trajectory into segments of constant or monotonically changing altitude with profile speeds for each segment determined from track data.This allowed TS to generate predictions that closely followed the actual track.The vertical profile was constructed as follows:• A series of procedurally distinct segments were extracted in a way similar to what was described in section III.B.The difference is that only the altitude profile is examined here.• For each climb or descent segment, a vertical segment with an altitude capture was added.Otherwise a vertical segment with a path-distance capture was added, so path distances for the ending points of all major cruise segments were aligned with actual track.• If a descent immediately followed after a climb or the climb immediately followed after descent, a short cruise segment with 30 second delta time capture was inserted to model a quick transition between climb and descent.This situation is rarely observed for commercial aircraft but can be common for UAS missions.• For climb and descent segments, a pilot procedure with a constant engine setting and a constant speed (Mach or CAS) was assumed.An engine setting of maximum thrust was used for all climb segments, and idle thrust was assumed for all descent segments.• CAS and Mach speeds for the climb and descent segments were determined from track ground speeds at the start and end points of each segment using the weather forecast data for approximate time when the test flight was performed.Figure 9 shows a predicted altitude compared with track as a function of time.The predicted rates of climb and descent are fairly close to track data for most typical climbs and descents.However, in the portion of flight around 3500 seconds the actual aircraft used a faster climb and descent, and the TS substantially underpredicted the rates of climb and descent.Several other times the actual aircraft used a slower climb and descent resulting in large altitude prediction errors.It can be noted that a relatively small error in predicted rates of climb and descent for the final climb (starting at 6700 seconds) and the following long descent segment translated to altitude prediction error larger than the altitude itself at time greater than 8200 seconds.A predicted ground speed profile is similar overall to the track as shown in Figure 10.This is to be expected, since CmSimTrackComparer uses profile speeds extracted from track data.The biggest discrepancy can be observed in the final descent segment due to a time shift caused by the overestimated rate of climb Time (seconds) before the last descent (see Figure 9).Also, it can be noticed that TS predicts sharper peaks in ground speed.As can be seen from this data, the TS tends to overestimate acceleration and deceleration.This to some degree could be attributed to the use of the maximum thrust for acceleration and the idle thrust for deceleration in level flight.
+Time (seconds)
+IV. ConclusionsTrajectory-Based Operations, a key objective in the next-generation air transportation system, cannot be realized without accurate modeling of the aircraft trajectories.The complex and diverse flight procedures, airspace constraints, aircraft types, and mission types in the future system demand a flexible approach by the trajectory generator.The TS GenProf provides a flexible interface that allows the specification of horizontal and vertical profiles without hard-coded presumptions of the underlying procedures and profile types.This has enabled various types of research and analysis to be performed, including the modeling of new procedures, fuel burn estimation, and performance model validation example cases highlighted in this paper.The future ATM environment will likely consist of new advisories, procedures, aircraft types, and missions.With its flexibility, TS GenProf has the ability to adapt to the ever-changing research requirements of ATM.Modeling of new flight procedures and pilot procedures • Estimation of fuel burn from track data • Validation of performance model for UAS Each of these examples demonstrates a different and unique use case of modeling trajectories with various complexity using the GenProf framework.These examples are just a few of the many possible research applications enabled by GenProf.
+FL160Figure 1 .1Figure 1.GenProf trajectory specification example.
+Figure 2 .2Figure 2. GenProf trajectory specification example of forward and reverse integration.
+Figure 3 .3Figure 3. Relationship Diagram of TS Modules and Application Tools.
+Figure 4 .4Figure 4. Radar tracks of an arrival flight to JFK that followed the KINGSTON STAR.
+Figure 5 .5Figure 5.The TS GenProf handling an altitude restriction at LOLLY.
+Figure 6 .6Figure 6.Comparison of predicted and actual trajectories for a flight in the 3D PAM flight test in 2010.
+Figure 7 .7Figure 7.Comparison of the synthesized and actual trajectories, the speed profiles, and the fuel burn of a flight.
+Figure 8 .8Figure 8. Horizontal trajectory of an UAS.
+Figure 9 .9Figure 9. Altitude as a function of time of an UAS.
+Figure 10 .10Figure 10.Ground speed as a function of time.
+			of 12 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on January 28, 2015 | http://arc.aiaa.org| DOI: 10.2514/6.2015-0144
+			of 12 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on January 28, 2015 | http://arc.aiaa.org| DOI: 10.2514/6.2015-0144
+			of 12 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on January 28, 2015 | http://arc.aiaa.org| DOI: 10.2514/6.2015-0144
+			of 12 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on January 28, 2015 | http://arc.aiaa.org| DOI: 10.2514/6.2015-0144
+			of 12 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on January 28, 2015 | http://arc.aiaa.org| DOI: 10.2514/6.2015-0144
+			Downloaded by NASA AMES RESEARCH CENTER on January 28, 2015 | http://arc.aiaa.org| DOI: 10.2514/6.2015-0144
+			of 12 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on January 28, 2015 | http://arc.aiaa.org| DOI: 10.2514/6.2015-0144
+			of
+			American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on January 28, 2015 | http://arc.aiaa.org| DOI: 10.2514/6.2015-0144
+		
+		
+			
+V. AcknowledgmentsThis paper is dedicated to the memory of Steven Green, who had a great impact on aircraft trajectory modeling research.The authors are grateful for his guidance, mentorship, and friendship.			
+			
+
+				
+
+
+	
+		The Next-Generation Air Transportation System's Joint Planning Environment: A Decision Support System
+		
+			EdgarWaggoner
+		
+		
+			ScottGoldsmith
+		
+		
+			JoshElliot
+		
+		10.2514/6.2009-7011
+	
+	
+		9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO)
+		
+			American Institute of Aeronautics and Astronautics
+			Oct. 2009
+		
+	
+	"Concept of Operations for the Next Generation Air Transportation System," Joint Planning and Development Office (JPDO), Oct. 2009.
+
+
+
+	
+		The ATM Target of Operations
+		
+			SConsortium
+		
+		DLT0612-001-02-00
+		
+			2007
+		
+	
+	Technical Report
+	Consortium, S., "The ATM Target of Operations," Technical Report, Vol. No. DLT0612-001-02-00, 2007.
+
+
+
+	
+		Optimized Profile Descent Arrivals at Los Angeles International Airport
+		
+			J-PClarke
+		
+		
+			JBrooks
+		
+		
+			GNagle
+		
+		
+			AScacchioli
+		
+		
+			WWhite
+		
+		
+			SRLiu
+		
+		10.2514/1.c031529
+	
+	
+		Journal of Aircraft
+		Journal of Aircraft
+		0021-8669
+		1533-3868
+		
+			50
+			2
+			
+			2013
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Clarke, J.-P., Brooks, J., Nagle, G., Scacchioli, A., White, W., and Liu, S., "Optimized Profile Descent Arrivals at Los Angeles International Airport," Journal of Aircraft, Vol. 50, No. 2, 2013, pp. 360-369.
+
+
+
+	
+		Determining operational benefits of required navigation performance (RNP) authorization required (AR) approaches
+		
+			DavidGouldey
+		
+		10.1109/icnsurv.2014.6820048
+	
+	
+		2014 Integrated Communications, Navigation and Surveillance Conference (ICNS) Conference Proceedings
+		
+			IEEE
+			June 2005
+			52
+		
+	
+	United States Standard for Required Navigation Performance (RNP) Approach Procedures with Special Aircraft and Aircrew Authorization Required (SAAAR), Order 8260.52, Federal Aviation Administration (FAA), June 2005.
+
+
+
+	
+		Trajectory Synchronization between air and ground trajectory predictors
+		
+			SergioTorres
+		
+		
+			JoelKKlooster
+		
+		
+			LilingRen
+		
+		
+			MauricioCastillo-Effen
+		
+		10.1109/dasc.2011.6095978
+	
+	
+		2011 IEEE/AIAA 30th Digital Avionics Systems Conference
+		
+			IEEE
+			2011
+			
+		
+	
+	2011 IEEE/AIAA 30th
+	Torres, S., Klooster, J. K., Ren, L., and Castillo-Effen, M., "Trajectory Synchronization between Air and Ground Trajectory Predictors," Digital Avionics Systems Conference (DASC), 2011 IEEE/AIAA 30th, IEEE, 2011, pp. 1E3-1.
+
+
+
+	
+		Comparison of Aircraft Trajectory Predictor Capabilities and Impacts on Automation Interoperability
+		
+			RobertVivona
+		
+		
+			KarenCate
+		
+		
+			StevenGreen
+		
+		10.2514/6.2011-6856
+	
+	
+		11th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		
+			American Institute of Aeronautics and Astronautics
+			May 2011
+		
+	
+	Comparison of Aircraft Trajectory Predictor Capabilities and Their Impacts on Air Traffic Management Automation Interoperability
+	Vivona, R. A., Cate, K., and Green, S. M., "Comparison of Aircraft Trajectory Predictor Capabilities and Their Impacts on Air Traffic Management Automation Interoperability," Proceedings of the AIAA Aircraft Technology, Integration, and Operations Conference, AIAA-2012-6856, Sept. 2012. 7 Concept of Operations, Guidance and Template, Final Version 1.0 , Federal Aviation Administration (FAA), May 2011.
+
+
+
+	
+		Design of Center-TRACON Automation System
+		
+			HErzberger
+		
+		
+			TJDavis
+		
+		
+			SMGreen
+		
+	
+	
+		Machine Intelligence in Air Traffic Management
+		
+			ABenoit
+		
+		
+			AgardCp-538
+		
+		
+			Oct. 1993
+			12
+			
+		
+	
+	Erzberger, H., Davis, T. J., and Green, S. M., "Design of Center-TRACON Automation System," Machine Intelligence in Air Traffic Management, edited by A. Benoit, AGARD CP-538, Oct. 1993, pp. 11.1-11.12.
+
+
+
+	
+		Trajectory Synthesis for Air Traffic Automation
+		
+			RhondaSlattery
+		
+		
+			YiyuanZhao
+		
+		10.2514/2.4056
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		Journal of Guidance, Control, and Dynamics
+		0731-5090
+		1533-3884
+		
+			20
+			2
+			
+			March 1997
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Slattery, R. and Zhao, Y., "Trajectory Synthesis for Air Traffic Automation," Journal of Guidance, Control and Dynam- ics, Vol. 20, No. 2, March 1997, pp. 232-238.
+
+
+
+	
+		The Traffic Management Advisor
+		
+			WilliamNedell
+		
+		
+			HeinzErzberger
+		
+		
+			FrankNeuman
+		
+		10.23919/acc.1990.4790788
+	
+	
+		1990 American Control Conference
+		
+			IEEE
+			May 1990
+		
+	
+	American Control Conference
+	Nedell, W., Erzberger, H., and Neuman, F., "The Traffic Management Advisor," American Control Conference, May 1990.
+
+
+
+	
+		The Trajectory Synthesizer Generalized Profile Interface
+		
+			AlanLee
+		
+		
+			XavierBouyssounouse
+		
+		
+			JamesMurphy
+		
+		10.2514/6.2010-9138
+		AIAA-2010-9138
+	
+	
+		10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		
+			American Institute of Aeronautics and Astronautics
+			Sept. 2010
+			12
+		
+	
+	Lee, A. G., Bouyssounouse, X., and Murphy, J. R., "The Trajectory Synthesizer Generalized Profile Interface," Proceed- ings of the 10th AIAA Aviation Technology, Integration, and Operations Conference, AIAA-2010-9138, Sept. 2010. 12
+
+
+
+	
+		The Efficient Descent Advisor: Technology Validation and Transition
+		
+			RichardCoppenbarger
+		
+		
+			MiwaHayashi
+		
+		
+			GauravNagle
+		
+		
+			DouglasSweet
+		
+		
+			RenanSalcido
+		
+		10.2514/6.2012-5611
+		AIAA-2012-5611
+	
+	
+		12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference and 14th AIAA/ISSMO Multidisciplinary Analysis and Optimization Conference
+		
+			American Institute of Aeronautics and Astronautics
+			Sept. 2012
+		
+	
+	Coppenbarger, R. A., Nagle, G., Sweet, D., and Hayashi, M., "The Efficient Descent Advisor: Technology Validation and Transition," Proceedings of the AIAA Aircraft Technology, Integration, and Operations Conference (ATIO), AIAA-2012-5611, Sept. 2012.
+
+
+
+	
+		Human-in-the-Loop Simulation of Three-Dimensional Path Arrival Management with Trajectory Error
+		
+			GauravNagle
+		
+		
+			DouglasSweet
+		
+		
+			GregoryCarr
+		
+		
+			ValentinoFelipe
+		
+		
+			AndrewTrapani
+		
+		
+			RichardCoppenbarger
+		
+		
+			MiwaHayashi
+		
+		10.2514/6.2011-6877
+		AIAA-2011-6877
+	
+	
+		11th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Virginia Beach, VA
+		
+			American Institute of Aeronautics and Astronautics
+			2011
+		
+	
+	Nagle, G., Sweet, D., Carr, G., Felipe, V., Trapani, A., Coppenbarger, R., and Hayashi, M., "Human-in-the-Loop Simulation of the Efficient Descent Advisor for 3D Path Arrival Management," Proceedings of the AIAA Aircraft Technology, Integration, and Operations Conference (ATIO), AIAA-2011-6877, Virginia Beach, VA, 2011.
+
+
+
+	
+		Trajectory Prediction Accuracy and Error Sources for Regional Jet Descents
+		
+			JeffreyMHenderson
+		
+		
+			RobertAVivona
+		
+		
+			StevenGreen
+		
+		10.2514/6.2013-4535
+		NASA/TM- 2014-218341
+	
+	
+		AIAA Guidance, Navigation, and Control (GNC) Conference
+		
+			American Institute of Aeronautics and Astronautics
+			Nov. 2014
+		
+	
+	Jeffrey Henderson, Wu, M. G. and Green, S. M., "Trajectory Prediction Accuracy and Error Sources for Regional Jet Descents Part I Results of a 2010 Flight Trial at Denver International Airport using a Global 5000 Test Aircraft," NASA/TM- 2014-218341, Nov. 2014.
+
+
+
+	
+		Conclusion
+		
+			DMcnally
+		
+		
+			EMueller
+		
+		
+			DThipphavong
+		
+		
+			RPaielli
+		
+		
+			JCheng
+		
+		
+			CLee
+		
+		
+			SSahlman
+		
+		
+			JWalton
+		
+		10.1002/9781119006954.oth1
+	
+	
+		Aeronautical Air-Ground Data Link Communications
+		Nice, France
+		
+			John Wiley & Sons, Inc.
+			2010
+			
+		
+	
+	McNally, D., Mueller, E., Thipphavong, D., Paielli, R., Cheng, J., Lee, C., Sahlman, S., and Walton, J., "A Near-Term Concept for Trajectory-Based Operations with Air/Ground Data Link Communication," Proceedings of the 27th International Congress of the Aeronautical Sciences, Nice, France, 2010.
+
+
+
+	
+		Evaluation of the terminal area precision scheduling and spacing system for near-term NAS application
+		
+			JThipphavong
+		
+		
+			LMartin
+		
+		
+			HSwenson
+		
+		
+			PLin
+		
+		
+			JNguyen
+		
+		10.1201/b12321-12
+	
+	
+		Advances in Human Aspects of Aviation
+		
+			CRC Press
+			2012
+			
+		
+	
+	Thipphavong, J., Martin, L., Swenson, H., Lin, P., and Nguyen, J., "Evaluation of the Terminal Area Precision Scheduling and Spacing System for near-term NAS application," 4th International Conference on Applied Human Factors and Ergonomics (AHFE), 2012.
+
+
+
+	
+		Development and Application of a Method to Reconstruct Aircraft Flight Paths using Surveillance Data
+		
+			GauravNagle
+		
+		
+			AndrewTrapani
+		
+		
+			DouglasSweet
+		
+		
+			GregoryCarr
+		
+		10.2514/6.2012-5701
+		AIAA-2012-5701
+	
+	
+		12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference and 14th AIAA/ISSMO Multidisciplinary Analysis and Optimization Conference
+		
+			American Institute of Aeronautics and Astronautics
+			Sept. 2012
+		
+	
+	Nagle, G., Trapani, A., Sweet, D., and Carr, G., "Development and Application of a Method to Reconstruct Aircraft Flight Paths using Surveillance Data," 12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference and 14th AIAA/ISSMO Multidisciplinary Analysis and Optimization Conference, AIAA-2012-5701, Sept. 2012.
+
+
+
+	
+		Second Generation UAM Community Noise Assessment Using the FAA Aviation Environmental Design Tool
+		
+			JKoopman
+		
+		10.2514/6.2022-2167.vid
+	
+	
+		Federal Aviation Administration (FAA)
+		
+			American Institute of Aeronautics and Astronautics (AIAA)
+			Nov. 2012
+		
+	
+	Tech. Rep. DOT-VNTSC-FAA-12-09
+	Koopman, J., e. a., "Aviation Environmental Design Tool (AEDT) Technical Manual, Version 2a," Tech. Rep. DOT- VNTSC-FAA-12-09, Federal Aviation Administration (FAA), Nov. 2012.
+
+
+
+	
+		Automated Aircraft Trajectory Prediction Based on Formal Intent-Related Language Processing
+		
+			JuanABesada
+		
+		
+			GuillermoFrontera
+		
+		
+			JesusCrespo
+		
+		
+			EnriqueCasado
+		
+		
+			JavierLopez-Leones
+		
+		10.1109/tits.2013.2252343
+	
+	
+		IEEE Transactions on Intelligent Transportation Systems
+		IEEE Trans. Intell. Transport. Syst.
+		1524-9050
+		1558-0016
+		
+			14
+			3
+			
+			2013
+			Institute of Electrical and Electronics Engineers (IEEE)
+		
+	
+	Besada, J. A., Frontera, G., Crespo, J., Casado, E., and López-Leonés, J., "Automated Aircraft Trajectory Prediction Based on Formal Intent-Related Language Processing," IEEE Transactions on Intelligent Transportation systems, Vol. 14, No. 3, 2013.
+
+
+
+	
+		Strategies for Choosing Descent Flight-Path Angles for Small Jets
+		
+			MGWu
+		
+		
+			SMGreen
+		
+		
+			JJones
+		
+		10.2514/1.J051609
+		
+	
+	
+		Journal of Aircraft
+		
+			2014
+		
+	
+	to appear
+	Wu, M. G., Green, S. M., and Jones, J., "Strategies for Choosing Descent Flight-Path Angles for Small Jets," Journal of Aircraft, 2014, to appear; doi: http://arc.aiaa.org/doi/abs/10.2514/1.J051609.
+
+
+
+	
+		Design of a Research Platform for En Route Conflict Detection and Resolution
+		
+			JamesMurphy
+		
+		
+			JohnRobinson
+		
+		10.2514/6.2007-7803
+		AIAA-2007-7803
+	
+	
+		7th AIAA ATIO Conf, 2nd CEIAT Int'l Conf on Innov and Integr in Aero Sciences,17th LTA Systems Tech Conf; followed by 2nd TEOS Forum
+		
+			American Institute of Aeronautics and Astronautics
+			2007
+		
+	
+	Murphy, J. and Robinson, J., "Design of a Research Platform for En Route Conflict Detection and Resolution," Proc AIAA Aviation Technology Integration and Operations Conference, AIAA-2007-7803, 2007.
+
+
+
+	
+		Sensitivity Analysis of Aviation Environmental Impacts for the Base of Aircraft Data (BADA) Family 4
+		
+			MAbramson
+		
+		
+			KAli
+		
+		10.2514/6.2021-0457.vid
+		
+			2012
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Abramson, M. and Ali, K., "Integrating the Base of Aircraft Data (BADA) in CTAS Trajectory Synthesizer," 2012.
+
+
+
+	
+		Advanced Aircraft Performance Modeling for ATM: Enhancements to the Bada Model
+		
+			ANuic
+		
+		
+			CPoinsot
+		
+		
+			M.-GIagaru
+		
+		
+			EGallo
+		
+		
+			FANavarro
+		
+		
+			CQuerejeta
+		
+		10.1109/dasc.2005.1563320
+	
+	
+		24th Digital Avionics Systems Conference
+		
+			IEEE
+			Nov. 2005
+		
+	
+	Nuic, A., Poinsot, C., Iagaru, M.-G., Gallo, E., Navarro, F. A., and Querejeta, C., "Advanced Aircraft Performance Modeling for ATM: Enhancements to the BADA Model," Proceedings of the IEEE/AIAA 24th Digital Avionics Systems Conference, Nov. 2005.
+
+
+
+	
+		The Impact of Trajectory Prediction Uncertainty on Air Traffic Controller Performance and Acceptability
+		
+			JoeyMercer
+		
+		
+			NancyBienert
+		
+		
+			AshleyGomez
+		
+		
+			SarahHunt
+		
+		
+			JoshuaMKraut
+		
+		
+			LynneMartin
+		
+		
+			SusanMorey
+		
+		
+			StevenGreen
+		
+		
+			ThomasPrevot
+		
+		
+			MinghongGWu
+		
+		10.2514/6.2013-4320
+		AIAA-2013-4320
+	
+	
+		2013 Aviation Technology, Integration, and Operations Conference
+		
+			American Institute of Aeronautics and Astronautics
+			Sept. 2013
+			25
+		
+	
+	Mercer, J., Bienert, N., Gomez, A., Hunt, S., Kraut, J., Martin, L., Morey, S., Green, S. M., Prevôt, T., and Wu10, M. G., "The Impact of Trajectory Prediction Uncertainty on Air Traffic Controller Performance and Acceptability," Proceedings of the AIAA Aircraft Technology, Integration, and Operations Conference (ATIO), AIAA-2013-4320, Sept. 2013. 25
+
+
+
+	
+		MACS: A Simulation Platform for Today's and Tomorrow's Air Traffic Operations
+		
+			ThomasPrevot
+		
+		
+			JoeyMercer
+		
+		10.2514/6.2007-6556
+	
+	
+		AIAA Modeling and Simulation Technologies Conference and Exhibit
+		
+			American Institute of Aeronautics and Astronautics
+			2007
+		
+	
+	Prevôt, T. and Mercer, J., "MACS: A Simulation Platform for Todays and Tomorrows Air Traffic Operations," Proceedings of the AIAA Modeling and Simulation Technologies Conference and Exhibit, 2007.
+
+
+				
+			
+		
+	

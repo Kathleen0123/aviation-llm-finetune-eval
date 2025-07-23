@@ -1,0 +1,435 @@
+
+	
+	
+		
+I. IntroductionConvective weather is the leading cause of flight delays within the National Airspace System (NAS).In fact, the vast majority of flight delays greater than fifteen minutes are caused by weather. 1,2 hese delays result from actions such as ground delays, airborne holding, and miles-in-trail restrictions that are used to manage the reduced capacity of the weather-affected regions and airports.En-route air traffic can be negatively affected by convective weather due to reductions in sector capacity and to extra flight distance caused by rerouting.When a portion of a sector is blocked by weather, aircraft must be vectored around it and may be sent to neighboring sectors, possibly overloading them.The resulting traffic flow patterns do not match the static sector boundaries that were designed with normal good-weather traffic patterns in mind.In an effort to alleviate these negative effects and reduce controller workload, it is desirable to flexibly alter sector designs in response to blocking convective weather.Current work in systematic sector design has focused primarily on a clean-sheet approach using historical or simulated flight track data as its input.References 3-7 are just a sampling of the work that has recently been done in this area.The philosophy is that if high-performing sectors can be systematically designed based on traffic flow patterns, then changes in those patterns (including changes due to weather) will result in appropriately designed sectors.Less work has been done in the area of explicitly designing sectors around convective weather constraints.In Ref. 3 the authors use a Mixed Integer Linear Program model to optimally design sectors based on changing traffic patterns due to weather.The sectors are designed based on historical weather-affected traffic patterns.In Ref. 8 the authors present an algorithm for changing the size and shape of existing sectors based on current sector loading conditions by trading sector building blocks known as Fix Posting Areas between neighboring sector boundaries.One problem with implementing these methods is that they need to identify new traffic patterns that arise from blocking weather on which to base the new sector designs.While it is possible to synthesize the weather-affected traffic with traffic modeling software, it would be convenient to avoid having to do so.An additional issue with dynamically redesigning sectors in real time is that abruptly changing sector boundaries during operations increases controllers' workload as they transition from one sector configuration to another.This has been demonstrated by recent humanin-the-loop experiments in which controllers were subjected to varying sector designs during normal traffic conditions in an operational setting. 9It might be preferable to redesign sectors incrementally and avoid major boundary shifts so that the sector configuration changes produce less work for controllers.In this paper, a new method of altering sector boundaries around blocking convective weather is presented.This method is based on the premise that the existing sector design exhibits high-performance in nominal traffic conditions from a controller's operational perspective.When blocking convective weather is present, it reshapes, or "stretches" sectors around blocking weather in order to better handle rerouted traffic.Thus, instead of radically changing sectors in response to weather conditions, smooth and intuitive changes are made gradually.This reduces the amount of controller workload involved with transitioning from one sector design to another.It also eliminates the necessity of using historical or synthesized weather-affected traffic patterns to design the new sectors.This paper is arranged as follows: Section II describes the theory on which the new sector design algorithm is based, and Section III details the application of the theory to the new sector design method.Section IV presents the results of the method applied to some notional blocking convective weather.Comparisons are made to another sector design method that uses synthesized traffic to design sectors around blocking weather.Finally, the performance of the new sectors is analyzed in simulation.Conclusions and directions of future work are discussed in Section V. When redesigning sectors to lessen the negative impact caused by weather, it is helpful to understand how weather impacts sector demands.This relation is discussed in this section, followed by a means of quantifying sector capacity reduction due to blocking weather.
+II. Background
+II.A. Effects of Blocking Weather on SectorsIn Figure 1, Sector ZFW42 in Fort Worth Center is directly affected by the notional blocking weather constraint.Traffic normally passing through this sector must be rerouted around this constraint with the possibility of overloading surrounding sectors.Thus, while Sector ZFW42 will be significantly affected by the weather, the neighboring sectors will also be heavily impacted-perhaps more so.This leads to severe workload inequity among all the sectors in the region.Furthermore, to prevent the capacities of these sectors from being exceeded due to traffic demand, Traffic Flow Management (TFM) actions like ground delays, airborne holding, and miles-in-trail restrictions may intervene that lead to greater systemwide delays.In this work, it is assumed that a polygon can be constructed around the severe weather and that air traffic will not be allowed to pass through that region.In actual operations, weather is not treated as a no-fly zone; often limited traffic is allowed to fly through gaps between severe weather cells.However, this assumption will be made as an approximation to existing operations and will serve as a basis for the sector design method described herein.It is the goal of this sector design method to alter the boundaries of the sectors in the region affected most by the weather in order to manage the rerouted traffic in a more equitable manner.In such situations, it is proposed that altered sector designs may actually dictate and help direct traffic routes instead of reacting to the resulting traffic.
+II.B. Estimating Sector Capacity ReductionIn order to redesign the sectors to improve the flow of weather-impacted traffic, it is helpful to have a means of quantifying the decrease in sector capacity caused by weather.This is a vital part of this sector design process.Attempts at estimating capacity reduction are described in Refs.10-12.In Ref. 10 the authors propose a method for estimating sector capacity reduction due to severe weather.Sector capacity is difficult to measure-even in perfect conditions.Often, a sector's Monitor Alert Parameter (MAP) is used as an estimate for sector capacity, but this is not a hard and fixed capacity limit.The work of Ref. 10 offers a means of estimating the reduction of this capacity based on the predicted traffic flows through the sector and an application of the Max-flow, min-cut Theorem.The basis of the Max-flow min-cut Theorem is that a network can only handle as much volume as the weakest link will allow.Applied to flights in a sector, it is proposed that the capacity for a sector to handle traffic between two of its neighboring sectors is proportional to the minimum cross-sectional distance (min-cut) across that flight path.For instance, the capacity of the sector shown in Figure 2 to handle traffic between sectors A and C without weather is proportional to the distance O AC .In the presence of weather represented by the pink polygon, this min-cut distance is reduced to W AC , and the percentage of capacity reduction for traffic between sectors A and C is simply the min-cut ratio WAC OAC .The total capacity reduction for the sector is the average of all the flight path min-cut ratios weighted according to the number, F i , of predicted flights for a given time span in each path where i ∈ {All neighbor pair flight paths}.Thus, the total sector capacity reduction due to blocking weather may be calculated asPercent Capacity Reduction = i F i • Wi Oi i F i .(1)Referring to Figure 2, where only two neighbor pair paths are shown, it can be seen that the min-cut ratio for path BD is less than that for path AC.However, if there is significantly more traffic volume between sectors A and C, the AC min-cut may have a more significant impact on the sector's capacity reductionhence, the use of a weighted average based on individual flight path volume in Eq. 1.If the existing sectors are to be re-shaped based on blocking convective weather to better serve the resulting traffic patterns, they should be altered commensurate with the magnitude of weather impact.To that end, one approach is to enlarge the weather-impacted sectors to make up for the volume lost due to the blocking weather.However, as demonstrated here, a sector's capacity reduction due to weather is largely dependent on traffic direction and volume as well as weather.Thus, it is reasonable to apply an intelligent bias to the direction of sector reshaping that best reduces the negative effect of the weather.This is the basis for the sector design algorithm described in the following section.
+III. MethodThis sector design method consists of two steps.The first step is to identify the weather-affected sectors and the directions in which they should be deformed to best increase their capacities.Based on Eq. 1, a metric is sought that identifies the flight path direction that is most significantly affected by the weather, contributing the most to the sector's reduction in capacity.Recognizing that the most critical flight path contains a large volume of flights relative to a small min-cut ratio (M CR), this metric is defined asFlow-Weather Impact = F i M CR i ,(2)and the most critical flight path is identified as that between the neighbor pair i such that this metric is the maximum among all neighbor pair flight paths.Therefore, using a dataset of nominal good-weather traffic, the flight volume parameters F i , which represent the number of flights between each neighboring sector pair over a given period of time, can be found and the critical flow direction is identified for every sector with an intersecting blocking weather polygon.Note that values for F i may be captured offline independent of the weather.To illustrate the validity of this metric, consider Figure 3, which shows the top three flight paths according to traffic volume through sector ZFW42 during 4 -5 p.m. Central Time (which is one of the highest volume one-hour time periods for sectors in this region).Here, flight volume data was accumulated from a multiple of days for this time period.Note that the flight volume for the sector pair ZME20/21-ZFW48 is by far the largest with F = 1129; however, the flight path between ZFW48 and ZFW90 is the most significantly affected by the blocking weather with a min-cut ratio of M CR = 0.21.Therefore, the metric from Eq. 2 for the ZFW48-ZFW90 path is 425/0.21= 2024 which is larger than 1129/0.63= 1792 from the ZME20/21-ZFW48 path.Thus, for this particular weather pattern, it makes the most sense to adjust the sector boundaries in a way that benefits the ZFW48-ZFW90 flight path.With the critical flight path directions established for all the weather-intersecting sectors, the second step is to deform the sector boundaries accordingly.The evolving sector algorithm models the edges and vertices of the sectors as if they are a flexible net, or "mesh."Each sector edge is modeled as a linear spring, and each vertex is anchored to its original location also via an imaginary linear spring.Displacement of the vertices from their original locations results in a force calculated by F = k • δx where δx is the deflection of a vertex, or stretch of an edge.The stiffness values of k can be set for both vertex anchor springs and boundary edges independently.Additionally, within each sector, an interior force F int pushes outward on every vertex.The magnitude and direction of this force is related to the way weather intersects the sectors.F Int F Int F Int F V ert F Edge F Edge F Edge
+Original Vertex LocationSe cto r Bo un da ry Ed ge For sectors that directly intersect a weather polygon, this force isF int = α mc (O * -W * ) O * ,(3)where O * is the non-weather min-cut distance associated with the critical flight path direction, and W * is the critical min-cut distance in the presence of weather.α mc is a multiplier factor used to tune the algorithm.The direction of F int for the weatherintersecting sectors is normal to the critical flight path.Thus, these sectors tend to enlarge with a bias in the direction that best increases the capacities of the most critical flight paths.The neighboring sectors that do not directly intersect weather resist deformation by their own internal forces.For these sectors, the internal forces on their vertices is related to their current area and is given byF int = α A (A 0 -A) A 0 ,(4)where A 0 is the original polygonal area of the sector, A is the current area due to boundary deformation, and α A is another weighting multiplier used to tune the algorithm.The direction of F int for these sectors is always outward from an interior point in a direction that bisects the interior angles of the polygon at each vertex-there is no bias for dominant flight paths taken into account.In this force/deflection model the sum of forces on each vertex is a function of the vertex positions.See Figure 4. To determine the final location of the vertices, an iterative algorithm is used to move each vertex in the direction of the net force until equilibrium is found ( F = 0).At every step in the iteration, new values of δx, W * , and A are computed in order to determine F Edge , F V ert , and F int at every vertex.The stiffness values k and the weighting multipliers α mc and α A are algorithm tuning parameters which are sized relative to each other in order to bias the results as desired.For instance, if it is desired that the sectors move very little in response to weather, the α constants would be set lower than the k constants.The algorithm proceeds until the maximum vertex movement in a single iteration falls below a predetermined threshold.The methodology and implementation of this algorithm is inspired by the mesh generation work of Ref. 14. Sometimes, given certain weather polygon shapes and sizes, the algorithm can produce radically altered and, occasionally, tangled sector boundaries.To prevent this, each vertex is limited by a maximum permissible translational distance.Indeed, the current algorithm is not robust to complex and varied weather patterns.For instance, multiple weather polygons covering an entire sector will cause problems for the algorithm.Some of these shortcomings will be covered in the next section following a discussion of the results.The overall result of this approach is that sectors directly intersecting weather will enlarge and bend based on the min-cut analysis in order to better accommodate the anticipated rerouted traffic.Meanwhile, the immediately adjacent neighboring sectors will absorb the deformations (albeit to a lesser degree) while maintaining their original size as much as possible.The amount of deformation tapers off for sectors farther away from the weather.In this way, the burden of the weather is spread about the region.Several experiments were performed to study the performance of this sector design method.For each of these, the nominal good-weather traffic patterns for the weather-intersecting sectors during the time span of interest was captured in advance.For this work, 57 high-volume low-delay days were identified using the Federal Aviation Administration's Air Traffic Operations Network (OPSNET) database.For more information on the selection of this dataset, see Ref. 15.
+IV. Results
+ZFW94
+IV.A. Large Weather PolygonThe first experiment involves studying the performance of the algorithm when one large weather polygon blocks the majority of a single sector.Given the notional weather polygon shown in Figure 1 occurring between 4 -5 p.m. Central Time, the critical flight path and the associated min-cut distances O * and W * are determined for sector ZFW42 (since this is the only weather-intersecting sector).The algorithm is run for all the high sectors in ZFW center with the center boundary vertices held fixed, and the resulting sectors are shown in blue in Figure 5 with the original sectors shown in green.Note the critical flight path direction and observe that the algorithm responded by expanding sector ZFW42 in a perpendicular direction to better accommodate this flight path without having to overload the adjacent sectors.The adjacent sectors ZFW48, ZFW50, and ZFW90 are slightly reduced in size, but remain similar to their original shape.Sectors like ZFW92 that are far away from the blocking weather exhibit almost no deformation.For this experiment, all the sectors within ZFW center were available for deformation, yet, only those in close proximity to the convective weather were altered significantly.This is consistent with how the traffic in the region would be affected; traffic in the western and southern portions of ZFW would be much less impacted than in the north-eastern side.As mentioned in the previous section, some weather patterns may cause the algorithm to produce drastic deformations or tangled overlapping edges.These results may be avoided by placing restrictions on vertex movement, but the algorithm may still produce sectors with bad characteristics.Some of the vertex movements may be undesirable like those of the western edge of sectors ZFW90 and ZFW71 in Figure 5 which translated westward into ZFW46.This could result in some extremely short sector transit times for aircraft flying within the region.Situations like this may be addressed with some post-processing smoothing, or with more advanced algorithm design.These shortcomings of the existing algorithm will need to be addressed in future work.As a comparison to an existing sector design method, the Mixed Integer Linear Programming (MILP) sector design method is used to design the sectors around this weather polygon.This method clusters small hex cells together to form sectors in an optimal manner such that the aircraft counts in the clusters are balanced and the dominant traffic flows are reflected in the final sector shapes.Like many other sector design methods, it requires traffic data for its input.Here, FACET 16 was used to synthesize weather-affected traffic by simulating traffic based on the same dataset of 57 high-volume low-delay days between 4 -5 p.m. Central Time.FACET's weather avoidance algorithm was used to fly aircraft around the weather polygon of Figure 1.Only a subset of sectors were redesigned using the MILP method and the results are shown in Figure 6.For more information on this sector design method, refer to Refs. 3, 4.  The results demonstrate that the MILP method does a good job of making sectors that capture the major rerouted traffic flow around the weather.Note, too, that sectors farther away from the weather (ZFW05X, for example) appear to be similar to their closest matching existing sectors shown in Figure 5.This validates the claim that the existing sectors are well matched to the existing traffic flow, and that sectors farther away from inclement weather do not need to be altered as much as those near the weather.Also, like the sectors altered by the evolving sector method, there are some undesirable geometric characteristics exhibited in the MILP sectors (the long pointed southern edge of ZFW02X, for example).However, unlike the MILP sectors, the evolved sectors have the advantage of more closely matching the original sectors, and therefore would require less time for controller and operational adjustment.Furthermore, the evolved sectors were produced without having to synthesize rerouted air traffic.
+IV.B. Response to Moving WeatherIn order to further test the algorithm, six notional blocking weather polygons were used to simulate the movement and expansion of weather through the region.The results are shown in Figure 7.All six polygons intersect sectors ZFW42 and ZFW90.Recall that none of these steps required simulating routes around the weather.Most of these results were consistent with expectations presuming that the critical flight paths stem from arriving and departing flights into and out of DFW airport.However, it is interesting to note that for Step A and Step D, the critical flight path for sector ZFW90 is found to be in the north-south direction.This results in deforming the western edge (instead of the southern edge) away from the weather.These results suggest that perhaps identifying multiple critical flight path directions makes more sense.These ideas can be explored in future work.
+IV.C. Sector Loading AnalysisFinally, a comparison of sector traffic loads can be made between the existing sectors and the altered sectors when weather is present.The aircraft count distributions for the unaltered sectors ZFW42, ZFW48, ZFW50, and ZFW90 resulting from the nominal (no weather) traffic paths in the region during this time window are shown in Figure 8.These results were produced by FACET using the same flight dataset as before.Then, using the notional blocking weather of Figure 1, FACET's weather avoidance algorithm is used to direct traffic around the blocking weather polygon.The resulting distributions produced by this simulation for the same set of sectors is shown in Figure 9(a).The weather avoidance algorithm generates a shortest-path trajectory around the blocking polygon for all flights that would intersect it.It does not maintain proper separation or miles-in-trail restrictions for the altered traffic flows; however, this is a sufficient simulation for demonstrating the effects of blocking weather on sector demands in the region.This is because it isolates the effect of the weather on the sectors without the associated reduction in traffic volume due to ground delays and miles-in-trail restrictions that would be present in historical weather-affected traffic data.Comparing the shapes of the distributions and the mean and max aircraft count values of Figure 8, to those of Figure 9(a), it is clear that traffic volume significantly drops in ZFW42 while increasing in the neighboring sectors.This is to be expected.
+V. ConclusionsA new strategy for moving sector boundaries based on convective weather is presented in this paper.Sectors that intersect blocking weather are stretched in a direction that increases capacity where it is needed the most, while the adjacent sectors absorb the deformations in a way that tends to preserve their original size and shape as much as possible.This lessens the workload required by controllers to adjust to the new sector shapes.The algorithm only requires nominal (historic or simulated) traffic patterns as input; weatheraffected traffic does not need to be simulated as with many other sector design methods.Thus, the response to changing weather conditions can be immediate.Also, since the new sector shapes are based inherently on the original sector shapes, the associated workload involved with incorporating the new sector shapes is minimized.Rather than predicating sector designs on a predetermined TFM response, it may make sense in this framework to base the TFM actions on the resulting sector changes.Preliminary results demonstrate that the algorithm is capable of producing sectors that absorb the anticipated rerouted traffic and improve the capacity of the weather-impacted sectors.Currently, the algorithm can produce some inconsistent and unstable results depending on the shape and location of the weather polygon.Future work must address these issues so the algorithm can handle varied and realistic weather patterns.Also, it is difficult to judge with certainty what advantage (if any) altered sector boundaries offer.This is in part due to the difficulty of trying to simulate TFM actions taken by controllers in response to weather.More research is necessary to make the evolving sector algorithm more robust and to further improve and validate its performance.Figure 1 .1Figure 1.The polygon containing the severe convective weather is removed from the intersecting sector(s) and treated as a no-fly zone.
+1313
+Figure 2 .2Figure 2. Computing sector capacity reduction due to blocking weather.
+MFigure 3 .3Figure 3. Top three traffic flow paths in ZFW42 with corresponding nominal (no weather) flow volume F and min-cut ratio M CR due to blocking weather shown in pink.
+Figure 4 .4Figure 4.The combination of forces on a sector boundary vertex.The equilibrium vertex location is determined by finding the location where the net force sums to zero.
+Figure 5 .5Figure 5. Original sectors shown in green, deformed sectors produced by the evolving sector algorithm shown in blue.
+Figure 6 .6Figure 6.Redesigned sectors in the local weather-affected region surrounded in black produced by the MILP method.
+Figure 7 .7Figure 7. Several notional blocking weather patterns with the evolved sectors shown in blue and the original sectors shown in green.
+		
+		
+			
+Next, the same traffic used in Figure 9(a) was run through the evolved sectors from Figure 5 produced by the algorithm.The histograms of the aircraft counts for the altered sectors are shown in Figure 9(b).Indeed, when compared to the results of 9(a), the expansion of sector ZFW42 reduces the mean and max loads of the surrounding sectors, and the flight counts are more evenly distributed among the four sectors.The max peak count of 27 in sector ZFW42 would not be permitted in current operations.However, 99.4% of the aircraft count data in this sector are below the nominal MAP value of 18.Furthermore, in reality, rerouted flights are more intelligently controlled, and the diverted aircraft would be rerouted with proper separation assurance and sector capacity taken into account.These results confirm that the most heavily affected sector (ZFW42) is capable of being enlarged using the algorithm to handle greater capacity without tremendously burdening the neighboring sectors, all the while maintaining a similarity to the original sector shapes.			
+			
+
+				
+
+
+	
+		Weather Index With Queuing Component For National Airspace System Performance Assessment
+		
+			AKlein
+		
+		
+			RJehlen
+		
+		
+			DLiang
+		
+		
+	
+	
+		7 th USA-Europe ATM R&D Seminar
+		Barcelona, Spain
+		
+			July 2007. 2
+		
+	
+	FAA OPSNET and ASPM data
+	Klein, A., Jehlen, R., and Liang, D., "Weather Index With Queuing Component For National Airspace System Perfor- mance Assessment," 7 th USA-Europe ATM R&D Seminar , Barcelona, Spain, July 2007. 2 FAA OPSNET and ASPM data. At: http:/www.apo.data.faa.gov/.
+
+
+
+	
+		Phase-I SBIR Final Report
+		
+			AYousefi
+		
+		
+			TLewis
+		
+		
+			HHackney
+		
+		
+			RHoffman
+		
+		No. NNX07CA10P
+	
+	
+		45300 Catalina Court, Suite
+		
+			101
+			20166. July 2007
+			Metron Aviation Inc
+			Dulles, VA
+		
+	
+	Tech. Rep. Contract
+	Yousefi, A., Lewis, T., Hackney, H., and Hoffman, R., "Phase-I SBIR Final Report," Tech. Rep. Contract No. NNX07CA10P, Metron Aviation Inc., 45300 Catalina Court, Suite 101, Dulles, VA 20166, July 2007.
+
+
+
+	
+		Analysis of an optimal sector design method
+		
+			MichaelDrew
+		
+		10.1109/dasc.2008.4702801
+	
+	
+		2008 IEEE/AIAA 27th Digital Avionics Systems Conference
+		St. Paul, MN
+		
+			IEEE
+			October 2008
+		
+	
+	Drew, M., "Analysis of an Optimal Sector Design Method," 27 th Digital Avionics Systems Conference, St. Paul, MN, October 2008.
+
+
+
+	
+		Airspace Sector Redesign Based on Voronoi Diagrams
+		
+			MinXue
+		
+		10.2514/1.41159
+	
+	
+		Journal of Aerospace Computing, Information, and Communication
+		Journal of Aerospace Computing, Information, and Communication
+		1542-9423
+		
+			6
+			12
+			
+			December 2009
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Xue, M., "Airspace Redesign Based on Voronoi Diagrams," Journal of Aerospace Computing, Information, and Com- munication, Vol. 6, December 2009.
+
+
+
+	
+		Airspace Sectorization by Dynamic Density
+		
+			ChrisBrinton
+		
+		
+			JimHinkey
+		
+		
+			KenLeiden
+		
+		10.2514/6.2009-7102
+	
+	
+		9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO)
+		Hilton Head, SC
+		
+			American Institute of Aeronautics and Astronautics
+			September 2009
+		
+	
+	Brinton, C. R., Leiden, K., and Hinkey, J., "Airspace Sectorization by Dynamic Density," 9 th AIAA Aviation Technology, Integration, and Operations Conference (ATIO), Hilton Head, SC, September 2009.
+
+
+
+	
+		Geometric algorithms for optimal airspace design and air traffic controller workload balancing
+		
+			AmitabhBasu
+		
+		
+			JosephS BMitchell
+		
+		
+			GirishKumarSabhnani
+		
+		10.1145/1498698.1537598
+	
+	
+		ACM Journal of Experimental Algorithmics
+		ACM J. Exp. Algorithmics
+		1084-6654
+		
+			14
+			2.3
+			May 2009
+			Association for Computing Machinery (ACM)
+		
+	
+	Basu, A., Mitchell, J. S. B., and Sabhnani, G., "Geometric Algorithms for Optimal Airspace Design and Air Traffic Controller Workload Balancing," ACM Journal of Experimental Algorithmics, Vol. 14, No. 2.3, May 2009.
+
+
+
+	
+		Dynamic FPAs: A new method for dynamic airspace configuration
+		
+			AlexanderKlein
+		
+		
+			MarkDRodgers
+		
+		
+			Hong Kaing
+		
+		10.1109/icnsurv.2008.4559176
+	
+	
+		2008 Integrated Communications, Navigation and Surveillance Conference
+		Bethesda, MD
+		
+			IEEE
+			2008
+		
+	
+	Klein, A., Rodgers, M. D., and Kaing, H., "Dynamic FPAs: A New Method for Dynamic Airspace Configuration," Proceedings of the 2008 ICNS Conference, Bethesda, MD, 2008.
+
+
+
+	
+		Effect of Dynamic Sector Boundary Changes on Air Traffic Controllers
+		
+			JaewooJung
+		
+		
+			PaulLee
+		
+		
+			AngelaKessell
+		
+		
+			JeffreyHomola
+		
+		
+			ShannonZelinski
+		
+		10.2514/6.2010-8289
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		Toronto, ON CA
+		
+			American Institute of Aeronautics and Astronautics
+			August 2010
+			
+		
+	
+	Jung, J., Lee, P., Kessell, A., Homola, J., and Zelinsky, S., "Effect of Dynamic Sector Boundary Changes on Air Traffic Controllers," Proceedings of the AIAA Guidance, Navigation, and Control Conference, Toronto, ON CA, 2 -5 August 2010.
+
+
+
+	
+		Predicting Sector Capacity under Severe Weather Impact for Traffic Flow Management
+		
+			LixiaSong
+		
+		
+			CraigWanke
+		
+		
+			DanielGreenbaum
+		
+		
+			DavidCallner
+		
+		10.2514/6.2007-7887
+	
+	
+		7th AIAA ATIO Conf, 2nd CEIAT Int'l Conf on Innov and Integr in Aero Sciences,17th LTA Systems Tech Conf; followed by 2nd TEOS Forum
+		Belfast, Northern Ireland
+		
+			American Institute of Aeronautics and Astronautics
+			18 -20 September 2007
+		
+	
+	Song, L., Wanke, C., Greenbaum, D. P., and Callner, D. A., "Predicting Sector Capacity under Severe Weather Impact for Traffic Flow Management," Proceedings of the 7 th AIAA Aviation Technology, Integration, and Operations Conference (ATIO), No. ATIO 2007-7887, Belfast, Northern Ireland, 18 -20 September 2007.
+
+
+
+	
+		Methodologies of Estimating the Impact of Severe Weather on Airspace Capacity
+		
+			LixiaSong
+		
+		
+			CraigWanke
+		
+		
+			StephenZobell
+		
+		
+			DanielGreenbaum
+		
+		
+			ClaudeJackson
+		
+		10.2514/6.2008-8917
+		No. ATIO 2008-8917
+	
+	
+		The 26th Congress of ICAS and 8th AIAA ATIO
+		Anchorage, AK
+		
+			American Institute of Aeronautics and Astronautics
+			14 -19 September 2008
+		
+	
+	The 26 th Congress of International Council of the Aeronautical Sciences
+	Song, L., Wanke, C., Greenbaum, D., Zobell, S., and Jackson, C., "Methodologies for Estimating the Impact of Severe Weather on Airspace Capacity," The 26 th Congress of International Council of the Aeronautical Sciences (ICAS), No. ATIO 2008-8917, Anchorage, AK, 14 -19 September 2008.
+
+
+
+	
+		Directional Demand, Capacity and Queuing Delay in En-Route Airspace
+		
+			AlexanderKlein
+		
+		
+			LaraCook
+		
+		
+			BryanWood
+		
+		10.2514/6.2009-6963
+		AIAA 2009-6963
+	
+	
+		9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO)
+		Hilton Head, SC
+		
+			American Institute of Aeronautics and Astronautics
+			September 2009
+			
+		
+	
+	Klein, A., Cook, L., and Wood, B., "Directional Demand, Capacity and Queuing Delay in En-Route Airspace," Pro- ceedings of the 9 th AIAA Aviation Technology, Integration, and Operations Conference (ATIO), No. AIAA 2009-6963, Hilton Head, SC, 21 -23 September 2009.
+
+
+
+	
+		Network Flows
+		
+			RavindraKAhuja
+		
+		
+			ThomasLMagnanti
+		
+		
+			JamesBOrlin
+		
+		10.21236/ada594171
+	
+	
+		Network Flows: Theory, Algorithms, and Application
+		Englewood Cliffs, NJ
+		
+			Defense Technical Information Center
+			1993
+		
+	
+	Ahuja, R. K., Magnanti, T. L., and Orlin, J. B., Network Flows: Theory, Algorithms, and Application, Prentice Hall, Englewood Cliffs, NJ, 1993.
+
+
+
+	
+		A Simple Mesh Generator in Matlab
+		
+			PPersson
+		
+		
+			GStrang
+		
+		
+		
+			2005
+			Cambridge, MA 02139
+		
+		
+			Department of Mathematics, Massachusetts Institute of Technology, 77 Massachusetts Ave.
+		
+	
+	Tech. rep
+	Persson, P. and Strang, G., "A Simple Mesh Generator in Matlab," Tech. rep., Department of Mathematics, Massachusetts Institute of Technology, 77 Massachusetts Ave., Cambridge, MA 02139, 2005, See: http://www-math.mit.edu/ ~persson/mesh/.
+
+
+
+	
+		Air Traffic Sector Configuration Change Frequency
+		
+			GanoBrotoChatterji
+		
+		
+			MichaelDrew
+		
+		10.2514/6.2010-8291
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		Toronto, ON CA
+		
+			American Institute of Aeronautics and Astronautics
+			2 -5 August 2010
+		
+	
+	Chatterji, G. and Drew, M., "Air Traffic Sector Configuration Change Frequency," Proceedings of the AIAA Guidance, Navigation, and Control Conference, Toronto, ON CA, 2 -5 August 2010.
+
+
+
+	
+		FACET: Future ATM Concepts Evaluation Tool
+		
+			KarlDBilimoria
+		
+		
+			BanavarSridhar
+		
+		
+			ShonRGrabbe
+		
+		
+			GanoBChatterji
+		
+		
+			KapilSSheth
+		
+		10.2514/atcq.9.1.1
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			9
+			1
+			
+			2001
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Bilimoria, K., Sridhar, B., Chatterji, G., Sheth, K. S., and Grabbe, S., "FACET: Future ATM Concepts Evaluation Tool," Air Traffic Control Quarterly, Vol. 9, No. 1, 2001, pp. 1-20.
+
+
+				
+			
+		
+	

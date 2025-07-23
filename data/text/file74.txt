@@ -1,0 +1,913 @@
+
+	
+	
+		
+In current air traffic management operations, a set of resources that make up an Area of Specialization (or just area) is configured by an area supervisor so that air traffic can operate safely and efficiently [1].An area configuration specifies how airspace, air traffic controller personnel, and physical air traffic control equipment is utilized to control air traffic.Some configurations allocate these resources in a way that facilitates safe and efficient operations.For example, a safe and efficient configuration would not require a single controller to control too many aircraft at once, as this might require the controller to execute too many tasks in a short period of time.Neither would it ask a controller to control just a couple of aircraft at once, as this might make it difficult for the controller to remain engaged and attentive.Configurations are changed multiple times each day, but such changes require that additional tasks be performed by controller personnel, which may degrade the safety and efficiency of traffic operations for a period of time near the change.Although quantifying the safety and efficiency of traffic operations in an area is difficult, some algorithms have been proposed to help supervisors select area configurations [2][3][4][5][6][7][8][9].Situations in which such algorithms could assist supervisors include the beginning and end of the night shift, when a traffic management initiative increases the volume of traffic, or when some equipment fails [10].All of these algorithms only suggest part of the area configuration and leave the remaining parts for the supervisor to determine.For example, many algorithms do not suggest whether an open sector (i.e., a set of one or more sectors) should be allocated one or two operating positions to be staffed by controllers.Even though they are all based upon incomplete and imperfect models, none of these algorithms provide multiple advisory options for the supervisor to consider.This might be problematic because unmodeled or imperfectly-modeled aspects of area operations may make what an algorithm considers to be an optimal advisory unacceptable for deployment.We propose to resolve these issues by presenting the supervisor with a set of diverse configuration advisories that all perform well according to an objective function.Diversity in the set of proposed advisories will increase the likelihood that one of the advisories will perform well with respect to all aspects of the area configuration problem, even those that are unmodeled or imperfectlymodeled [11].Indeed, the results of an experiment involving retired Federal Aviation Administration personnel demonstrate that, when presented with a set of good and diverse advisories that includes an advisory that is optimal according to an objective function, supervisors often find another advisory to be more acceptable than the optimal advisory [10].Similar approaches have been explored in artificial intelligence (e.g., [11]), and we have provided a detailed motivation for this approach in our previous work [12].Previous research has demonstrated that a lowest-cost path problem can be solved to find a single configuration schedule advisory that is optimal with respect to an objective function that rewards safe and efficient area operations [8,9].Instead of building a single advisory from an optimal path, the approach studied here builds multiple advisories by finding a set of near-optimal distinct paths.In this article, we make five main contributions.First, we prove that finding near-optimal distinct paths to generate multiple area configuration advisories is NP-hard.Second, we propose and prove some properties of two new heuristic algorithms for this problem.One is based on value iteration and the other is based on the A * algorithm [13].Third, we demonstrate the inadequacy of two existing algorithms that can be applied to this problem by studying their performance on 18 small problem instances.We show that a lowest-cost paths algorithm, which solves to optimality a relaxation of the problem of interest, rarely returns feasible solutions.We also show that finding all near-optimal advisories with an algorithm proposed by Byers and Waterman [14] and then exhaustively searching through them, although guaranteed to solve the problem to optimality, requires excessive computation times.Fourth, we use these small problem instances to compare the solutions of the two novel heuristics to those of the benchmark optimal algorithm.The two heuristics typically return feasible solutions when a feasible solution exists and find optimal solutions for half of the investigated instances.Fifth, we further quantify the relative performance of the two novel heuristics by studying their performance on thousands of realistic problem instances.We find that when compared to the A * -based heuristic, the value iteration-based heuristic offers higher-quality solutions at the expense of roughly double the computation time.This article begins with a more detailed description of area configurations in Section II.This Section also briefly reviews the results of a human-in-the-loop experiment that involved an algorithm described in this article.Then, Section III reviews a problem that has been posed for generating a single configuration schedule advisory and proceeds to describe the problem we studied for finding a set of advisories.Problems found in published research that are related to the multiple-advisories problem are also discussed in this Section.Four algorithms that can be applied to the multipleadvisories problem are motivated, specified, and discussed in Section IV.Next, Section V describes how we quantified the performance of the algorithms by solving problem instances based on an area in Cleveland Air Route Traffic Control Center.Finally, Section VI summarizes our contributions and main findings.
+II. Background
+A. Area of Specialization ConfigurationsThis section contains material that was also used to explain area configurations in our previous work [9,12].Airspace is partitioned into predefined volumes called sectors to facilitate the division of re-   configuration advisories, instead of just a single advisory, we hope to increase the likelihood that the supervisor will be presented with an option that performs well enough with respect to this unmodeled aspect of configurations as well as other unmodeled or imperfectly-modeled aspects.sponsibilitiesB. Human-in-the-Loop Experiment Results
+Lee et al. conducted a part-task human-in-the-loop experiment in which the Sequential DistinctA * with Shortcuts algorithm described in sub-section IV.C.4 was utilized by a decision-support tool referred to as the Operational Airspace Sectorization Integrated System (OASIS) [10].Eight retired Federal Aviation Administration personnel each used the tool in four simulated scenarios.Figure 2 shows a screenshot of the OASIS tool, an application that runs on an Android touch tablet, in which the user is presented with three advisories.Results of this experiment suggest that presenting multiple near-optimal and distinct advisories added value because in more than 60% of the cases in which the algorithm presented users with more than one advisory, users found the second or third advisory to be more acceptable than the first advisory, even though the first advisory was optimal according to the objective function we used to evaluate the safety and efficiency of operations (see sub-section III.A.4).Furthermore, when asked how many advisories they wanted the tool to provide, participants that worked with this algorithm requested an average of 2.8 advisories.The problem we studied for finding multiple configuration schedule advisories is based upon the approach for finding a single configuration schedule advisory proposed and motivated in [8,9]; it will be summarized in sub-section III.A for completeness and to introduce notation.We recently motivated and posed the multiple-advisory problem studied here [12]; this problem will be described in sub-section III.B and proven to be NP-hard in Appendix A. Sub-section III.C describes related research and positions the multiple-advisories problem relative to other problems that involve finding multiple paths.
+A. Configuration Schedule Advisory ProblemThe Configuration Schedule Advisory (CSA) problem specifies a lowest-cost path problem on a time-extended graph.The solution of this problem corresponds to an area configuration schedule advisory.1. Decision Variables.The time horizon of the schedule is broken into K + 1 discrete configuration time steps k = 0, 1, 2, . . ., K of length ∆ minutes.The configuration time step k = 0 is used for data describing the state of the area at the time an advisory is generated.The decision variables that make up a configuration schedule advisory C are C k for k ∈ {0, 1, 2, . . ., K}, where C k is the advised configuration at configuration time step k.More concretely, a configuration schedule advisory for configuration time stepk is C k = {C A k , C OP k , C W k }and it consists of an airspace configuration C A k , a corresponding operating position configura- An open sector Monitor Alert Parameter (MAP ) is used as a capacity bound in current air traffic operations and so MAP values are used as the required sector capacity data.
+Constraints.A configuration schedule advisory C must be in the set C of all valid configuration schedules.Although C could be defined more generally, here it is specified as a set of valid configurations at each configuration time step: C = {C k } K k=0 .The set C 0 contains only the current configuration C 0 .We typically utilize historical data to help construct C, but there may be valid configurations that could be included in C even if they have not been used historically.The problem objective is to minimize a configuration schedule cost g(C, T ).The cost for a configuration schedule advisory is a sum of the costs incurred by the scheduled configuration at each configuration time step in the time horizon:g(C, T ) = K k=1 g k (C k-1 , T k-1 , C k , T k ).(1)For a single configuration time step, the cost is a weighted sum of a static cost and a reconfiguration cost :g k (C k-1 , T k-1 , C k , T k ) = g S k (C k , T k ) + β R g R k (C k-1 , T k-1 , C k , T k ),(2)where β R is the reconfiguration weight.The static cost penalizes configurations that do not facilitate safe and efficient operations during the configuration time step, such as those that require controllers to control excessively high or low amounts of traffic.The reconfiguration cost penalizes changes in configurations that occur between configuration time steps, particularly those that require controllers to transfer control of many aircraft from one workstation to another.These cost functions are complex and involve many parameters; a detailed specification of these costs and suggested parameter values can be found in [8] and [9].The reconfiguration weight determines the relative importance of these two competing types of cost, and [8] and [9] found suggested values for it by studying historical configuration and air traffic data.
+Problem Statement Summary.The CSA problem is minimize g(C, T )subject to C k ∈ C k , k = 0, 1, 2, . . . , K.(3)The CSA problem can be mapped to a lowest-cost path problem on a time-expanded graph [8,9].A sample portion of such a time-expanded graph is depicted in Fig. 3.Each valid configuration at a time step is a node in the graph and transitions between configurations in one time step to configurations in the next time step are edges.Node costs correspond to the static cost and edge costs correspond to the reconfiguration cost.The origin for the path is dictated by the initial configuration C 0 .Any configuration in C K is a valid destination for the path.For certain types of optimization problems (such as linear programs), instances with more constraints may require algorithms to perform more computations before finding a solution.This is not the case for the CSA problem.For CSA problem instances, additional constraints mean that more configurations (nodes) must be removed from the relevant time-expanded graph.This does add some complexity to the process of specifying the graph for a problem instance, but specifying the instance is typically much less computationally expensive than solving it.Furthermore, the computational burden of finding a lowest-cost path decreases as graph size decreases (i.e., as nodes and edges are removed), so additional constraints lead to CSA problem instances that require fewer computations to solve.
+B. M ε-Optimal d-Distinct Configuration Schedule Advisories ProblemIn this sub-section, we extend the CSA problem to require that the solution consists of a set of M valid advisories.Former and current area supervisors requested that a minimum-cost advisory always be returned, so the first advisory must be optimal for the corresponding CSA problem.Each other returned advisory must achieve a cost value that is within some fraction of the minimum cost value.This constraint is intended to ensure that supervisors do not waste time evaluating advisories that are unlikely to be useful because they perform significantly sub-optimally with respect to aspects of the problem captured by the objective function.Finally, the advisories in each pair of returned advisories must be sufficiently different from each other according to an advisory difference metric.The purpose of this constraint is to encourage the returned advisories to perform differently with respect to unmodeled or imperfectly-modeled components of the area configuration problem faced by supervisors.Such diversity of performance increases the chance that at least one advisory will be feasible with respect to aspects of the problem that are unmodeled or imperfectly-modeled [11].Our previous work provides further motivation for this problem statement [12].This problem statement is also motivated by the results of a human-in-the-loop experiment in which retired Federal Aviation Administration personnel were presented with advisories from an algorithm that attempts to solve this problem (see sub-section II.B and [10]).The M ε-Optimal d-Distinct Configuration Schedule Advisories (M -ε-d-CSAs) problem is minimize M m=1 g(C m , T )(5)subject to|C M | = M (6) C m k ∈ C k , k = 0, 1, 2, . . . , K, m = 1, 2, . . . , M(7)C 1 ∈ C ⋆ CSA (C, T )(8)g(C m , T ) -g(C 1 , T ) g(C 1 , T ) ≤ ε m = 2, 3, . . . , M(9)Φ(C m , C m ′ ) ≥ d ∀m, m ′ ∈ {1, 2, . . . , M }, m = m ′ . (10)Here C M = {C 1 , . . ., C M } is the set of M ∈ Z ++ advisories that make up a solution to the problem.The objective ( 5) is to minimize the sum of the costs of the M advisories.Constraint ( 6) requires that M advisories be returned.Although not required by the problem statement, in the event that M feasible advisories cannot be found, the algorithms we devise and investigate will return a set containing fewer advisories.Constraint (7) ensures that each advisory is valid.The setC ⋆ CSA (C, T ) ⊆ Cis the set of solutions to a CSA problem instance when the set of valid configuration schedules is C and the traffic situation data is T .Therefore, constraint (8) requires that the first advisory be an optimal advisory for the corresponding CSA problem.Constraint (9) requires that each other advisory achieves a cost that does not exceed a particular value.More precisely, the cost of each other advisory in excess of the minimum advisory cost (g(C m , T )g(C 1 , T )), expressed as a fraction of the minimum advisory cost g(C 1 , T ), must not exceed an excess cost fraction bound ε ∈ R + .Finally, constraint (10) requires that each pair of advisories, when compared using an advisory difference metric Φ :C × C → R + , achieve a difference of at least d ∈ R + .The M -ε-d-CSAs problem is NP-hard.This is shown in Appendix A by demonstrating that the Independent Set (IS) problem, which is NP-complete and even difficult to approximate [15], is polynomial-time reducible to M -ε-d-CSAs.This is sufficient to show that the M -ε-d-CSAs problem is NP-hard [16].1. Advisory Difference Metric.The advisory difference metric Φ maps a pair of advisories from C to a non-negative real number.It could take many forms, but in this article it is defined asΦ(C, C ′ ) = K k=1 φ(C k , C ′ k ),(11)where φ :C k × C ′ k → R + is a configuration difference metric. It defines a difference between valid configurations.For this article, the configuration difference metric isφ(C k , C ′ k ) =          1 if C A k = C ′A k 0 else. (12)Pairs of configurations that use different airspace configurations (sets of open sectors) achieve a configuration difference of 1, while all other pairs of configurations achieve a configuration difference of 0. Therefore, when using this advisory difference metric, constraint (10) requires that the two advisories in each pair of returned advisories utilize different airspace configurations during at least d time steps.This metric was developed based on discussions with area supervisors in which they identified differences in airspace configurations as operationally-significant. The area supervisors did not regard differences in operating position or workstation configurations corresponding to the same airspace configuration as significant.
+C. Related ResearchTo clarify our contributions and to further motivate our approach for finding multiple advisories, we will describe some related research.Some of this literature review is also contained in our previous work, in which we motivate the M -ε-d-CSAs problem more exhaustively [12].In the context of "planning" in the artificial intelligence domain, ing the user with a diverse set of plans.If diversity is defined appropriately, diverse plans are less likely to be equally preferred by users, so a diverse set of plans increases the chances that one of the plans in the set will be acceptable to the user.In the area configuration context, user preferences are not completely unknown and various objective functions have been defined [2][3][4][5][6][7][8][9].However, even the relatively complex objective function defined in [8] and [9] does not fully capture the relationship between configurations and safe and efficient traffic operations.Therefore, rather than striving only for diversity, the M -ε-d-CSAs problem statement requests a set of solutions that is both diverse and in which each plan performs well with respect to the objective function.The hope is that the diverse plans will achieve a variety of levels of performance with respect to unmodeled or imperfectly-modeled components of the problem so that at least one will perform well enough to be useful in operations.The search for multiple low-cost and diverse paths has also been investigated in the operations research literature.Motivated by the "compromises" or "approximations" present in any mathematical model, Bellman and Kabala studied the problem of finding a given number of paths with the lowest combined cost [17].This lowest-cost paths problem has received considerable attention in the literature [17][18][19][20][21][22], but simply searching for the lowest-cost paths without considering the diversity of the paths might lead to similar paths.For the reasons discussed earlier, we seek a set of near-optimal paths that are also diverse.For certain special definitions of diversity, the problem of finding a low-cost set of diverse paths has been studied [23][24][25][26][27][28][29].For example, Suurballe proposes an algorithm that searches for low-cost paths that share no nodes [23].The motivation provided in this body of research is often related to robustness-a path from the set should remain available even if some set of nodes or links fails.Unfortunately, subject-matter expert feedback suggests that none of the definitions of diversity used in this body of research correspond to the type of diver-M distinct paths M lowest-cost paths M -ε-d-CSAsconcerned with distinct paths concerned with low-cost paths Fig. 4 One dimension of the space of problems involving finding M paths.sity that matters for area configurations advisories (see sub-section III.B.1).This is not surprising because, although supervisors would likely benefit from advisories that are robust to uncertainty in the cost resulting from uncertainty in future air traffic, we are not concerned here with finding robust advisories.Figure 4 is a notional visualization of one dimension of the space of problems involving finding a set of M paths.Problems concerned with finding low-cost paths, such as the lowest-cost paths problem, are at one end of the spectrum in this dimension.Problems concerned with finding distinct paths are at the other end of the spectrum.The distinct paths problem, which seeks a given number of paths that share no nodes without concern for path costs, is at this extreme of the spectrum.The M -ε-d-CSAs problem lies somewhere in the middle of the spectrum.It seeks low-cost paths (advisories), but at the same time requires that each returned path achieve a certain level of difference from the other returned paths.Efficient algorithms have been specified for some problems in this space, mostly at the ends of this spectrum, but we show in Appendix A that the M -ε-d-CSAs problem, located somewhere in the middle, is NP-hard.One algorithm from the literature that proved useful in this article was proposed by Byers and Waterman [14].This dynamic programming-based algorithm finds all paths that achieve a cost within some fraction of the minimum cost of a path.Once this set is known for a given excess cost fraction bound ε, we can solve the M -ε-d-CSAs problem by searching through the set for the M lowest-cost paths that meet the other problem constraints.Although computationally expensive, this approach can serve as a benchmark: it enables us to study how well more computationallyefficient heuristics perform on some small problem instances.Although this article focuses on using time-expanded graphs to find area configuration schedule advisories, the approaches developed here may also be useful for other applications where multiple low-cost paths are desired on time-expanded graphs.For example, the solution to a lowest-cost paths problem on a time-expanded graph has been used to generate multiple itineraries for the earliest arrival problem [30].The approaches developed here might be able to find a set of distinct itineraries with early arrival times for some appropriate definition of distinctness.
+IV. AlgorithmsThree algorithms that solve or attempt to solve the M -ε-d-CSAs problem have been developed.One of these, described in sub-section IV.A, is a trivial extension to an algorithm proposed by Byers and Waterman [14].It returns an optimal solution and serves as a benchmark.Sub-section IV.B describes a novel heuristic that is based on value iteration.A class of novel heuristics based on the A * algorithm [13] is described in sub-section IV.C, culminating in the specification of the third algorithm.In addition to these three algorithms, we studied the solution to the M lowest-cost paths relaxation of M -ε-d-CSAs.This is described in sub-section IV.D. Finally, in sub-section IV.E, we summarize the computational complexity of these algorithms.
+A. Value Iteration Fraction Optimal with Exhaustive Advisory SearchThe Value Iteration Fraction Optimal with Exhaustive Advisory Search (VIFOEAS) algorithm is an extension of the algorithm proposed by Byers and Waterman [14] for finding all paths with costs that satisfy a bound on the excess cost fraction.VIFOEAS is specified in Algorithm 1.The first step is to use the well-known reverse value iteration algorithm to find optimal costs-to-go; it is specified in Appendix B for completeness.More concretely, it is denoted as ReverseVI(C) and it returns two mappings: (1) the minimum cost-to-go, J⋆ k (C k ), from each valid configuration and (2) the next configuration, C⋆ k+1 (C k ), in a minimum-cost partial advisory starting from each configuration.Next, a recursive implementation of the algorithm proposed in [14] is utilized to find all the valid advisories that achieve the excess cost fraction bound constraint (9).We utilize{ J⋆ k (C k )} K-1 k=0 , { C⋆ k+1 (C k )} K-1 k=0 ← ReverseVI(C, T ) C ε ← RecursiveVIFO(C, { J⋆ k (C k )} K-1 k=0 , C0, (1 + ε) × J⋆ 0 (C0), 0) J M min ← ∞ for each advisory set C M ⊆ C ε such that |C M | = M and C 1 ∈ C ⋆ CSA (C, T ) do if min {C m ,C m ′ ∈C M |m =m ′ } Φ(C m , C m ′ ) ≥ d and C m ∈C M g(C m , T ) ≤ J M min then J M min ← C m ∈C M g(C m , T ) C M min ← C M return C M min Since M -ε-d-CSAs is NP-hard, it((nK + 1)(n 2 K + n)) = O(n 3 K 2 ) [16].However, the special time-expanded structure of the graph we are studying reduces the number of computations required.Value iteration in this case involves, for each of K time steps, performing a minimization over at most n values for at most n nodes, so its computational complexity is only O(n 2 K) (see Appendix B).In the worst case, the depth-first search algorithm will visit each node once along each of the n edges into the node, and each time the node is visited, proceed to each of the n other nodes that can be reached from the node.This implies n 2 computations per node and there are nK nodes (other than C 0 ), leading to a computational complexity of O(n 3 K)for the depth-first search and a total complexity of O(n2 K + n 3 K) = O(n 3 K).Of course the computational effort required for the depth-first search varies considerably from problem instance to problem instance, depending largely on the degree of near-optimality desired.The computational and memory efficiency of the depth-first search could be improved with a stack implementation, but we utilized this recursive implementation because it was simpler to implement.Once C ε has been determined, searching through it requires the investigation of |C ε | M subsets of advisories.This search can usually be computed more efficiently than the brute-force search described in Algorithm 1 because the optimal advisory is typically unique.For example, the search is only linear in the size of C ε when the optimal advisory is unique and M = 2.Although implemented, these simpler and more efficient variations of the search through C ε are not precisely documented in this article.
+B. Forward and Backward Value Iteration with Sequential Advisory SearchThe Forward and Backward Value Iteration with Sequential Advisory Search (FBVISAS) algorithm is a heuristic that reduces the number of advisories to investigate by using minimum cost-to-go and minimum cost-so-far information.More precisely, it stores each node in a priority queue J , ranked from smallest to largest sum of the minimum cost-so-far and the minimum cost-to-go.The nodes are then searched in the order specified by the priority queue until M configuration advisories that meet the constraints are found.The specification of FBVISAS is in Algorithm 2. This algorithm makes use of the reverse value iteration algorithm specified in Appendix B as well as the forward value iteration algorithm, which is referred to as ForwardVI.ForwardVI is completely analogous to ReverseVI except that it operates forward in time through the configuration time steps.FBVISAS requires value iteration to be performed once in each direction, inducing a computational complexity of O(2n 2 K).Then each of up to nK + 1 nodes must be investigated and inserted into the priority queue (with a computational complexity of up to O(log(nK + 1))each time for a heap implementation).Finally, all nK + 1 nodes may need to be removed from the priority queue, which introduces a computational complexity of up to O(log(nK + 1)) for each node, again assuming a heap implementation.The total computational complexity is thusO(2n 2 K + 2(nK + 1) log(nK + 1)) = O(n 2 K + nK log(nK + 1)).If it is not possible to find M advisories that satisfy the constraints, the algorithm returns as many as it can find.FBVISAS can be expected to perform relatively well on problem instances in which the reconfiguration cost is relatively important compared to the static cost.This could occur when β R is Algorithm 2 Forward and Backward Value Iteration with Sequential Advisory Search (FBVISAS)Require: C, T, M, ε, d {M -ε-d-CSAs problem instance specification} C M ← ∅ { J⋆ k (C k )} K-1 k=0 , { C⋆ k+1 (C k )} K-1 k=0 ← ReverseVI(C, T ) {J ⋆ k (C k )} K k=1 , {C ⋆ k-1 (C k )} K k=1 ← ForwardVI(C, T ) for k = 1, . . . , K do for C k ∈ C k do J ⋆ (C k ) ← J ⋆ k (C k ) + J⋆ k (C k )Insert C k into priority queue J with key J ⋆ (C k )C k ← minimum-key configuration in J {Use to seed construction of minimum-cost advisory}J ⋆ ← last extracted key J ⋆ (C k ) Use C ⋆ k-1 (C k ) and C⋆ k+1 (C k ) iteratively to define minimum-cost advisory C 1 Add C 1 to C M repeat C k ← minimum-key configuration in J J ⋆ ← last extracted key J ⋆ (C k ) Use C ⋆ k-1 (C k ) and C⋆ k+1 (C k ) iteratively to define advisory C if Φ(C m , C) ≥ d for all C m ∈ C M then Add C to C M until |C M | = M or |J | = 0 return C Mrelatively large and/or d is relatively small.We will make this statement more precise by defining two classes of problem instances.These classes are merely illustrative; neither of them are likely to be encountered when actually selecting area configuration advisories to present to supervisors.In one class, β R is very large and we show that FBVISAS will find an optimal second advisory when one exists.In the other class, β R = 0 and we show that FBVISAS will never return a second advisory when d > 1. Appendix D contains proofs of these propositions.
+C. Sequential Distinct A * AlgorithmsThe Sequential Distinct A * (SDA * ) algorithm is a novel heuristic that extends the well-known A * algorithm for computing a lowest-cost path proposed by Hart et al. [13].SDA * runs an A * -like algorithm M times, using a different priority queue ranking function each time.The Sequential Distinct A * with Shortcuts (SDA * -SC) algorithm extends SDA * by using information from the initial, time-reversed execution of the A * -like algorithm to find low-cost and distinct advisories more quickly.Before describing the SDA * and SDA * -SC algorithms, we will specify the A * and A * -like algorithms that are utilized by these algorithms.Although we introduced and evaluated the SDA * algorithm in our previous work [12], the SDA * -SC algorithm is a new contribution.Furthermore, in order to better motivate these algorithms, we will prove some properties of Forward Distinct A * (FDA * ), an algorithm that is closely related to SDA * and SDA * -SC.1. A * Algorithm.For completeness, Appendix E specifies the ForwardA * algorithm, initially proposed by Hart et al. in [13], as applied to the CSA problem.k (C k-1 , T k-1 , C k , T k ) ≥ 0) and Ĵk (C k ) isan underestimate of the minimum cost-to-go, this algorithm returns a lowest-cost advisory.We use Ĵk (C k ) 0, so A * is a version of Dijkstra's algorithm that terminates as soon as a shortest path from C 0 to a configuration in C K is found.Assuming a heap implementation of the priority queue structure, Dijkstra's algorithm has computational complexity O((n 2 K + n) log(nK + 1)) = O(n 2 K log(nK + 1)) [16].2. Forward Distinct A * Algorithm.The Forward Distinct A * (FDA * ) algorithm is specified in Appendix F. FDA * is not used by SDA * or SDA * -SC, but it is closely related to the Forward Distinct A * with Shortcuts (FDA * -SC) algorithm that they do utilize.FDA * is related to the Lagrange dual problem for certain problem instances, so we will specify and discuss FDA * to help explain and motivate FDA * -SC.As specified, the FDA * algorithm only finds a second advisory.It does so by finding an advisory that minimizesg(C 2 , T ) + λ(d -Φ(C 1 , C 2 ))(13)for some λ ∈ R + .This is the Lagrangian of the problem faced when finding the second advisory for some simple M -ε-d-CSAs instances.This property can be used to show that, under the right circumstances, the second advisory returned by FDA * satisfies a necessary condition that must be met by any optimal second advisory.Some algorithms for constrained shortest path algorithms similarly leverage Lagrange duality [31,32].Appendix G provides proofs and further discussion of these properties of FDA * .3. Forward Distinct A * with Shortcuts Algorithm.The FDA * -SC algorithm, which is specified in Appendix F, extends the FDA * algorithm in four main ways.The first is that it explicitly describes how to handle problem instances for which M > 2. Second, it confirms that the partial advisory ending at a configuration for a given time step has a chance of meeting the cost and difference constraints before adding the configuration to the queue of configurations and corresponding partial advisories under consideration.Third, it normalizes the terms in the cost function to increase the likelihood that a single value for λ will perform well across problem instances.In particular, while FDA * finds a second advisory that minimizes the objective (13), FDA * -SC attempts to minimizeg(C m , T ) J ⋆ + λ 1 m -1 m-1 m ′ =1 d -Φ(C m ′ , C m ) Φ max -d + 1when searching for the m th advisory.Here Φ max is the maximum possible advisory difference metric value.Showing that FDA * -SC attempts to minimize this quantity requires some algebraic manipulations similar to those used in the proof of Lemma 3 in Appendix G. Normalizing by J ⋆ , (m -1), and (Φ maxd + 1) is designed to increase the likelihood that the magnitude of the first term and the magnitude of the term multiplied by λ will not vary much across problem instances and as we search for subsequent advisories.The hope is that this will ensure that a single value of λ may be sufficient in all of these contexts and we can avoid re-tuning λ for each problem instance or for searches for each subsequent advisory.Finally, the fourth change is that the FDA * -SC algorithm can take shortcuts in an attempt to reduce computation times.The FDA * -SC algorithm makes use of information that could be provided by an initial ReverseA * run that could also find the first returned advisory.In particular, this initial run would yield partial advisory and corresponding cost information from certain configurations at certain time steps to the final time step.This information is in{ Jk (C k )} K-1 k=0 and { C † k+1 (C k )} K-1 k=0 ,which are not necessarily defined for all C k .When investigating a partial advisory ending at some C k , FDA * -SC checks to see if, by combining this partial advisory from the initial time step with the partial advisory that continues on from C k and was explored by the initial ReverseA * run, we arrive at a complete shortcut advisory that (1) achieves an acceptable cost value (as determined by the algorithm parameter ε ′ ∈ [0, ε]) and ( 2) also achieves the difference constraint.If this is the case, then the algorithm returns a shortcut advisory the next time it queries the priority queue.The SDA * -SC algorithm is specified in Algorithm 3.This algorithm involves using ReverseA * to find the first advisory and then FDA * -SC to find any subsequent advisories.Since SDA * -SC is essentially M iterations of variations of A * , its computational complexity is O(M n 2 K log(nK + 1)).If ε ′ = 0, then the algorithm never takes a shortcut and we refer to it as just SDA * .
+D. Lowest-Cost PathsIf we relax the M -ε-d-CSAs problem by disregarding constraints ( 9) and ( 10), we are left with an M lowest-cost paths problem.Many efficient algorithms that solve this problem have been developed [17][18][19][20][21][22].For example, the computational complexity of the algorithm proposed by Eppstein is O(n 2 K + nK log(nK + 1) + M ), which is essentially identical to the complexity of the Algorithm 3 Sequential Distinct A * with Shortcuts (SDA * -SC)Require: C, T, M, ε, d {M -ε-d-CSAs problem instance specification} Require: λ, ε ′ {Algorithm parameters} C 1 , { Jk (C k )} K-1 k=0 , { C † k+1 (C k )} K-1 k=0 ← ReverseA * (C, T ) Add C 1 to C M J ⋆ ← g(C 1 , T ) for m = 2, . . . , M do C M ← FDA * -SC(C, T, J ⋆ , ε, d, C M , λ, { Jk (C k )} K-1 k=0 , { C † k+1 (C k )} K-1 k=0 , ε ′ ) if |C M | < m thenSkip remainder of for loop {Do not attempt to construct the remaining Mm advisories} b This assumes that Dijkstra's algorithm is used as a subroutine for finding shortest paths.return C MFBVISAS heuristic even though the former algorithm is optimal (albeit for the lowest-cost paths relaxation of the problem of interest).Therefore, we investigated the solution to the relaxed M lowest-cost paths problem version of some M -ε-d-CSAs problem instances to see if the returned advisories happened to meet the constraints ( 9) and (10).If this occurred frequently enough, then one of these existing algorithms for the lowest-cost paths problem could be used for the M -ε-d-CSAs problem.We implemented an algorithm for the M lowest-cost paths problem and refer to it as the LCP algorithm.a reasonable amount of time; this analysis is documented in sub-section V.A.Then, as described in sub-section V.B, we analyzed the performance of the two novel heuristics by using them to solve thousands of realistic problem instances.Before presenting the results of the performance analysis, we will provide some notes about our implementation of the algorithms.The algorithms were coded in Java and executed on a MacPro workstation with a Quad-Core Intel Xeon 2.8 GHz processor and 4 GB of memory.Before a problem instance is specified or an algorithm is executed, the set of all possible configurations that could be in a time step is pre-computed and stored for use by all instances.Specifying a problem instance involves tasks like fetching traffic data, parsing parameter files, and translating constraints into a set of configurations that could be used at some time step by an advisory.These instancespecification tasks are performed using the same code regardless of which algorithm is deployed, so the time required for these tasks does not vary between algorithms.When an algorithm first calls the single-time step cost functiong k (C k-1 , T k-1 , C k , T k )for a set of inputs, the cost value is computed and then cached.If the algorithm later requires the single-time step cost for the same set of inputs, the cached cost value is returned, which reduces the computational burden of the algorithms.
+A. Investigation of the Performance of Algorithms on Small Problem InstancesIn this sub-section, we investigate the LCP algorithm and the FBVISAS, SDA * , and SDA * -SC heuristics by comparing their output to that of the VIFOEAS algorithm, which is guaranteed to return an optimal solution, when they are asked to solve some small problem instances.The small problem instances utilized here are based on ZOB area 4 (see Section II and Fig. 1 that could be generated from these 16 airspace configurations.However, the advisories were required to use the same number of open sectors as were used in each configuration time step during actual operations on those days.Therefore, there were only between 4 and 80 valid configurations available at each time step instead of 173, which reduced the number of advisories in C considerably.In order to further reduce the size of the space of feasible solutions, only two advisories were requested (M = 2) and the second advisory was required to achieve a cost value relatively close to the minimum cost (ε = 0.2).Based on parameter-tuning efforts documented in [8] and [9], the cost function parameter β R was set to 2. Finally, based on discussions with subject-matter experts, d was set equal to 6.This implies that different airspace configurations must be used for at least 30 of the 120 minutes in the two returned advisories.The SDA * parameters for these problem instances were set to λ = 0.11875 and ε ′ = 0.The SDA * -SC parameters were set to λ = 0.11875 and ε ′ = 0.2.All of the algorithms found the same minimum-cost first advisory for all of the 18 instances.The VIFOEAS algorithm found two advisories for 12 of the 18 instances.The LCP algorithm found two feasible advisories for only 1 of the 18 instances, indicating that relaxing our problem by ignoring the constraints ( 9) and ( 10) so that we can solve an M lowest-cost paths problem frequently does not lead to M feasible advisories for the M -ε-d-CSAs problem, even when M such advisories exist.The FBVISAS, SDA * , and SDA * -SC heuristics each found two advisories for 10, 12, and 12 instances, respectively.These results suggest that the novel heuristics typically find a feasible second advisory when one exists.Since the first advisories returned by the algorithms all achieve the same cost, the suboptimality of the advisories provided by each algorithm was investigated by focusing on the costs of the second advisories.For problem instances with a feasible second advisory, Fig. 5 shows the excess cost fraction achieved by the second advisory returned by each of the algorithms.An empty marker located at fraction 0.30 indicates that an algorithm failed to return a second advisory for a problem instance.By comparing the second advisory returned by each algorithm to the second advisory returned by the VIFOEAS algorithm, which is guaranteed to achieve the lowest cost of all the second advisories that satisfy the M -ε-d-CSAs constraints, we see that the FBVISAS, SDA * , and SDA * -SC algorithms each found a lowest-cost second advisory in 9, 9, and 5 instances, respectively.These results suggest that the FBVISAS and SDA * heuristics are better at finding a lowest-cost second advisory than the SDA * -SC heuristic.This result is to be expected because of the shortcuts that the SDA * -SC heuristic takes in an attempt to reduce computation times.When generating these 18 instances 5 times each (once per algorithm), the mean and standard deviation of time required to load the traffic data were 856 ms and 104 ms, respectively.The mean and standard deviation of the time required for other instance-specification tasks were 35 ms and 4 ms, respectively.However, these problem instances are too small to allow for a meaningful analysis of the computation time required by the algorithms, with one exception.These instances reveal that the optimal VIFOEAS algorithm is far more computationally intensive than other algorithms.It required hours to find a solution for some of these problem instances, while other algorithms required less than a second.Given that we desire to solve larger problem instances than are studied in this sub-section in less than a minute on a tablet computer, these results indicate that the computational performance of VIFOEAS is unacceptable.Even if a more efficient stack implementation were used (see sub-section IV.A), it is unlikely that VIFOEAS would achieve acceptable computation times.
+B. Investigation of the Performance of Algorithms Using a Year of DataTo better understand their behavior on realistic problem instances, the FBVISAS and SDA * -SC heuristics were used to solve many more problem instances.The instances involve ZOB area 4 for 231 non-weekend and non-holiday days selected from 20 October 2011 to 19 October 2012.patterns, leading to configuration selections that are correspondingly atypical.On each day, 18
+Weekends and holidays were excluded because they might involve low-volume or atypical trafficproblem instances were solved for the time periods from 6:00 am-8:00 am, 7:00 am-9:00 am, . . ., 11:00 pm-1:00 am local time.These overlapping problem instances were selected to approximate how area configuration advisories might be used in practice.A total of 4158 instances were solved by each of the two heuristics.For these instances, the following parameter values were selected:β R = 2, M = 3, d = 6,and ε = 0.5.The configuration time step was five minutes (∆ = 5) and the traffic time step was one minute (δ = 1).Furthermore, SDA * -SC parameters were set to λ = 0.11875 and ε ′ = 0.25.The same set of 173 configurations were permitted in these instances as in those described in subsection V.A, but in this case the only additional constraint was that the initial airspace configuration C A 0 be identical to the airspace configuration that historical records indicate was in use at the start of the problem instance.Table 2 shows the fraction of problem instances for which each heuristic returned one, two, or three advisories.The FBVISAS heuristic is more likely to return more advisories.It returns three advisories in 7% more instances and one advisory in 6% fewer instances than the SDA * -SC heuristic.Both algorithms found exactly two advisories in 508 of the 4158 problem instances and both found three advisories in 2380 of these instances.The relative value of the costs of the returned advisories were investigated for these two classes of instances.When M = 3, the M -ε-d-CSAs problem objective ( 5) is to minimize g(C 1 , T ) + g(C 2 , T ) + g(C 3 , T ), but constraint (8) requires that g(C 1 , T ) be the same for any feasible solution.Therefore, more insight into the relative quality of solutions is gained by investigating only the costs of the second and third returned advisories.For instances where both heuristics returned three advisories, we studied the g(C 2 , T ) + g(C 3 , T ) ratio: the sum of the costs of the second and third advisories returned by SDA * -SC divided by the sum of the costs of the second and third advisories returned by FBVISAS.For instances where both heuristics returned exactly two advisories, we study the g(C 2 , T ) ratio: the cost of the second advisory returned by SDA * -SC divided by the cost of the second advisory returned by FBVISAS.Figures 6(a) and 6(b) show the distributions of these ratios.The ratio is between 0.99 and 1.01 in more than 40% of the instances where both heuristics returned three advisories and in more than 80% of the instances where both heuristics returned exactly two advisories.On average, the ratio is only slightly above 1 in each case.While there are a few instances where SDA * -SC returned advisories that are 20% or more costlier than the advisories found by FBVISAS, these instances were relatively rare and the ratio never exceeded 1.3.SDA * -SC did sometimes achieve lower costs for these second and third advisories, but it was more common for FBVISAS to find lower-cost advisories.Overall, FBVISAS tended to find slightly lower-cost advisories than SDA * -SC.When generating these 4158 instances 2 times each (once per heuristic), the mean and standard deviation of time required to load the traffic data were 824 ms and 95 ms, respectively.The mean and standard deviation of the time required for other instance-specification tasks were 38 ms and 3 ms, respectively.Figure 7 is a box plot showing the spread in the computation times of the two heuristics.SDA * -SC always has lower computation times than FBVISAS.The average SDA * -SC computation time (1283 ms) is just over half of the average FBVISAS computation time (2332 ms).
+VI. ConclusionsIt is difficult to model the relationship between area configurations and safe and efficient traffic operations, so we propose presenting area supervisors with a set of near-optimal and meaningfullydifferent configuration schedule advisories.To this end, we studied the M ε-optimal d-distinct Configuration Schedule Advisories problem, which is a significant extension of the Configuration Schedule Advisories problem for finding a single advisory [8,9].This problem is equivalent to finding an optimal path as well as other near-optimal and distinct paths in a time-expanded graph.It is related to the well-known lowest-cost paths problem but we showed that the constraint requiring distinct paths makes it NP-hard.We proposed three algorithms for this problem and also investigated a fourth that solves the M lowest-cost paths problem, which is a relaxation of this problem.The Value Iteration Fraction Optimal with Exhaustive Advisory Search algorithm trivially extends the dynamic programming-based algorithm proposed by Byers and Waterman [14].Although it is computationally expensive, it finds an optimal solution: the lowest-total-cost set of advisories that meet the problem constraints.We proposed the novel Forward and Backward Value Iteration with Sequential Advisory Search heuristic, which is based on value iteration.Primarily by changing the value of a cost function parameter, we defined a class of problem instances for which the heuristic finds an optimal solution and another class of instances for which it will fail to return a second advisory even when a feasible second advisory exists.We also proposed the novel Sequential Distinct A * with Shortcuts heuristic, which is a modification of the A * algorithm and an extension of the Sequential Distince A * heuristic we proposed in [12].It can be motivated by studying the Lagrangian of certain simple problem instances and it is designed to achieve relatively low computation times.The computational complexities of these two novel heuristics are comparable to those of representative optimal algorithms for related problems that involve finding a set of paths.We first evaluated the algorithms on small problem instances by comparing their solutions to the solution returned by the benchmark optimal algorithm.These problem instances revealed the inadequacy of the lowest-cost paths algorithm (it rarely returned feasible second advisories) and the benchmark optimal algorithm (it required excessive computation times).The two heuristics, on the other hand, typically returned feasible solutions when a feasible solution existed and found optimal solutions for half of the instances.The value iteration-and A * -based heuristics were also used to solve thousands of realistic problem instances based on Cleveland Air Route Traffic Control Center Area of Specialization 4. For these instances, the average computation time for the A * -based heuristic (1283 ms) was just over half of the average computation time of the value iteration-based heuristic (2332 ms).However, the value iteration-based heuristic found slightly lower-cost advisories (less than 2% lower on average).The value iteration-based heuristic also returned the problemrequested number of advisories (three) for 66% of the instances, while the A * -based heuristic only returned three advisories for 59% of the instances.These results indicate that, when compared with the A * -based heuristic, the value iteration-based heuristic offers higher-quality solutions at the expense of longer computation times.an advisory difference of 1 if and only if the configuration used by each advisory at k = 1 (which correspond to nodes from V ) do not share an edge in the I IS graph G(V, E).Finally, the minimum required difference d for I M-ε-d-CSAs will be defined as d 1.Next, the first condition required of I IS and I M-ε-d-CSAs will be verified.Suppose that the arbitrary I IS is a "yes" instance of IS: there exists a set of M nodes U ⊂ V such that each node in U is independent from all of the other nodes in U .The set U can be converted into M configuration schedule advisories that make up a feasible solution for I M-ε-d-CSAs .The m th configuration schedule advisory is defined with the required C 0 and with C m 1 equal to the m th node from U .Since U is an independent set, each node in U shares no edge in E with any other node in U .This means that, due to the definition of the configuration difference metric for I M-ε-d-CSAs , the M configuration schedule advisories defined as described will meet the advisory difference constraint (10).These M configuration schedule advisories are feasible for I M-ε-d-CSAs , and the condition has been verified.on G(V, E), verifying that I IS is indeed a "yes" instance of IS.If we attempt to further show that M -ε-d-CSAs is NP-complete, we must also show that it is in NP, the set of problems for which possible solutions can be efficiently certified.We have not been able to show this, so we only know that the problem is NP-hard.changing configurations.Therefore, using the initial configuration for the entire time horizon is the unique minimum-cost advisory.Proposition 1 If one exists, FBVISAS finds an optimal second advisory for simple reconfiguration cost-dominated problem instances.Proof of Proposition 1 By Lemma 1, we know that the unique optimal first advisory uses the initial configuration C 0 = C for the entire problem instance time horizon.The M -ε-d-CSAs problem statement requires that an optimal second advisory uses a different airspace configuration for at least d time steps.To meet this constraint, an optimal second advisory must reconfigure at some time step k to a new configuration C ′ such that C A = C ′,A .We will investigate how FBVISAS handles this configuration C ′ at time step k to show by contradiction that it must return an optimal second advisory for these instances.Before we investigate the operation of FBVISAS on these instances, we will establish some properties of an optimal second advisory.In particular, we will study two parts of an optimal second advisory: the partial optimal second advisory from C ′ in time step k to a final configuration in time step K and the partial optimal second advisory from C in time step 0 to C ′ in time step k.• Partial optimal second advisory from C ′ at time step k: Consider the partial optimal second advisory from C ′ at time step k to the end of the time horizon at time step K.For the CSA problem instance corresponding to the M -ε-d-CSAs problem instance, the unique costminimizing partial advisory from C ′ at time step k until the final time step K will remain at C ′ because this is a simple reconfiguration cost-dominated instance.We will show that an M -ε-d-CSAs-optimal second advisory also remains at C ′ for the remainder of the time period.The change in configuration at time step k in this optimal second advisory must have occurred early enough to fulfill the difference constraint in the time steps from k to K. Since C A = C ′,A , a partial advisory that remains at C ′ will therefore also achieve the difference constraint.Such a partial advisory also minimizes the M -ε-d-CSAs objective, so it is the portion of the optimal second advisory after time step k.Overall, we note that an M -ε-d-CSAs-optimal second advisory uses the unique CSA-minimal cost-to-go partial advisory from M -ε-d-CSAs-optimal second advisory.Therefore, when one exists, FBVISAS returns an optimal second advisory for simple reconfiguration cost-dominated problem instances.An important characteristic of static cost-dominated instances is that if there is a static cost benefit in a single time step of using one configuration over another, the reconfiguration cost required to achieve this cost benefit by reconfiguring is never prohibitive.In these instances, it is always best to use a configuration with the minimum static cost at each time step.
+Lemma 2The single optimal first advisory for simple static cost-dominated problem instances uses the unique configuration with the lowest static cost at each time step k ∈ {1, . . ., K}.
+Proof of Lemma 2The definition of simple instances ensures that the optimal first advisory is unique.The definition of static cost-dominated instances ensures that lower advisory costs can always be achieved by reconfiguring as much as is required to achieve the lowest static cost in each next time step.Taken together, these definitions imply that there must be a unique configuration achieving the lowest static cost in each time step, and the unique optimal first advisory uses this configuration at each time step.nonnegative configuration rank as the configuration cost, if FDA * uses an underestimate of the rank that will be incurred by the remainder of an advisory starting at C k+1 when computing R(C k+1 ), then it will return a second advisory that minimizes the sum of the configuration rank.This is indeed a sum over the differences between the two advisories at each time step, so the A * algorithm still minimize the cost after the difference constraint is incorporated into it (see Appendix E).In fact, the d-second-CSAs problem is a type of constrained shortest path problem.Related algorithms also leverage Lagrange duality to solve constrained shortest path problems [31,32].C k ← minimum-key configuration in open while C k / ∈ CK do Add C k to closed for C k+1 ∈ C k+1 do J ← J k (C k ) + g k+1 (C k , T k , C k+1 , T k+1 ) P 1 ← P 1 k (C k ) + φ(C k+1 , C1Proposition 3 Suppose M = 2, ε = ∞, there is a unique optimal first advisory (|C CSA (C, T )| = 1),and Ĵk (C k ) is an underestimate of the remaining cost.If λ ⋆ is optimal for the Lagrange dual problem of the d-second-CSA problem (i.e., it maximizes h(λ) over all λ ≥ 0) and strong duality is satisfied, then the FDA * algorithm with λ = λ ⋆ returns an advisory that achieves the same Lagrangian value as any second advisory that is optimal for the d-second-CSA problem.Proof of Proposition 3 Let C 2,⋆ be any second advisory that is optimal for the d-second-CSA problem.Strong duality is satisfied (by assumption), which means that g(C 2,⋆ , T ) = h(λ ⋆ ) and that C 2,⋆ minimizes L(C 2 , λ ⋆ ).By Lemma 3, we know that FDA * also returns a second advisory that minimizes L(C 2 , λ).Therefore, when λ = λ ⋆ , the advisory returned by FDA * and C 2,⋆ must achieve the same minimum Lagrangian value.This result can be extended to a problem like the d-second-CSA problem but with ε ∈ [0, ∞).This is referred to as the ε-d-second-CSA problem.which will be referred to as the ε-d-second-CSA problem.Let λ 1 be the dual variable corresponding to constraint (G2) and λ 2 be the dual variable corresponding to constraint (G3).returns an advisory that achieves the same Lagrangian value as any second advisory that is optimal for the ε-d-second-CSA problem.Proof of Corollary 1 The Lagrangian for the ε-d-second-CSA problem isL(C 2 , λ) = g(C 2 , T ) + λ 1 (g(C 2 , T ) -(1 + ε)J ⋆ ) + λ 2 (d -Φ(C 1 , C 2 )) = (1 + λ 1 )g(C 2 , T ) -λ 1 (1 + ε)J ⋆ + λ 2 (d -Φ(C 1 , C 2 )). (G4)The middle term is not impacted by C 2 .Furthermore, since 1 + λ 1 ≥ 0, minimizing the Lagrangian (G4) over C 2 ∈ C is the same as finding the advisory that minimizesg(C 2 , T ) + λ 2 1 + λ 1 (d -Φ(C 1 , C 2 )).When λ = λ2 1+λ1 , this is the cost function for which FDA * finds an optimal advisory.The result can be proven by using the techniques used in the proofs of Lemma 3 and Proposition 3.These results motivate the FDA * algorithm because under the right circumstances, it returns a second advisory that satisfies a condition that is necessarily satisfied by optimal second advisories.Aside from the insufficiency of this condition, there are some important qualifications to this motivation.The M -ε-d-CSAs problem instances that give rise to the d-second-CSA and ε-d-second-CSA problems are only a subset of all M -ε-d-CSAs problem instances.Also, we also have no reason to believe that strong duality will hold for second-CSA problem instances.For cases when strong duality does not hold, algorithms developed for constrained shortest path problems could be deployed to find lower-cost second advisories [32].Given that we are interested in quickly finding advisories for instances in which M > 2, we have not pursued such approaches.1 (t1C k ) previous configuration in a minimum-cost partial advisory ending at C k C † k-1 (C k ) previous configuration in a partial advisory ending at C k C⋆ k+1 (C k ) next configuration in a minimum-cost partial advisory starting from C k C † k+1 (C k ) next configuration in a partial advisory starting from C k d minimum allowable difference between returned advisories E the set of edges in a graph G a graph g cost g k single-time step cost for a configuration at configuration time step k g R k reconfiguration cost for configurations at configuration time steps k -1 and k g S k static cost for a configuration at configuration time step k I IS an instance of the Independent Set problem I M-ε-d-CSAs an instance of the M -ε-d-CSAs problem J priority queue of configurations at configuration time steps J ⋆ minimum cost for a single advisoryJ ⋆ k (C k ) minimum cost-so-far to C k J k (C k ) cost-so-far for a partial advisory ending at C k J⋆ k (C k ) minimum cost-to-go from C k Jk (C k ) cost-to-go for a partial advisory starting from C k Ĵk (C k ) under-estimate of the minimum cost-to-go from C k K number of configuration time steps k configuration time step M number of requested advisories n largest number of valid configurations at any configuration time step S Traffic situation data in sector s at traffic time step t U a subset of the nodes in a graph V the set of nodes in a graph W time steps [minutes] δ length of traffic time steps [minutes] ε excess cost fraction bound ε ′ FDA * -SC algorithm parameter λ parameter in FDA * and SDA * -SC algorithms Φ advisory difference metric Φ max maximum possible advisory difference metric value φ configuration difference metric σ an open sector: a set of one or more sectors
+between air traffic controllers.An airspace configuration maps a set of sectors to a set of open sectors such that each sector is assigned to exactly one open sector.A team of air traffic controllers, staffing one to three operating positions, monitors each open sector.At a minimum, a radar (also known as R-side) operating position is allocated to each open sector.A radar associate or data (also known as D-side) operating position can also be allocated to an open sector.Although rare, a third operating position can be allocated to an open sector.When more operating positions are allocated to an open sector, the tasks associated with controlling traffic in the open sector are divided among more controllers.An operating position configuration specifies how many operating positions are allocated to each open sector in the corresponding airspace configuration.Furthermore, each open sector is monitored from a particular workstation consisting of seats for air traffic controllers, a radar scope, plugs for headsets, and other equipment used by controllers to monitor traffic.Which workstation is utilized to monitor an open sector can influence how much work is involved when the open sector is changed by adding or removing sectors from it.For example, suppose an open sector consisting of two sectors has 15 aircraft in it, but that 12 of the aircraft are in one sector and 3 are in the other.Furthermore, suppose a reconfiguration is to occur in which one of these sectors will be removed from the open sector and be assigned to its own open sector, operated from a different workstation.There are two choices: either transition the sector with 12 aircraft to the new open sector at the other workstation or transition the sector with 3 aircraft to the new open sector at the new workstation.Transitioning the sector with just 3 aircraft to the new open sector at the other workstation requires fewer tasks and is less disruptive.Therefore, the choice of workstation for these two open sectors can impact the safety and efficiency of corresponding air traffic operations.A workstation configuration specifies which workstation is utilized for monitoring each open sector in a corresponding airspace configuration.Together, a set of corresponding airspace, operating position, and workstation configurations will be referred to simply as an area configuration.For example, the shapes of the five sectors in area 4 of Cleveland Air Route Traffic Control Center (ZOB) as of 20 October 2011 are shown in Fig. 1(a).The shapes of the open sectors in a sample airspace configuration are shown in Fig. 1(b) and the floor layout of corresponding operating position and workstation configurations is shown in Fig. 1(c).The airspace configuration contains four open sectors.Three of these open sectors consist of airspace from only a single sector (ZOB45, ZOB46, and ZOB48).These three open sectors are each allocated two operating positions (indicated by the number in parentheses in Figs.1(b) and 1(c)).The fourth open sector consists of the combined airspace of sectors ZOB47 and ZOB49 and is controlled by a single operating position.In Fig. 1(c), the two workstations on the left side are used by the four operating positions allocated to the open sectors consisting of ZOB45 and ZOB46.The workstation at the top of the right side is used by the R-and D-side operating positions allocated to the open sector consisting of ZOB48.Finally, the single R-side operating position controlling the open sector consisting of ZOB47 and ZOB49 is using the bottom workstation on the right side.This specification of area configurations is incomplete.The main missing component is a mapping of available controllers to operating positions.This component of configurations is excluded from the problem statement because factors that influence this component, such as controller skill, fatigue, and personality, may be difficult to quantify.This component of the configuration is left for the supervisor to determine without the assistance of an advisory.However, by providing multiple Sample operating position and workstation configurations.
+Fig. 11Fig. 1 Sectors and sample configuration of ZOB area 4.
+Fig. 22Fig. 2 Screenshot of the OASIS decision-support tool.
+Fig. 33Fig. 3 Portion of the graph for a sample CSA problem instance.
+Nguyen et al. have investigated situations in which user preferences are unknown or when only a distribution over user objective function parameter values is provided [11].Neither of these exactly describe the situation we investigate in this article, but this work helps motivate the M -ε-d-CSAs problem statement.In general, Nguyen et al. propose presenting the user with options and then allowing the user to resolve uncertainty in the objective function by selecting a solution from the set of options.Similarly, implicit in the M -ε-d-CSAs problem statement is the assumption that the user will resolve the impact of unmodeled or imperfectly-modeled components of the area configuration problem by selecting an advisory option that performs well enough with respect to these components.More specifically, when user preferences are completely unknown, Nguyen et al. suggest present-
+aAlgorithm 11recursive function referred to as Recursive Value Iteration Fraction Optimal (RecursiveVIFO) to implement the algorithm proposed in [14] (see Appendix C).RecursiveVIFO returns the set C ε ⊆ C of advisories that are valid for the corresponding CSA problem instance and achieve costs within the fraction ε of the minimum cost.Next, by searching exhaustively through C ε to find the cost-minimizing M advisories that meet the other M -ε-d-CSAs constraints, the VIFOEAS algorithm solves the M -ε-d-CSAs problem.Value Iteration Fraction Optimal with Exhaustive Advisory Search (VIFOEAS) Require: C, T, M, ε, d {M -ε-d-CSAs problem instance specification}
+is not surprising that both finding the set of advisories that meet the cost constraint (9) and searching through these advisories for the M that solve the problem can be computationally demanding.Building the set of near-optimal advisories C ε involves first performing backwards value iteration and then a depth-first search.If n = max k∈1,...,K |C k | is the largest number of valid configurations at any configuration time step, then the time-expanded graph corresponding to a CSA problem instance has at most nK +1 nodes and n 2 K +n edges.For a general graph, the computational complexity of value iteration is O
+The algorithm can be run to construct an advisory starting from C 0 and working forward in time (as specified in Appendix E), or vice versa.The algorithm makes use of Ĵk (C k ), an under-estimate of the minimum cost-to-go to a final configuration from a configuration C k .A priority queue open and a set closed are also used.The configuration C † k-1 (C k ) is the previous configuration in a partial advisory under consideration.This previous configuration may or may not be part of a minimum-cost partial advisory.The J k (C k ) values are upper bounds on the minimum cost-so-far required to get from C 0 to C k .The cost J k (C k ) can be achieved by constructing the partial advisory defined by the previous configurations returned by C † k-1 (C k ) back to C 0 .Furthermore, using an under-estimate for Ĵk (C k ) ensures that once a configuration is moved to closed, J k (C k ) for that configuration is actually the minimum cost J ⋆ k (C k ) for a partial advisory from C 0 to C k .Since the cost for each time step is nonnegative (g
+4 .4Sequential Distinct A * Algorithm with Shortcuts.
+(a)).The instances come from nine two-hour time periods (6 am-8 am, 8 am-10 am, . .., 10 pm-midnight local time) on two dates (Thursday 01 December 2011 and Tuesday 06 December 2011), so there are 18 instances.The configuration time step was five minutes (∆ = 5) and the traffic time step was one minute (δ = 1).The algorithm was restricted to select from 16 airspace configurations that ZOB staff have identified as feasible.Default workstation assignments were used for all open sectors.There were 173 area configurations (i.e., corresponding airspace, operating position, and workstation configurations)
+Fig. 55Fig. 5 Excess cost fraction achieved by second advisories.
+* -SC/FBVISAS) Fraction of Instances (a) Sum of costs of second and third advisories (g(C 2 , T ) + g(C 3 , T )).
+* -SC/FBVISAS) Fraction of Instances (b) Cost of second advisory (g(C 2 , T )).
+Fig. 66Fig. 6 Distribution of the ratio of costs.
+Fig. 77Fig. 7 Distributions of computation time required by the SDA * -SC and FBVISAS heuristics.
+Finally, the secondcondition required of I IS and I M-ε-d-CSAs will be verified.Suppose that there exists a feasible solution for I M-ε-d-CSAs .Let this feasible solution be {C 1 , . . ., C M }, where each C m is a configuration schedule advisory: C m = {C m 0 , C m 1 } for m = 1, . . ., M .A "yes" instance of I IS can be constructed as follows.Let U = {C m 1 } M m=1 ⊂ V be a set of size M that we will use to demonstrate that there exists an independent set of size M for I IS .Since {C 1 , . . ., C M } make up a feasible solution for I M-ε-d-CSAs , we know that they satisfy the advisory difference constraint.Due to how the configuration difference metric is defined, this means that each of the C m 1 do not share an edge in E with any other C m ′ 1 .This means that U = {C m 1 } M m=1 is an independent set of size M
+2 . 1 Definition 3 (213Simple Static Cost-Dominated Problem Instances with d > static cost-dominated M -ε-d-CSAs problem instance) Static cost-dominated M -ε-d-CSAs problem instances are those in which β R = 0.
+Proposition 2 1 .21If d > 1, FBVISAS does not return a second advisory for simple static costdominated problem instances.Proof of Proposition 2 Consider partial advisories to any configuration C at any time step k from the initial configuration at k = 0.For simple static cost-dominated instances, the CSA-minimum cost partial advisory will use the unique static cost-minimizing configuration from time steps 1 to k -Consider partial advisories from any configuration C at any time step k to time step K.For simple static cost-dominated instances, the CSA-minimum cost partial advisory will use the unique static cost-minimizing configuration from time steps k + 1 to K.
+Algorithm 7 FDA7* (C, T, J ⋆ , d, C 1 , λ) Require: C = {C k } K k=0 {Valid configuration schedule advisories} Require: T {Traffic situation data} Require: J ⋆ {Minimum cost for corresponding CSA problem instance} Require: d {Parameter from M -ε-d-CSAs problem instance specification} Require: C 1 {First advisory for M -ε-d-CSAs problem instance} Require: λ {Algorithm parameter} closed ← ∅ open ← priority queue containing C0 with key 0
+k+1 ) R ← J + λ((k + 1)φmax -P 1 ) if C k+1 ∈ open and R ≤ R(C k+1 ) then Remove C k+1 from open if C k+1 / ∈ open then R k+1 (C k+1 ) ← R J k+1 (C k+1 ) ← J P 1 k+1 (C k+1 ) ← P 1 C † k (C k+1 ) ← C k R(C k+1 ) ← R k+1 (C k+1 ) + Ĵk+1 (C k+1 ) Add C k+1 to open with key R(C k+1 ) C k ← minimum-key configuration in open Construct C 2 from C k by iteratively using C † k-1 (C k ) return C 2
+Definition 5 (5ε-d-second-CSA problem) Consider M -ε-d-CSAs instances in which M = 2, ε ∈ [0, ∞),and there is a unique optimal first advisory (|C ⋆ CSA (C, T )| = 1).For such instances, finding a second advisory involves solving minimize g(C 2 , T )subject to C 2 k ∈ C k , k = 0, 1, 2, . . ., K g(C 2 , T )g(C 1 , T ) g(C 1 , T ) ≤ ε, (G2) Φ(C 1 , C 2 ) ≥ d,(G3)
+Corollary 1 2 1+λ ⋆ 1121Suppose M = 2, there is a unique optimal first advisory (|C CSA (C, T )| = 1), andĴk (C k ) is an underestimate of the remaining cost,.If λ ⋆ = [λ ⋆ 1 , λ ⋆ 2 ]is optimal for the Lagrange dual problem of the ε-d-second-CSA problem and strong duality is satisfied, then the FDA * algorithm with λ = λ ⋆
+Finally, Proposition 3 and Corollary 1 require the value of λ ⋆ or λ ⋆ 2 1+λ ⋆ 1 ,21respectively.For the d-second-CSA problem, λ ⋆ can be found because an implication of Lemma 3 is that by searching over λ ≥ 0 and repeatedly callingAlgorithm 8 FDA * -SC(C, T, J ⋆ , ε, d, C M , λ, { Jk (C k )} K-1 k=0 , { C † k+1 (C k )} K-1 k=0 , ε ′ ) Require: C = {C k } K k=0 ,T {Constraints and traffic data from corresponding CSA instance} Require: J ⋆ {Minimum cost for corresponding CSA problem instance} Require: ε, d {Parameters in M -ε-d-CSAs problem instance specification} Require: C M {Advisories found so far for M -ε-d-CSAs problem instance} Require: λ, ε ′ {Algorithm parameters}Require: { Jk (C k )} K-1 k=0 , { C † k+1 (C k )} K-1 k=0 {Partial advisory specifications and costs} m ← |C M | + 1 closed ← ∅open ← priority queue containing C0 with key 0C k ← minimum-key configuration in open while not (C k ∈ CK and J K (C K )-J ⋆ J ⋆ ≤ ε and min m ′ ∈1,...,m-1 P m ′ K (CK) ≥ d) and C k not a shortcut do Add C k to closed for C k+1 ∈ C k+1 do J ← J k (C k ) + g k+1 (C k , T k , C k+1 , T k+1 ) for m ′ = 1, . . ., m -1 do P m ′ ← P m ′ k (C k ) + φ(C k+1 , C m ′ k+1 ) if J + Ĵk+1 (C k+1 )-J ⋆ J ⋆ ≤ ε and min m ′ ∈{1,...,m-1} P m ′ + P m ′ (C k+1 ) ≥ d then R ← J J ⋆ + λ 1 φmax-P m ′ Φmax-d+1 if C k+1 ∈ open and R < R k+1 (C k+1 ) then Remove C k+1 from open if C k+1 / ∈ open then R k+1 (C k+1 ) ← R J k+1 (C k+1 ) ← J for m ′ = 1, . . ., m -1 do P m ′ k+1 (C k+1 ) ← P m ′ C † k (C k+1 ) ← C k R(C k+1 ) ← R k+1 (C k+1 ) + Ĵk+1 (C k+1 ) J ⋆ Add C k+1 to open with key R(C k+1 ) if J (C k+1 )+ Jk+1 (C k+1 )-J ⋆ J ⋆ ≤ ε ′ and min m ′ ∈{1,...,m-1} [P m ′ k+1 (C k+1 ) + P m ′ k+1 (C k+1 )] ≥ d thenLabel C k+1 as a shortcut and add it to open with key J (C k+1 ) + Jk+1 (C k+1 ) C k ← minimum-key configuration in open Construct C m from C k by iteratively using C † k-1 (C k ) and C † k+1 (C k ); add C m to C M return C M
+Table 11Computational complexity of algorithmsAlgorithmComplexityReferenceVIFOEASO(n 3 K) asub-section IV.AFBVISASO(n2 K + nK log(nK + 1)) sub-section IV.B SDA * -SC O(M n 2 K log(nK + 1)) sub-section IV.C Eppstein lowest-cost paths O(n 2 K + nK log(nK + 1) + M ) [20] Suurballe lowest-cost node-disjoint paths O(M n 2 K log(nK + 1)) b [23] a This does not include the complexity of searching through |C ε | M advisory subsets.
+Table 22Fraction of problem instances with one, two, or three advisories returnedAlgorithm One Advisory Two Advisories Three AdvisoriesSDA  *  -SC0.210.200.59FBVISAS0.150.200.66
+		
+		
+
+			
+AcknowledgmentsWe are grateful to Karl Bilimoria and Michael Drew for their helpful suggestions regarding the problem defined in this article.We thank Chok Fung (Jack) Lai for his patient assistance with
+			
+
+			
+E. Computational Complexity ComparisonThe computational complexities of various algorithms proposed and discussed in this article are documented in Table 1.The complexity is reported when n is the largest number of valid configurations in configuration time steps k = 1, 2, . . ., K, which means that the graph under consideration has at most nK + 1 nodes and n 2 K + n edges when we also account for the initial configuration C 0 .The complexity of value iteration for the graph under consideration is lower than for a general graph, and this is reflected in the complexity results for VIFOEAS and FBVISAS.The complexities of the other algorithms do not leverage the special structure of the graph under consideration (i.e., they are based only on the number of nodes and edges in the graph, not on the time-expanded structure).This, along with the worst-case assumption of that no shortcuts are found, may explain why the complexity of SDA * -SC is larger than that of FBVISAS even though we show in sub-section V.B that SDA * -SC always executed in less time than FBVISAS over thousands of problem instances.As expected, the complexity of VIFOEAS is larger than that of the other algorithms, and it does not even include the cost of searching through up to |C ε | M advisory subsets.The complexities of two representative algorithms for finding M paths are provided for reference [20,23] (see sub-section III.C).Each is optimal for a particular problem that involves finding M paths.The lowest-cost paths algorithm solves a relaxation of M -ε-d-CSAs (see sub-section IV.D).The lowest-cost node-disjoint paths algorithm solves a problem similar to the M -ε-d-CSAs problem but with a different φ function, a particular value of d, and in which constraint (8) is not enforced (i.e., the first advisory is not required to be optimal for a single-path problem).The complexity of the lowest-cost paths algorithm is essentially identical to that of FBVISAS (particularly for M = 2 or 3), and the complexity of the lowest-cost node-disjoint paths algorithm is identical to that of SDA * -SC.The complexities of the FBVISAS and SDA * -SC heuristics are therefore comparable to those of algorithms that are optimal for other problems that are related to the M -ε-d-CSAs problem.
+V. Performance AnalysisThe performance of the algorithms was first analyzed by using them to solve some small problem instances for which optimal solutions could be computed by the benchmark VIFOEAS algorithm inThe M -ε-d-CSAs problem is NP-hard.This will be shown by demonstrating that the Independent Set (IS) problem, which is NP-complete and even difficult to approximate [15], is polynomialtime reducible to M -ε-d-CSAs.This is sufficient to show that the M -ε-d-CSAs problem is NP-hard [16].First, a review of the IS problem will be provided.Given a graph G = (V, E), a set of nodes are This graph consists of a single starting node (a required starting configuration C 0 that makes up C 0 ).For k = 1, any of the nodes V represent valid configurations (C 1 V ).This means that any of the required M valid configuration schedule advisories will select a single node from V for C m 1 .The configuration difference metric φ is defined as follows:The configuration difference metric is defined such that two configuration schedule advisories achieve
+Appendix B: Reverse Value Iteration AlgorithmThe Reverse Value Iteration algorithm (ReverseVI) is described in Algorithm 4.Algorithm 4 ReverseVI(C, T )The Recursive Value Iteration Fraction Optimal algorithm (RecursiveVIFO) is described in Algorithm 5.It is a recursive implementation of the algorithm proposed by Byers and Waterman [14].
+configuration in partial advisory under consideration}Require: Jmax ∈ R+ {Upper bound on advisory cost} Require: J ∈ R+ {Cost incurred so far by the partial advisory under consideration}for each partial advisoryAlthough more restrictive than is necessary, we will define and utilize simple problem instances.• the configuration constraints are such that• and there exists a unique optimal first advisory (|C ⋆ CSA (C, T )| = 1).The left hand side of this inequality is the lowest cost of changing configurations during the entire time horizon.The right hand side is the sum over all the configuration time steps of the largest difference between static costs at each time step.An important characteristic of simple reconfiguration cost-dominated instances is that advisories never achieve lower total costs by changing configurations-it is always better to remain in the current configuration.Lemma 1 The single optimal first advisory for simple reconfiguration cost-dominated problem instances uses the initial configuration for all time steps k ∈ {0, 1, . . ., K}.
+Proof of Lemma 1The definition of simple instances ensures that such an advisory meets the configuration constraints.The definition of reconfiguration cost-dominated instances ensures that lower advisory costs can always be achieved by staying in the same configuration rather than by C ′ at time step k, and this partial advisory achieves the minimum required difference from the optimal first advisory.• Partial optimal second advisory to C ′ at time step k: Now consider the part of this optimal second advisory from C at time step 0 to C ′ at time step k.Now we leverage these two properties to show that FBVISAS will return an optimal second advisory.Arguing by contradiction, we assume that FBVISAS returned a second advisory with a larger total advisory cost than is achieved by an M -ε-d-CSAs-optimal second advisory.We have already shown that an M -ε-d-CSAs-optimal second advisory achieves the CSA-minimal cost-so-far from C at time step 0 to C ′ at time step k and the CSA-minimal cost-to-go from C ′ at time step k to the end of the time horizon.We have assumed that the cost of this optimal second advisory, which is the sum of the cost-so-far and cost-to-go, is lower than the cost of the second advisory returned by FBVISAS.FBVISAS investigates configurations at time steps starting with those that have the lowest sum of the cost-so-far and cost-to-go, so C ′ at time step k would have been investigated by FBVISAS before it found and returned the assumed higher-cost second advisory.However, if FBVISAS investigated C ′ at time step k, it would have discovered that the advisory constructed from these two partial advisories met the problem constraints because the partial advisory from C ′ at time step k meets the difference constraint on its own (as was shown earlier).Therefore, it would have returned this M -ε-d-CSAs-optimal second advisory, a result that contradicts our assumption that FBVISAS returned a second advisory with a larger total advisory cost than is achieved by an Two such corresponding partial advisories are combined into a single advisory that is evaluated by FBVISAS when it investigates any configuration C at any time step k.Such investigated advisories never achieve a difference from the optimal first advisory of more than 1 because they only diverge from the optimal advisory at time step k.Therefore, the potential second advisories investigated by FBVISAS all fail to meet the difference constraint (10) and so no second advisory is returned.The Forward A * algorithm (ForwardA * ) is specified in Algorithm 6.The Forward Distinct A * algorithm (FDA * ) is specified in Algorithm 7.This algorithm specification uses φ max , which is the maximum possible configuration difference:For the configuration difference metric (12) used in this article, φ max = 1.which will be referred to as the d-second-CSA problem.Lemma 3 If λ ≥ 0 and Ĵk (C k ) is an underestimate of the remaining costThe contribution to the rank from each configuration in the advisory is nonnegative when λ ≥ 0 because g k (•, •, •, •) ≥ 0 and because φ max ≥ φ(•, •).Since FDA * is simply the A * algorithm with a the case when Ĵk (C k ) is an underestimate, as assumed.Let C 2,⋆ be the advisory rank-minimizing advisory returned by FDA * .Next, consider a modified configuration rank functionSince the additional terms are both constants, C 2,⋆ minimizes the sum of the modified rank as well.An A * -based algorithm cannot be used directly to minimize this modified rank because it can be negative, which is why FDA * minimizes the unmodified rank, which is nonnegative.We know that C 2,⋆ will minimize the both the sum of the unmodified rank and the sum of the modified rank because each advisory has the same number of configurations.The sum of the modified rank of the configurations in an advisory isFor any C 2 ∈ C and λ ≥ 0, we can specify the Lagrangian L(C 2 , λ) for the d-second-CSA problem asThis is identical to (G1), so FDA * finds a C 2 ∈ C that minimizes the Lagrangian L(C The Forward Distinct A * with Shortcuts algorithm (FDA * -SC) is specified in Algorithm 8.For FDA * -SC, the open priority queue functionality must be adjusted.The queue key is set up such that any configuration labeled as a shortcut is lower than any configuration not labeled as a shortcut.Among shortcut configurations or non-shortcut configurations, the key works as usual (lower keys given higher priority than higher keys).Therefore, if shortcut configurations are in the queue, then the minimum-key configuration is the shortcut configuration with the lowest key.If P m (C k ) is always an underestimate of the difference-to-go, then the algorithm will not incorrectly try to take a shortcut with partial advisories that will never become distinct enough from advisory m.In this article, we define P m (C k ) 0 for all m and C k to ensure that this is an under- our software implementation of the algorithms described in this article.The historical airspace configuration data used in this research was provided by ATAC.			
+			
+
+				
+
+
+	
+		U.S. Airport Infrastructure and Sustainable Aviation Fuel
+		
+			KristiMoriarty
+		
+		
+			AllisonKvien
+		
+		10.2172/1768316
+		
+	
+	
+		Federal Aviation Administration
+		
+			Office of Scientific and Technical Information (OSTI)
+			February 2012
+		
+	
+	Federal Aviation Administration, "Order JO 7210.3X Facility Operation and Administration," http://www.faa.gov/air_traffic/publications/atpubs/FAC/index.htm, February 2012.
+
+
+
+	
+		Complexity analysis in the next generation of air traffic management system
+		
+			MayteCano
+		
+		
+			ManuelMDorado
+		
+		
+			PabloSfanchez-Escalonilla
+		
+		10.1109/dasc.2007.4391890
+	
+	
+		2007 IEEE/AIAA 26th Digital Avionics Systems Conference
+		
+			IEEE
+			October 2007
+		
+	
+	Cano, M., Sánchez-Escalonilla, P., and Dorado, M. M., "Complexity Analysis in the Next Generation of Air Traffic Management System," Proc. of AIAA/IEEE Digital Avionics Systems Conference, October 2007.
+
+
+
+	
+		Combining Airspace Sectors for the Efficient Use of Air Traffic Control Resources
+		
+			MichaelBloem
+		
+		
+			ParimalKopardekar
+		
+		10.2514/6.2008-7222
+	
+	
+		AIAA Guidance, Navigation and Control Conference and Exhibit
+		Honolulu, HI
+		
+			American Institute of Aeronautics and Astronautics
+			August 2008
+		
+	
+	Bloem, M. and Kopardekar, P., "Combining Airspace Sectors for the Efficient Use of Air Traffic Control Resources," AIAA Guidance, Navigation, and Control Conference and Exhibit, Honolulu, HI, August 2008.
+
+
+
+	
+		Algorithms for Combining Airspace Sectors
+		
+			MichaelBloem
+		
+		
+			ParimalKopardekar
+		
+		
+			PramodGupta
+		
+		10.2514/atcq.17.3.245
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			17
+			3
+			
+			2009
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Bloem, M., Gupta, P., and Kopardekar, P., "Algorithms for Combining Airspace Sectors," Air Traffic Control Quarterly, Vol. 17, No. 3, 2009, pp. 245-268.
+
+
+
+	
+		A Method of Optimally Combining Sectors
+		
+			MichaelCDrew
+		
+		10.2514/6.2009-7057
+	
+	
+		9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO)
+		Hilton Head, SC
+		
+			American Institute of Aeronautics and Astronautics
+			September 2009
+		
+	
+	Drew, M. C., "A Method of Optimally Combining Sectors," AIAA Aviation Technology, Integration and Operations Conference, Hilton Head, SC, September 2009.
+
+
+
+	
+		Algorithms for Combining Airspace Sectors
+		
+			MichaelBloem
+		
+		
+			ParimalKopardekar
+		
+		
+			PramodGupta
+		
+		10.2514/atcq.17.3.245
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			17
+			3
+			
+			September 2010
+			American Institute of Aeronautics and Astronautics (AIAA)
+			Nice, France
+		
+	
+	Bloem, M. and Gupta, P., "Configuring Airspace Sectors with Approximate Dynamic Programming," Proc. of International Congress of the Aeronautical Sciences, Nice, France, September 2010.
+
+
+
+	
+		TRB Special Report 301: Traffic Controller Staffing in the En Route Domain
+		
+			S.-LTien
+		
+		
+			RHoffman
+		
+		
+			PSchonfeld
+		
+		10.17226/13022
+	
+	
+		Proc. of Transportation Res. Board Annual Meeting
+		of Transportation Res. Board Annual MeetingWashington, DC
+		
+			Transportation Research Board
+			January 2012
+		
+	
+	Tien, S.-L., Hoffman, R., and Schonfeld, P., "En Route Sector Combination Scheme to Minimize Air Traffic Controller Staffing," Proc. of Transportation Res. Board Annual Meeting, Washington, DC, January 2012.
+
+
+
+	
+		Advisory Algorithm for Scheduling Open Sectors, Operating Positions, and Workstations
+		
+			MichaelBloem
+		
+		
+			MichaelDrew
+		
+		
+			ChokFungLai
+		
+		
+			KarlBilimoria
+		
+		10.2514/6.2012-5592
+	
+	
+		12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference and 14th AIAA/ISSMO Multidisciplinary Analysis and Optimization Conference
+		Indianapolis, IN
+		
+			American Institute of Aeronautics and Astronautics
+			September 2012
+		
+	
+	Bloem, M., Drew, M. C., Lai, C. F., and Bilimoria, K., "Advisory Algorithm for Scheduling Open Sec- tors, Operating Positions, and Workstations," AIAA Aviation Technology, Integration, and Operations Conference, Indianapolis, IN, September 2012.
+
+
+
+	
+		Advisory Algorithm for Scheduling Open Sectors, Operating Positions, and Workstations
+		
+			MichaelBloem
+		
+		
+			MichaelDrew
+		
+		
+			ChokFungLai
+		
+		
+			KarlDBilimoria
+		
+		10.2514/1.62292
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		Journal of Guidance, Control, and Dynamics
+		0731-5090
+		1533-3884
+		
+			37
+			4
+			
+			2014
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Bloem, M., Drew, M., Lai, C. F., and Bilimoria, K., "Advisory Algorithm for Scheduling Open Sectors, Operating Positions, and Workstations," AIAA Journal of Guidance, Control, and Dynamics, 2014.
+
+
+
+	
+		An Evaluation of Operational Airspace Sectorization Integrated System (OASIS) Advisory Tool
+		
+			PaulULee
+		
+		
+			RichardHMogford
+		
+		
+			WayneBridges
+		
+		
+			NathanBuckley
+		
+		
+			MarkEvans
+		
+		
+			VimmyGujral
+		
+		
+			HwasooLee
+		
+		
+			DanielPeknik
+		
+		
+			WilliamPreston
+		
+		10.2514/6.2013-4202
+	
+	
+		2013 Aviation Technology, Integration, and Operations Conference
+		Los Angeles, CA
+		
+			American Institute of Aeronautics and Astronautics
+			August 2013
+		
+	
+	Lee, P. U., Mogford, R., Bridges, W., Buckley, N., Evans, M., Gujral, V., Lee, H., Peknik, D., and Pre- ston, W., "An Evaluation of Operational Airspace Sectorization Integrated System (OASIS) Advisory Tool," AIAA Aviation Technology, Integration, and Operations Conference, Los Angeles, CA, August 2013.
+
+
+
+	
+		Generating diverse plans to handle unknown and partially known user preferences
+		
+			TuanAnhNguyen
+		
+		
+			MinhDo
+		
+		
+			AlfonsoEmilioGerevini
+		
+		
+			IvanSerina
+		
+		
+			BiplavSrivastava
+		
+		
+			SubbaraoKambhampati
+		
+		10.1016/j.artint.2012.05.005
+	
+	
+		Artificial Intelligence
+		Artificial Intelligence
+		0004-3702
+		
+			190
+			
+			October 2012
+			Elsevier BV
+		
+	
+	Nguyen, T., Do, M., Gerevini, A. E., Serina, I., Srivastava, B., and Kambhampati, S., "Generating Di- verse Plans to Handle Unknown and Partially Known User Preferences," Artificial Intelligence, Vol. 190, October 2012, pp. 1-31.
+
+
+
+	
+		An Approach for Finding Multiple Area of Specialization Configuration Advisories
+		
+			MichaelJBloem
+		
+		
+			NicholasBambos
+		
+		10.2514/6.2013-4201
+	
+	
+		2013 Aviation Technology, Integration, and Operations Conference
+		Los Angeles, CA
+		
+			American Institute of Aeronautics and Astronautics
+			
+		
+	
+	Bloem, M. and Bambos, N., "An Approach for Finding Multiple Area of Specialization Configuration Advisories," AIAA Aviation Technology, Integration, and Operations Conference, Los Angeles, CA,
+
+
+
+	
+		A Formal Basis for the Heuristic Determination of Minimum Cost Paths
+		
+			PeterHart
+		
+		
+			NilsNilsson
+		
+		
+			BertramRaphael
+		
+		10.1109/tssc.1968.300136
+	
+	
+		IEEE Transactions on Systems Science and Cybernetics
+		IEEE Trans. Syst. Sci. Cyber.
+		0536-1567
+		
+			4
+			2
+			
+			July 1968
+			Institute of Electrical and Electronics Engineers (IEEE)
+		
+	
+	Hart, P. E., Nilsson, N. J., and Raphael, B., "A Formal Basis for the Heuristic Determination of Minimum Cost Paths," IEEE Transactions of Systems Science and Cybernetics, Vol. 4, No. 2, July 1968, pp. 100-107.
+
+
+
+	
+		Technical Note—Determining All Optimal and Near-Optimal Solutions when Solving Shortest Path Problems by Dynamic Programming
+		
+			ThomasHByers
+		
+		
+			MichaelSWaterman
+		
+		10.1287/opre.32.6.1381
+	
+	
+		Operations Research
+		Operations Research
+		0030-364X
+		1526-5463
+		
+			32
+			6
+			
+			1984
+			Institute for Operations Research and the Management Sciences (INFORMS)
+		
+	
+	Byers, T. H. and Waterman, M. S., "Determining All Optimal and Near-Optimal Solutions When Solving Shortest Path Problems by Dynamic Programming," Operations Research, Vol. 32, No. 6, 1984, pp. 1381-1384.
+
+
+
+	
+		Inapproximability of Combinatorial Optimization Problems
+		
+			LucaTrevisan
+		
+		10.1002/9781118600207.ch13
+		TR04- 065
+	
+	
+		Paradigms of Combinatorial Optimization
+		
+			John Wiley & Sons, Inc.
+			July 2004
+			
+		
+	
+	Technical Report
+	Trevisan, L., "Inapproximability of Combinatorial Optimization Problems," Technical Report TR04- 065, Electronic Colloquium on Computational Complexity, July 2004.
+
+
+
+	
+		Algorithm Design
+		
+			JKleinberg
+		
+		
+			ÉvaTardos
+		
+		
+			2005
+			Addison Wesley
+		
+	
+	Kleinberg, J. and Éva Tardos, Algorithm Design, Addison Wesley, 2005.
+
+
+
+	
+		On<i>k</i>th Best Policies
+		
+			RichardBellman
+		
+		
+			RobertKalaba
+		
+		10.1137/0108044
+	
+	
+		Journal of the Society for Industrial and Applied Mathematics
+		Journal of the Society for Industrial and Applied Mathematics
+		0368-4245
+		2168-3484
+		
+			8
+			4
+			
+			December 1960
+			Society for Industrial & Applied Mathematics (SIAM)
+		
+	
+	Bellman, R. and Kalaba, R., "On kth Best Policies," Journal of the SIAM , Vol. 8, No. 4, December 1960, pp. 582-588.
+
+
+
+	
+		A Method for the Solution of the <i>N</i> th Best Path Problem
+		
+			WalterHoffman
+		
+		
+			RichardPavley
+		
+		10.1145/320998.321004
+	
+	
+		Journal of the ACM
+		J. ACM
+		0004-5411
+		1557-735X
+		
+			6
+			4
+			
+			October 1959
+			Association for Computing Machinery (ACM)
+		
+	
+	Hoffman, W. and Pavley, R., "A Method for the Solution of the N th Best Path Problem," Journal of the ACM , Vol. 6, No. 4, October 1959, pp. 506-514.
+
+
+
+	
+		An Appraisal of Some Shortest-Path Algorithms
+		
+			SEDreyfus
+		
+	
+	
+		United States Air Force Project RAND
+		
+			September 1963
+		
+	
+	Memorandum RM-5433-1-PR
+	Dreyfus, S. E., "An Appraisal of Some Shortest-Path Algorithms," Memorandum RM-5433-1-PR, United States Air Force Project RAND, September 1963.
+
+
+
+	
+		Finding the k Shortest Paths
+		
+			DavidEppstein
+		
+		10.1137/s0097539795290477
+	
+	
+		SIAM Journal on Computing
+		SIAM J. Comput.
+		0097-5397
+		1095-7111
+		
+			28
+			2
+			
+			1998
+			Society for Industrial & Applied Mathematics (SIAM)
+		
+	
+	Eppstein, D., "Finding the k Shortest Paths," SIAM Journal of Computing, Vol. 28, No. 2, 1998, pp. 652-673.
+
+
+
+	
+		Deviation Algorithms for Ranking Shortest Paths
+		
+			EMartins
+		
+		
+			MPascoal
+		
+		
+			JSantos
+		
+	
+	
+		International Journal of Foundations of Computer Science
+		
+			10
+			3
+			
+			1999
+		
+	
+	Martins, E., Pascoal, M., and dos Santos, J., "Deviation Algorithms for Ranking Shortest Paths," International Journal of Foundations of Computer Science, Vol. 10, No. 3, 1999, pp. 247-262.
+
+
+
+	
+		Computing the K Shortest Paths: A New Algorithm and an Experimental Comparison
+		
+			VíctorMJiménez
+		
+		
+			AndrésMarzal
+		
+		10.1007/3-540-48318-7_4
+	
+	
+		Algorithm Engineering
+		Lecture Notes in Computer Science
+		
+			JVitter
+		
+		
+			CZaroliagis
+		
+		
+			Springer Berlin Heidelberg
+			1999
+			1668
+			
+		
+	
+	Algorithm Engineering
+	Jiménez, V. M. and Marzal, A., "Computing the K Shortest Paths: A New Algorithm and an Experi- mental Comparison," Algorithm Engineering, edited by J. Vitter and C. Zaroliagis, Vol. 1668 of Lecture Notes in Computer Science, Springer Berlin / Heidelberg, 1999, pp. 15-29.
+
+
+
+	
+		Disjoint paths in a network
+		
+			JWSuurballe
+		
+		10.1002/net.3230040204
+	
+	
+		Networks
+		Networks
+		0028-3045
+		1097-0037
+		
+			4
+			2
+			
+			1974
+			Wiley
+		
+	
+	Suurballe, J. W., "Disjoint Paths in a Network," Networks, Vol. 4, 1974, pp. 125-145.
+
+
+
+	
+		A quick method for finding shortest pairs of disjoint paths
+		
+			JWSuurballe
+		
+		
+			RETarjan
+		
+		10.1002/net.3230140209
+	
+	
+		Networks
+		Networks
+		0028-3045
+		1097-0037
+		
+			14
+			2
+			
+			1984
+			Wiley
+		
+	
+	Suurballe, J. W. and Tarjan, R. E., "A Quick Method for Finding Shortest Pairs of Disjoint Paths," Networks, Vol. 14, 1984, pp. 325-336.
+
+
+
+	
+		Mathematical Programming Algorithms for Two-Path Routing Problems with Reliability Considerations
+		
+			AprilKAndreas
+		
+		
+			JColeSmith
+		
+		10.1287/ijoc.1080.0266
+	
+	
+		INFORMS Journal on Computing
+		INFORMS Journal on Computing
+		1091-9856
+		1526-5528
+		
+			20
+			4
+			
+			2005
+			Institute for Operations Research and the Management Sciences (INFORMS)
+		
+	
+	Andreas, A. K. and Smith, J. C., "Exact Algorithms for Robust k-Path Routing Problems," Proc. of the GO, 2005.
+
+
+
+	
+		An Improved Approximation Algorithm for Computing Disjoint QoS-Paths
+		
+			CPeng
+		
+		
+			HShen
+		
+	
+	
+		Proc. of IEEE International Conference on Systems and Networking
+		of IEEE International Conference on Systems and Networking
+		
+			April 2006
+		
+	
+	Peng, C. and Shen, H., "An Improved Approximation Algorithm for Computing Disjoint QoS-Paths," Proc. of IEEE International Conference on Systems and Networking, April 2006.
+
+
+
+	
+		Branch-and-price-and-cut algorithms for solving the reliable h-paths problem
+		
+			AprilKAndreas
+		
+		
+			JColeSmith
+		
+		
+			SimgeKüçükyavuz
+		
+		10.1007/s10898-007-9254-x
+	
+	
+		Journal of Global Optimization
+		J Glob Optim
+		0925-5001
+		1573-2916
+		
+			42
+			4
+			
+			December 2008
+			Springer Science and Business Media LLC
+		
+	
+	Andreas, A. K., Smith, J. C., and Küçükyavuz, S., "Brand-and-Price-and-Cut Algorithms for Solving the Reliable h-Paths Problem," Journal of Global Optimization, Vol. 42, No. 4, December 2008.
+
+
+
+	
+		Edge disjoint paths with minimum delay subject to reliability constraint
+		
+			RuenChzeLoh
+		
+		
+			SietengSoh
+		
+		
+			MihaiLazarescu
+		
+		10.1109/apcc.2009.5375519
+	
+	
+		2009 15th Asia-Pacific Conference on Communications
+		Shanghai, China
+		
+			IEEE
+			October 2009
+		
+	
+	Loh, R. C., Soh, S., and Lazarescu, M., "Edge Disjoint Paths with Minimum Delay Subject to Reliability Constraint," Proc. of IEEE Asia-Pacific Conference on Communications, Shanghai, China, October 2009.
+
+
+
+	
+		An Approach to Find Maximal Disjoint Paths with Reliability and Delay Constraints
+		
+			Ruen-ChzeLoh
+		
+		
+			SietengSoh
+		
+		
+			MihaiLazarescu
+		
+		10.1109/aina.2009.24
+	
+	
+		2009 International Conference on Advanced Information Networking and Applications
+		
+			IEEE
+			June 2009
+		
+	
+	Loh, R.-C., Soh, S., and Lazarescu, M., "An Approach to Find Maximal Disjoint Paths with Reliability and Delay Constraints," Proc. of IEEE International Conference on Advanced Information Networking and Applications, June 2009.
+
+
+
+	
+		A Modified K-Shortest Paths Algorithm for Solving the Earliest Arrival Problem on the Time-Dependent Model of Transportation Systems
+		
+			YYang
+		
+		
+			SWang
+		
+		
+			XHu
+		
+		
+			JLi
+		
+		
+			BXu
+		
+	
+	
+		Proc. of International MultiConference of Engineers and Computer Scientists
+		of International MultiConference of Engineers and Computer ScientistsHong Kong; China
+		
+			March 2012
+		
+	
+	Yang, Y., Wang, S., Hu, X., Li, J., and Xu, B., "A Modified K-Shortest Paths Algorithm for Solving the Earliest Arrival Problem on the Time-Dependent Model of Transportation Systems," Proc. of International MultiConference of Engineers and Computer Scientists, Hong Kong, China, March 2012.
+
+
+
+	
+		A dual algorithm for the constrained shortest path problem
+		
+			GabrielYHandler
+		
+		
+			IsraelZang
+		
+		10.1002/net.3230100403
+	
+	
+		Networks
+		Networks
+		0028-3045
+		1097-0037
+		
+			10
+			4
+			
+			1980
+			Wiley
+		
+	
+	Handler, G. Y. and Zang, I., "A Dual Algorithm for the Constrained Shortest Path Problem," Networks, Vol. 10, 1980, pp. 293-310.
+
+
+
+	
+		Lagrangian relaxation and enumeration for solving constrained shortest-path problems
+		
+			WMatthewCarlyle
+		
+		
+			JohannesORoyset
+		
+		
+			RKevin Wood
+		
+		10.1002/net.20247
+	
+	
+		Networks
+		Networks
+		0028-3045
+		
+			52
+			4
+			
+			December 2008
+			Wiley
+		
+	
+	Carlyle, W. M., Royset, J. O., and Wood, R. K., "Lagrangian Relaxation and Enumeration for Solving Constrained Shortest-Path Problems," Networks, Vol. 52, No. 4, December 2008, pp. 256-270.
+
+
+				
+			
+		
+	

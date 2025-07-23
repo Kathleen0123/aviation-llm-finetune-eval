@@ -1,0 +1,540 @@
+
+	
+	
+		
+I. INTRODUCTIONAirport surface metering through collaborative decision making is one of the strategies of modern air traffic management to help improve airport efficiency and predictability.Determining Target Take-Off Time (TTOT) under Traffic Management Initiatives (TMI) constraints is one of the key surface metering capabilities that requires coordination among Traffic Management Units (TMU), such as those at the Airport Tower, Area Control Center and Air Traffic Flow Management (ATFM) Center.TMIs help balance the traffic demand against the capacity by managing traffic flow into a constrained airspace.For example, ATFM TMI, such as the Ground Delay Program, assigns affected departures a Calculated Take-Off Time (CTOT) before pushback due to strategic downstream constraints such as a congested destination airport [1].The Minimum Departure Interval (MDI) and Miles-in-Trail (MIT) constraints, on the other hand, impose the minimum separations on departures sharing the same Standard Instrument Departure (SID) or departure fix.MDI is a time-based separation between departures on the same SID [2].MIT is a distance-based separation requirement between aircraft departing an airport, over a fix, at an altitude, through an airspace sector, on a specific route, or arriving at an airport [3,4].Incheon International Airport (IATA code: ICN) is located in Incheon Flight Information Region (FIR) of South Korea.Incheon FIR is surrounded by three foreign FIRs [5], and each FIR has its own control authority.As one of the hub airports in East Asia, ICN handled an average of 1,053 flights per day in 2018, and 99% of them were international flights [6].Because of the vast international traffic, departure flights to particular regions are concentrated at certain times of day, depending on the locations of the destination airports [5].Minimum separation requirements are imposed on departure flights from ICN to prevent the traffic volume from exceeding the capacity of one or more departure route.Specifically,• the traffic flow rates at Incheon FIR boundary are negotiated and agreed upon between the adjacent FIR control authorities; and• the outbound traffic flow constraints at Incheon FIR have a strong impact on the departure times at ICN because of its short distance to the FIR boundaries, and heavy traffic volume of international flights handled by ICN.In accordance with the agreement with the adjacent FIRs, the rules to determine whether to impose a separation constraint on a departure flight are based not only on the departure fix or SID, but also on the details of full flight routes, such as FIR exit fix, route, destination area, and airport.The separation requirement, however, is given as the required minimal time separation between departures, hence is classified as an MDI restriction.A detailed description of the MDI restrictions at ICN will be provided in Section II.In addition to the MDI restrictions, ICN has started to implement Airport-Collaborative Decision Making (A-CDM) to support efficient decision making with all the stakeholders in airport operation since 2017 [7].This implementation is planned to take place in three phases.In the Phase-1, which started Dec. 2017, sharing basic A-CDM milestones [8] with the stakeholders through the information sharing platform of ICN will be accomplished.Phase-2 is planned to provide the enhanced TTOT and Target Start-up Approval Time (TSAT), taking the MDI restrictions into consideration, to the stakeholders in 2020.The goal of the last phase, Phase-3, is to improve overall automation performances.Since 2014, Korea Aerospace Research Institute (KARI) has been conducting a research project titled, Management on Integrated operations of Departure, Arrival, and Surface traffic (MIDAS).The MIDAS project includes KARI's research collaboration with NASA on surface and terminal area scheduling technologies.In 2017, Incheon International Airport Corporation (IIAC) and KARI signed an agreement to work together towards developing and testing new surface metering capabilities to provide A-CDM an information sharing platform with the enhanced TTOT/TSAT to support the MDI restrictions.In 2018, KARI installed a prototype decision support tool developed in the MIDAS project in the Air Traffic Control (ATC) Tower at ICN.The prototype, named as MIDAS Main Processor (MMP), has several subsidiary functionalities for field evaluation in ICN, including an external interface with the A-CDM information sharing platform, airport surface surveillance data processing, and variable taxi time prediction using aircraft position data from the surveillance data processing module.The main capability, however, is the tactical scheduling for surface metering that meets the TMIs (CTOT and MDIs) given user decisions such as Target Off-Block Time (TOBT) updates or TTOT/TSAT inputs for a particular aircraft, where TOBT is the time that departing aircraft will be ready for pushback, which is estimated by Flight Operators or Ground Handler [8].This paper describes the development and validation of a tactical runway scheduling algorithm implemented in the MMP.Runway scheduling with MIT/MDI conditions has been studied in [9][10][11][12].MIT/MDI and CTOT were also considered in the authors' previous study [13], and the Mixed Integer Linear Programming (MILP)-based optimization results [13] were compared with the results of First Come, First Served (FCFS)based scheduling algorithm in [14].Because of the complexity of the MDI restrictions actually applied in ICN, this paper introduces a heuristic algorithm for better computation time performance of the MMP in field evaluation.The heuristic algorithm introduced in this paper is based on the FCFS-based scheduling algorithm in [14], and further includes a greedy style decision making that selects the aircraft which can take off the earliest, in order to make the appropriate takeoff sequence satisfy the MDI restrictions while minimizing the runway idle time.Furthermore, the MDI restrictions given in plain text formats were formulated into a table form for the software implementation.Users can easily change the MDI or add a new one using this table format.The scheduling results of the heuristic algorithm were validated and compared with the MILP-based optimization results through fast-time simulations.The organization of this paper is as follows.After the description of the MDI restrictions at ICN is provided in Section II, the heuristic algorithm for runway scheduling is formulated in Section III.The set-up for the fast-time simulation is described in Section IV.The simulation results and discussions are provided in Section V, and Section VI concludes the paper.
+II. MDI RESTRICTIONS AT ICN
+A. Operational Environment of ICNAs mentioned earlier, the traffic flow restrictions at the Incheon FIR boundary are based on the bilateral agreement with an adjacent FIR control authority.The default value of the minimum separation between flights bound for a certain area is based on the agreement.Fig. 1 depicts the Incheon FIR and ICN located inside the FIR, as well as the restricted areas (colored polygons).As shown in the map, ICN has short distances to the FIR exit fixes (colored triangles) at the FIR boundary [5] and is surrounded with many restricted areas.There is not enough airspace to allow an airborne flight time buffer from ICN to the FIR boundary.To address this issue, the MDI restrictions are imposed on ICN departures to manage the flow rates at the FIR boundary.
+B. MDI SpecificationsThe original MDIs were expressed in a plain text form, which is not fit to serve as input to a software module.To resolve this problem, we reformulated the MDIs in a standardized expression as shown in   requirement (henceforth called, the "Separation Requirement") on a departure flight according to the combination of the destination areas and airports, and the departure fixes of the flights.We give two examples of how the MDIs No. 3-8 in TABLE I are applied:• If two departures are bound for the Southeast Asia region and they are going through the FIR exit fix, ATOTI or MUGUS, the minimum separation requirement between their takeoff times should be either 360 or 180 seconds, depending on their destination airports.• If one flight is going to the destination airport, that has an ICAO code starting with "W" (e.g., WIII, Soekarno-Hatta International Airport in Indonesia), and the other flight is going to an airport with an ICAO code starting with "RP" (e.g., RPLL, Manila International Airport in Philippines), then the minimum separation between their  II.In contrast to the runway separation for consecutive takeoffs in [13], larger separation is required when larger aircraft follow smaller aircraft, because of the difference between their cruise speeds.Each MDI in TABLE I has its own activation schedule.For example, departure flights bound for North America through the FIR exit fix, LANAT, should comply with MDI No. 18 criterion from 11:00 to 23:00 (UTC) and MDI No. 15 criterion for the rest of the day.In the TABLE I column, "Separation Requirement" has two sub-columns, "Default" and "Additional," which correspond to two different types of the minimum separation requirements.The "Default" requirement is the minimum separation between any pair of aircraft which meet the MDI conditions.The "Additional" requirement is the minimum time span required for the takeoff times of a sub-group of aircraft which meet the MDI conditions.For instance, the minimum separation between any pair of departures bound for North America flying through LANAT is 180 seconds, whereas the minimum time span between the first and last takeoff times of any four departure flights (D-D-D-D) meeting the conditions of MDI No. 18 case should be 720 seconds.Note that this separation is greater than three times the default separation.Based on the bilateral agreements with the adjacent FIR control authorities, the MDI application criteria as well as the minimum separation values may also change depending on their requests.TABLE III shows the example of MDI expression, which was a tentative MDI execution request actually given by ATFM center in Korea, whereas Fig. 2 is the original expression of the same MDI request in plain text form.TIME 720 In TABLE III, the fix "KABAM" in the "Route" column is the entering fix to the Manila FIR using the N892 route.In this MDI formulation, routes can be given as the names of the actual airways or fixes which can be included in the route of the flight plan.
+C. Multiple MDIs Imposed on a Single AircraftThe overlapping rules of the MDI restrictions result in a high probability that one aircraft may be subject to up to several MDIs simultaneously.For instance, a departure flight going to the destination airport starting with "V" in Southeast Asia has to comply with MDI criteria No. 3, 7, 8, and 11 in TABLE I simultaneously.If we let this departure flight be the "Flight A", the counterpart departure flight, "Flight B" of each MDI condition, are all different depending on the MDI criteria.Fig. 3 shows the number of departures over time on October 11, 2018, a typical day having only the default MDIs.The flight data on this date are also used to generate the fast-time simulation scenario in Section V.The "MDI Departures" denotes the number of departures that should meet at least one MDI restriction, and "Multi-MDI Departures" denotes the number of departures that should comply with two or more MDI restrictions.The MDI restriction that each departure flight had to comply with was counted when there was one or more counterpart aircraft that had to comply with the same MDI restriction and the time difference between their Unimpeded Take-off Times (UTOT) [15] is less than one hour.A total of 92% of departures had to comply with at least one MDI restriction, and 90% of them had to comply with multiple MDI restrictions simultaneously.The increase in MDI restrictions and their complexity present a challenge to the departure scheduling.
+III. RUNWAY SCHEDULING WITH MDI RESTRICTIONSAs in the previous study [4], the tactical surface scheduling at ICN was handled here using the same three-step approach [8,[13][14]  1) Taxi-out time prediction: obtain the unimpeded taxi-out time of each departure.2) Runway scheduling for takeoffs: a) calculate the UTOT for each departure flight based on the TOBT and the unimpeded taxi-out time from step 1. b) calculate the TTOT of each departure flight, taking into account the CTOT, MDIs and runway separations.3) Taxiway scheduling: determine the TSAT for delivering the aircraft to the runway to meet the TTOT calculated in step 2.This section is a description of the algorithm for runway scheduling that incorporates the MDI restrictions.As shown in Fig. 4, ICN has three runways; RWY 33L/15R, 33R/15L, and 34/16.The two runways, RWY 33L/15R and 33R/15L, are exclusively used for departures and arrivals, respectively [13], while the RWY 34/16 is used for both departures and arrivals.Because of the short distance (400m) between the two runways, RWY 33L/15R and 33R/15L, the same wake turbulence runway separation rules used for a single runway with mixed mode operation is imposed [13].The MDI restrictions should be met regardless of the takeoff runways, whereas the runway separations should be imposed on the pairs of departures that take off from the same runway.For determining the TTOTs that comply with the MDI restrictions and the runway separations simultaneously, a greedy type algorithm depicted as follows was developed.For an easy explanation of the algorithm, the following terms are defined:• : a set of departure aircraft of which TTOTs need to be determined.•  : a set of past runway usages including aircraft takeoffs and landings.• _: a set of departure aircraft having TTOTs given by the users.• _: a set of departure aircraft having CTOTs.• _: a set of departure aircraft having TTOTs assigned.Initially, an empty set.• AvailTime : a set of time slots available for TTOT of a departure.• BlockTime : a set of time slots not available (blocked) for TTOT of a departure.•  -: arrival or departure flight i.•  -: departure flight i.The pseudo-code in TABLE IV describes the runway scheduling algorithm implemented in the MMP.As inputs, the sets of , , _, _ and the relevant information of each departure flight in the sets are required.A departure aircraft in _ has the TTOT assigned by users.This is a mechanism for the user to override the scheduling results and one of the user requirements as a provision against various unusual situations, such as unexpected delay of an aircraft during pushback and taxi-out, or tactical requests by the Area Control Center that control the departure aircraft from ICN and other airports (e.g.Gimpo International Airport, ICAO Code: GMP [5]) in the Seoul Terminal Maneuvering Area.The output is the TTOT of each departure aircraft in  , , _, and _.The algorithm assigns TTOTs of departure flights in _, _, and  in order.Note that the CTOT of a departure aircraft in _ is given as a time range from CTOT -5 minutes to CTOT + 10 minutes, in which TTOT can be assigned, whereas the TTOT of a departure aircraft in _ is assigned to its exact TTOT given by users.For assigning TTOTs to each departure aircraft in the groups of _ and , the algorithm incorporates a greedy style decision making that selects the aircraft which can take off the earliest while complying with all required separations.The earliest possible takeoff time of each departure aircraft, denoted by minTTOT, is determined as the minimum value of available times for TTOT to meet all required separations with the past runway usages in  and the other departure flights in _ that have TTOT assigned.For the calculation of the minTTOT in Line 18 and 32, the available time slot concept from [14] was used.The initial available time slot for departure aircraft is assumed as Line 24, but it can be blocked by the runway usage times of other flights in _ and .The minTTOT is calculated as the minimum time value of the remaining available time slots.Max Gate Hold denotes the maximum gate holding time allowable for each departure aircraft, and the value is provided by the users.In the MMP for ICN, the value is determined by the airport adaptations directly accessible to the users.The time value of Max Gate Hold in the MMP prototype installed at ICN ATC Tower is set to two hours, since it is recommended that a new flight plan with the updated departure time be filed for the aircraft with more than two hours of expected delay.If the initial available time slot becomes empty due to the separation requirements with the runway usages in SCH and DEP_TTOT, the MMP provides a warning to the users, in order to let them take an appropriate action.
+IV. SETUP FOR FAST-TIME SIMULATIONFast-time simulations were used to evaluate the MMP's scheduling capabilities under MDI restrictions.The simulations were run using NASA's SOSS [16] software.
+A. Simulation Scenario and Separation Requirements 1) Simulation ScenarioOne of the departure demand peak hours at ICN [5] was selected for traffic scenario generation, and the actual operation data on October 11, 2018 between 0900 and 1040 hours in local time were used.There are 65 departure flights and 17 arrival flights in the scenario.All of the arrival flights land on RWY 33R, while 26 and 39 departure flights take off from RWY 33L and 34, respectively.Pushback ready times of the departure flights are assumed to be the same as the TOBTs in the actual operation data, and landing times of arrival flights in the simulation are also set by the actual landing times.Among the 65 departures in the scenario, 63 departures are subject to MDIs, and 58 of them to multiple MDIs.
+2) Separation Requirements and Scheduling ParametersThe MDI restrictions in the simulation are assumed to be the same as the default MDI restrictions given in TABLE I.The runway separation between consecutive departures, and the runway occupancy times are shown in TABLE V and VI, respectively, which are the same as those of the previous study [13].The runway separations between an arrival and a departure, and a crossing aircraft, are assumed to be 10 seconds longer than the runway occupancy time of the preceding aircraft to be conservative.In the fast-time simulation, the Maximum Gate Hold Time was given as 4 hours, to give enough time slots for the scheduling in the MMP.This is because we did not want to implement the procedural actions that can be taken when all available time slots are occupied, such as updating TOBT, in the fast-time simulation.
+TABLE V.RUNWAY SEPARATION BETWEEN DEPARTURES (SEC) [13] Following aircraft  B. Software Set-ups SOSS is capable of providing the external scheduler module with the current positions of aircraft on the airport surface, and controlling the surface movements of aircraft with the results from the scheduler module during the simulation [16].The separation requirements among the runway operations (arrival, departure and runway crossing) are incorporated in SOSS.It is also able to impose MIT restrictions on the aircraft that will pass through the specified departure fixes.However, the particular MDI conditions applied to ICN are not enforced in SOSS.The MMP installed in ICN tower is capable of providing both TSAT and TTOT to the users, but since the purpose of the fast-time simulations in this study is to evaluate the MMP's surface metering capability that calculates the appropriate gate holding times taking into account the MDI restrictions, it has to be assumed that all MDI restrictions are enforced along with the runway separations in a fast-time simulation.The simulation functions required for this assumption are implemented by splitting the MMP functions of providing TSATs and TTOTs into two separate external modules that interact with SOSS as follows.
+LightFig. 5 depicts the configuration of the software setup for fasttime simulation.In this configuration, MMP-1 is the scheduler that provides SOSS with TSATs as the appropriate pushback times of aircraft for surface metering.MMP-1 uses the pushback ready times in the scenario as TOBTs, and determines TSATs by the scheduling algorithm described in Section III.Once aircraft starts pushback at TSAT determined by the MMP-1, the rest of the surface movement is simulated by SOSS until the aircraft reaches the departure runway threshold.The MMP-2 provides SOSS with the Take-Off Clearance Time (TOCT).If the TOCT provided by MMP-2 is later than the time when the aircraft is ready to take off, SOSS will hold the aircraft takeoff roll until the given TOCT.The TOCT calculated by MMP-2 is to mimic the takeoff clearance of the local controller and comply with the MDI restriction with the aircraft that took off a head of the aircraft.The MMP-1 continuously updates estimated runway arrival times of departure flights (TTOTs) based on the situation on the surface, which affects the TSATs of the aircraft at gates.Without MMP-2, the aircraft may take off as soon as they arrive at the runway threshold with the minimum runway separation restriction.In this configuration, MMP-1 and MMP-2 are exactly same software, except that MMP-1 provides only TSAT to SOSS whereas MMP-2 provides SOSS with only TOCT.The TOCT from MMP-2 is calculated in the same way with TTOT calculation using current aircraft position data in the MMP scheduling module.There is no data connection between MMP-1 and MMP-2, and both MMPs are working independently of each other.
+V. SIMULATION RESULTS AND DISCUSSIONSIn addition to the simulation with the surface metering scheduler, two more simulations were conducted using SOSS for comparison purposes, which are 'Baseline' and 'MILP'.The Baseline represents current day operations so that the aircraft push back whenever they are ready for pushback and take off in accordance with the MDI restrictions.The MILP is the same as the surface metering concept proposed in this study so that aircraft push back at the given TSATs and take off in accordance with the MDI restrictions.The TSATs of the MILP model, however, were obtained by optimization with the MILP-based models for runway and taxiway scheduling in the previous study [13], which incorporate the MDI restrictions included in the separation constraints of runway scheduling.The fast-time simulation results are presented in Fig. 67891011121314151617.In these figures, 'MMP' denotes the case where the MMPs were used as the surface metering scheduler working interactively with SOSS as illustrated in Fig. 5. On the other hand, 'MILP' represents the simulation, where the TSATs from the MILPbased optimization [13] were used for pushback clearance times, without aircraft position updates from SOSS.In the MILPbased optimization model [13], we need a detailed model based on a node-link model representing ICN airport layout for the surface movement of aircraft.More specifically, the relative sequences and runway usage times for takeoffs, landings and runway crossings are modelled and computed as the decision variables in runway scheduling.Also, the passage sequences and times at all intersections along the taxi routes on the nodelink model are incorporated as the decision variables in taxiway scheduling of the MILP model.Fig. 6 illustrates the reduction of taxi delays found in the simulation.The result shows that the total delay has been reduced in both MILP and MMP cases compared with the baseline case, and most of the taxi delay was translated into gate holding time.All of the 17 arrivals in the simulation scenario had to cross the departure runway RWY 33L after landing in order to go to their gates.There are also three departure flights from cargo ramps that had to cross the arrival runway RWY 33R to go to the departure runway RWY 33L.The expected times of arrival landings and travel times to the runway crossing points of both arrival and departure flights were given as static values, and all of them were considered as constraints in the runway scheduling of MILP.As a result, the departures tend to be held at the gates longer than those in the MMP case.For the MMP, the expected times of arrival landings were given and used for the runway scheduling, but the information about the runway crossings were not given.The runway crossings, which were unknown in the runway scheduling, might have the same effect as surface movement uncertainties, and could cause the longer taxi delay in the MMP case.The MILP case had very small queue sizes for both runways.Base on the optimization results, departure aircraft were held at the gates for a long time to avoid the possible conflicts on the surface, such as over runways, and in the ramp and movement area, resulting in the small departure queue sizes.Compared to MILP, MMP had slightly longer queues, but still much smaller than the Baseline case, except for the time between 70 and 110 minutes for RWY 34 seen in Fig. 10.Figs. [11][12][13] show what caused this long departure queue of the MMP case.Fig. 11 illustrates the taxi-out routes of the three departure flights, 'AAR711', 'HVN417', and 'AAR371', and the location of Spot 5W that they should pass through to enter the movement area.In Figs. 12 and 13, Actual Movement entry Times (AMATs) through Spot 5W and their corresponding ATOTs are shown as simulation results.At around 70 minutes of elapsed time in the MMP case of Fig. 12, three departure flights passed through Spot 5W and entered the movement area.Since the path from Spot 5W to RWY 34 is a single path in the simulation, the order of passing the spot is the same as the takeoff order.According to the MDI restrictions given in TABLE 1, the required separation between 'HVN417' and 'AAR371' is 6 minutes based on MDI No.10, and the 2-minute separation is required for both of the pairs 'AAR711'-'HVN417', and 'AAR711'-'AAR371'.(Note that the wake turbulence categories of these three aircraft are all Heavy.)At the moment that MMP provides the TSATs of these three aircraft to SOSS, the desired order of spot passing was 'HVN417'-'AAR711'-'AAR371'.In the simulation result, however, 'AAR711' passes through the spot before 'HVN417' and enters the movement area.As a result, 'AAR371' had to wait for a takeoff clearance until the minimum separation requirement, which is 6 minutes with 'HVN417', was met and caused a long departure queue on RWY 34 after that.This is because the MMP does not have a suitable model for taxiway scheduling.MMP has no functionality to consider the possible conflicts between the aircraft on the surface.On the other hand, the possible conflicts during the surface movement were considered in the taxiway scheduling [13] of the MILP case, and the simulation result shown in Fig. 13 illustrates that the three departure flights passed Spot 5W with the desirable order and sufficient separations.In the real operation at ICN, the alternative taxi route indicated by the green arrow in Fig. 11 can be used to address the problem of the spot passing order, when different from the scheduling results, by allowing the aircraft to form multiple departure queues.Figs. 14 and 15 depict the accumulated runway throughputs of the two departure runways.Because of the minimum value of the runway separation requirement between departures, which is 120 seconds, the maximum throughput of a runway is limited to a certain value (e.g., 7 per 15-minutes time interval), regardless of the runway pressure.In the comparisons of the accumulated runway throughputs of RWY 33L in Fig. 14, there are no significant differences in the accumulated throughput curves despite the relatively small departure queues of MILP and MMP.The accumulated throughput curve of the MMP case in Fig. 15 is even apparently ahead of that of the Baseline case during 25-60 minutes of elapsed time.This result indicates that both MILP and MMP deliver the aircraft to the runways early enough not to let the runways dry out.In Fig. 15, the accumulated throughput curve of the MMP is slightly behind those of the Baseline and MILP during 75-110 minutes of elapsed time, and which implies the delayed takeoffs from RWY 34 during that time.It corresponds to the long departure queues of the MMP case shown in Fig. 10, and was caused by the wrong order of spot passing depicted by Fig. 12. Fig. 16 shows the average separation times between takeoffs on RWY 34, which had only departure flights as runway operations.The separations between takeoffs were measured by the actual time separation between two consecutive takeoffs, except for the 'no departure queue' cases when the following aircraft took off without waiting in the departure queue, in order to exclude the large separations induced by low traffic demand for takeoffs.This is because, whereas it has been confirmed that MILP and MMP provide the appropriate gate holdings not making the runways dry out, we want to further confirm whether the greedy style algorithm of MMP worked properly for its purpose of reducing runway separations by sequencing the takeoffs of departure flights while meeting the MDI restrictions.In the results shown in Fig. 16, the average separations between takeoffs were slightly reduced by the changes in takeoff sequences of both MILP and MMP, compared to the Baseline.As mentioned previously, the expected landing times of arrival flights, as well as their transit times to the departure runway crossing points after landing, were given in the MILP, and all of them were incorporated into the optimal surface scheduling.Fig. 17 shows the delay time changes by uncertainties in expected landing times.The subscript "2" denotes the simulation using the modified scenario in SOSS, whereas the subscript "1" represents the original simulation results shown in Fig. 6.To model the uncertainty of arrival landing times in the modified scenario, we changed the initial landing times of arrival flights according to the uniformly distributed random values between -2 minutes and +2 minutes, whereas all the pushback ready times are given as the same with those in the original scenario.For the surface scheduling of both MILP and MMP, the original values of the expected landing times and pushback ready times were given.In MILP, the taxi delay has been significantly increased due to the uncertainties of the given information about landing  aircraft.However, in MMP, the uncertainties do not have that much effect on delay times.This is probably due to the more frequent scheduling updates based on MMP's short computation time.The more frequently the surface traffic situation is updated and scheduled, the more robust to the uncertainties the scheduler will be.
+VI. CONCLUSIONSIn this paper, a tactical scheduler for surface metering satisfying MDI restrictions was developed for Incheon International Airport (ICN).Due to the geographical location of ICN, such as the short distance to the FIR boundary and the heavy traffic volume concentrated toward the west, over 90% of departures fly under the MDI restrictions.A large number of departures required to meet the MDI restrictions, especially the fact that most of them have to comply with multiple MDIs simultaneously, causes heavy workload to the controllers.To help address this problem, criteria to impose MDI restrictions to a departure flight were first formulated into a software readable table form, and then a greedy type heuristic algorithm was developed to provide departure schedules that satisfy the MDI constraints.The heuristic algorithm was tested in the fast-time simulation using NASA's SOSS.The scheduling performances were compared with the baseline simulation and another simulation using MILP-based optimal scheduling results, which represent the current day operations and the optimized schedule for minimizing the total taxi delay times, respectively.The scheduling performance comparison results indicate that the MILP case had the minimum taxi delays, but the gate holding times were increased to avoid the expected conflicts on runways or in the ramp and movement areas.On the other hand, the simulation using the MMP, where the tactical scheduler proposed in this study is used, resulted in longer taxi delay, but the total delay was similar to that of the MILP due to less gate holding.The detailed model for runway operations and surface movements in the MILP-based optimization in the previous study [13] could make the scheduling algorithm more sensitive to the uncertainty of the given information.The heuristic algorithm proposed in this study showed reasonable performance with the robustness against traffic uncertainties, such as uncertainty in estimated arrival times, and the less computation time for real-time operations.The proposed MDI formulation and the scheduling algorithm for surface metering were implemented in the prototype of the decision support tool, MMP, which has been installed and is being tested at ICN.The scheduling performance will be continuously validated and evaluated through the analysis of data gathered in shadow mode operations at ICN.Fig. 1 .1Fig. 1.Incheon FIR and Incheon International Airport (ICN)
+Fig. 2. Example of a MDI execution request in plain text form
+Fig. 4 .4Fig. 4. Airport Configuration of ICN
+Figs. 7 -Fig. 5 .Fig. 6 .756Figs. 7-10 depict the variations of runway traffic demands of the simulation scenario and the runway departure queues of the simulation results.For a better understanding of the queue variations, Figs.7 and 9depict the traffic demands on each runway, counted as a number of flights ready for landing, runway crossing and takeoff within every 5-minute time bin.A
+Fig. 7 .Fig. 8 .Fig. 9 .Fig. 10 .78910Fig. 7. Traffic Demand (RWY 33L and 33R)
+Fig. 12 .Fig. 15 .Fig. 16 .Fig. 1712151617Fig. 12. AMATs and ATOTs of the MMP case
+Fig. 17.Delay Time Changes by Uncertainties
+TABLE I .IThe format, explained in the next paragraphs, was developed based on the historical MDI specifications in text form and in consultation with Subject Matter Experts (SMEs) on ICN.
+TABLE IIlists the MDIs that all of the departures from ICNneed to comply with in the absence of any further requirements.The FIR exit fixes in TABLE I are shown in Fig. 1, depicted astriangles. In TABLE I, "Conditions" are the criteria todetermine whether to impose the minimal separation time
+TABLE II.DEFAULT MDI RESTRICTIONS OF ICN (2018)MDINo.
+Conditions Separation Requirement Activation Schedule Destinations FIR exit fix Route Default Additional Dates Start time (UTC) End time (UTC) Flight A Flight B Type Value (sec) Pattern Min. time span (Sec) Area Airport a Area AirportFor the MDI No. 11 criterion, the required minimum separation between the takeoff times of any pair of the south-bound MUGUS/LAMEN/RUGMA, depends on the wake turbulence categories of the aircraft.The minimum time separation based on the wake turbulence categories of aircraft in MDI No. 11 criterion is given in TABLEdeparturesgoingthroughtheFIRexitfixes,ATOTI/1Northeast Asia-Northeast Asia-ATOTI/ MUGUS-TIME180-----2Northeast Asia-Southeast Asia-ATOTI/ MUGUS-TIME180-----3Southeast AsiaV*** Southeast Asia V***ATOTI/ MUGUS-TIME360-----4Southeast AsiaW*** Southeast Asia W***ATOTI/ MUGUS-TIME360-----5Southeast AsiaRP** Southeast Asia RP**ATOTI/ MUGUS-TIME360-----6Southeast AsiaW*** Southeast Asia RP**ATOTI/ MUGUS-TIME360-----7Southeast AsiaV*** Southeast Asia W***ATOTI/ MUGUS-TIME180-----8Southeast AsiaV*** Southeast Asia RP**ATOTI/ MUGUS-TIME180-----9----RUGMA-TIME180-----10----LAMEN-TIME360-----11----ATOTI/ MUGUS/ LAMEN/ RUGMA-WAKE _TIME b(See II) TABLE-----LANAT/12JAPAN-JAPAN-KANSU/-TIME180--Every day00:0024:00ANDOLLANAT/13JAPAN-North America-KANSU/-TIME180--Every day00:0024:00ANDOLLANAT/14North America-North America-KANSU/-TIME180--Every day00:0024:00ANDOL15North America-North America-LANAT-TIME360--Every day23:0011:00 (+1day)16North America-North America-ANDOL-TIME360--Every day23:0011:00 (+1day)17North America-North America-KANSU-TIME360--Every day23:0011:00 (+1day)18North America-North America-LANAT-TIME180D-D-D-D Every day11:0023:0019North America-North America-ANDOL-TIME180D-D-D-D Every day11:0023:0020North America-North America-KANSU-TIME180D-D-D-D Every day11:0023:0021China-China-AGAVO-TIME180--Every day00:0024:0022China-Europe-AGAVO-TIME180--Every day00:0024:0023Europe-Europe-AGAVO-TIME300--Every day00:0024:0024Japan-Japan-APELA/ BESNA-TIME180--Every day00:0024:0025Domestic-Domestic-A582TIME120--Every day00:0024:0026Oceania-Oceania-APELA/ BESNATIME360--Every day00:0024:00a. ICAO airport code b.WAKE_TIME: Time separation based on the wake turbulence categories of aircraft takeoff times will be 360 seconds, as given in the MDI No. 6 case in TABLE I.
+TABLE II .IIMINIMUM SEPARATION REQUIREMENTS (SECONDS) OF THE MDI NO. 11 IN TABLE I.
+TABLE III .IIIEXAMPLE OF MDI EXPRESSION IN THE
+TABLE FORMFORMConditionsSeparation RequirementDestinations Flight A Flight BFIR exit fixRouteTypeValue (sec)Area Airport Area AirportVV**/ WM**/ WS**VV**/ WM**/ WS**ATOTI/ MUGUSN892, KABAM
+TABLE IV .IV15end16minTTOT = min(AvailTime)17end18Select 𝐷 4-567 (∈ 𝐃𝐄𝐏_𝐂𝐓𝐎𝐓) with the earliest minTTOT.19Assign TTOT of 𝐷 4-567 as its minTTOT.20Put 𝐷 4-567 into DEP_TTOT.21 end22 while no aircraft is remained in 𝐃𝐄𝐏,23for each departure 𝐷 -in 𝐃𝐄𝐏,24Assign initial AvailTime of 𝐷 -as [UTOT, UTOT + Max Gate Hold].25Do Line 8 -Line 15 for 𝐷 -.26for each departure 𝐷 1 in 𝐃𝐄𝐏_𝐓𝐓𝐎𝐓 ∪ 𝐒𝐂𝐇,27Generate BlockTime of 𝐷 -for the MDI separation with 𝐷 .28Update AvailTime by blocking times using BlockTime.29end30minTTOT = min(AvailTime)31end32Select 𝐷 4-567PSEUDO-CODE OF THE RUNWAY SCHEDULING ALGORITHM Pseudo code of the runway scheduling algorithm Input: the sets of , , _, _ Output: TTOT of each aircraft in DEP, DEP_USER, and DEP_CTOT 1 for each departure,  -in _, 2Assign TTOT of  -as given by user. 3 Put  -into DEP_TTOT.4 end 5 while no aircraft is remained in _, 6 for each departure aircraft  -in _, 7 Assign initial AvailTime of  -as [CTOT -5min, CTOT + 10min].8 for each departure aircraft  1 in _, 9 Generate BlockTime of  -, for the runway separation with  .10 Update AvailTime by blocking times using BlockTime.11 end 12 for each past runway usage  3 in , 13 Generate BlockTime of  -, for the runway separation with  .14 Update AvailTime by blocking times using BlockTime.(∈ _) with the earliest minTTOT.33 Assign TTOT of  4-567 as its minTTOT.34 Put  4-567 into _.
+TABLE VIVI.RUNWAY OCCUPANCY TIMES (SEC) [13]LightMediumHeavySuper HeavyArrival80524545Departure85575050Crossing30303030
+		
+		
+
+			
+ACKNOWLEDGMENTThis work was performed under the ATM research collaboration between KARI and NASA.KARI is greatly indebted to the Ministry of Land, Infrastructure, and Transport (MOLIT) of Korea, Korea Agency for Infrastructure Technology Advancement (KAIA), and Incheon International Airport Corporation (IIAC) for their funding and support.
+			
+
+
+			
+This research is financially supported by Korea Ministry of Land and Transportation.(Project Number -1615010651)
+			
+
+			
+
+				
+
+
+	
+		The International Civil Aviation Organization (ICAO)
+		
+			VincentPGalotti
+		
+		10.4324/9781315239514-3
+	
+	
+		The Future Air Navigation System (FANS)
+		
+			Routledge
+			2014
+			9971
+			
+		
+	
+	International Civil Aviation Organization
+	International Civil Aviation Organization, "Manual on Collaborative Air Traffic Flow Management," Doc 9971, 2 nd Ed., 2014.
+
+
+
+	
+		
+		
+			Eurocontrol
+		
+		
+	
+	
+		Air Traffic Management Lexicon
+		
+			June 28, 2019
+		
+	
+	EUROCONTROL, Air Traffic Management Lexicon [Cited: June 28, 2019] https://ext.eurocontrol.int/lexicon/index.php/Minimum_ Departure_Interval
+
+
+
+	
+		The Miles-in-Trail Impact Assessment Capability
+		
+			PaulOstwald
+		
+		
+			TejalTopiwala
+		
+		
+			JamesDearmon
+		
+		10.2514/6.2006-7780
+	
+	
+		6th AIAA Aviation Technology, Integration and Operations Conference (ATIO)
+		Wichita, KS
+		
+			American Institute of Aeronautics and Astronautics
+			September 2006
+		
+	
+	P. Ostwald, T. Topiwala, and J. Armon, "The Miles-in-Trail Impact Assessment Capability," the 6th AIAA Aviation Technology, Integration and Operations Conference, Wichita, KS, September 2006.
+
+
+
+	
+		The Aerospace Performance Factor: Utilization of the Analytic Hierarchy Processto Develop a Balanced Performance and Safety Indicator of the National Airspace System for the Federal Aviation Administration
+		
+			ThomasMichaelLintner
+		
+		
+			ScottSmuthwaite
+		
+		
+			StevenDSmith
+		
+		10.13033/isahp.y2009.083
+	
+	
+		Proceedings of the International Symposium on the Analytic Hierarchy Process
+		the International Symposium on the Analytic Hierarchy Process
+		
+			Creative Decisions Foundation
+			2009
+		
+	
+	Federal Aviation Administration
+	Federal Aviation Administration, "Traffic Flow Management in the National Airspace System," 2009.
+
+
+
+	
+		Operational Characteristics Identification and Simulation Model Verification for Incheon International Airport
+		
+			YeonjuEun
+		
+		
+			DaekeunJeon
+		
+		
+			HanbongLee
+		
+		
+			ZhifanZhu
+		
+		
+			YoonCJung
+		
+		
+			MyeongsookJeong
+		
+		
+			HyounkyongKim
+		
+		
+			EunmiOh
+		
+		
+			SungkwonHong
+		
+		
+			JunwonLee
+		
+		10.2514/6.2016-3161
+	
+	
+		16th AIAA Aviation Technology, Integration, and Operations Conference
+		Washington, D.C.
+		
+			American Institute of Aeronautics and Astronautics
+			June 2016
+		
+	
+	Y. Eun, et al., "Operational Characteristics Identification and Simulation Model Validation for Incheon International Airport," the 16th AIAA Aviation Technology, Integration, and Operations Conference, Washington, D.C., June 2016.
+
+
+
+	
+		F6 ASIA: CIVIL AVIATION TRAFFIC
+		10.1057/9781137305688.0252
+	
+	
+		International Historical Statistics
+		
+			Palgrave Macmillan
+			2019
+		
+	
+	Aviation Statistics 2018
+	Korea Civil Aviation Association, "Aviation Statistics 2018," 2019.
+
+
+
+	
+		The CDM Co-Ordinator
+		10.1002/9781444302554.ch7
+		
+	
+	
+		CDM Regulations 2007 Procedures Manual
+		
+			Blackwell Publishing Ltd.
+			June 27, 2019
+			
+		
+	
+	Cited
+	Incheon International Airport Corporation, Incheon A-CDM operation manual [Cited: June 27, 2019] https://www.airport.kr/co_file/ko/file06 /A-CDM_Operation_Manual_ENG.pdf
+
+
+
+	
+		Fully solar powered airport: A case study of Cochin International airport
+		
+			SreenathSukumaran
+		
+		
+			KSudhakar
+		
+		10.1016/j.jairtraman.2017.04.004
+	
+	
+		Journal of Air Transport Management
+		Journal of Air Transport Management
+		0969-6997
+		
+			62
+			
+			2017
+			Elsevier BV
+		
+	
+	Airport CDM Implementation Manual
+	Airport Council International Europe, EUROCONTROL, International Air Transport Association, "Airport CDM Implementation Manual," Ed. 5.0, 2017.
+
+
+
+	
+		Efficient and Equitable Departure Scheduling in Real-Time: New Approaches to Old Problems
+		
+			HBalakrishnan
+		
+		
+			BChandran
+		
+	
+	
+		the Seventh USA/Europe Air Traffic Management Research and Development Seminar
+		Barcelona, Spain
+		
+			July 2007
+		
+	
+	H. Balakrishnan, and B. Chandran, "Efficient and Equitable Departure Scheduling in Real-Time: New Approaches to Old Problems," the Seventh USA/Europe Air Traffic Management Research and Development Seminar, Barcelona, Spain, July 2007.
+
+
+
+	
+		Managing departure aircraft release for efficient airport surface operations
+		
+			WaqarMalik
+		
+		
+			GautamGupta
+		
+		
+			YoonJung
+		
+		10.2514/6.2010-7696
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		Toronto, Canada
+		
+			American Institute of Aeronautics and Astronautics
+			August 2010
+		
+	
+	W. Malik, G. Gupta, and Y. Jung, "Managing Departure Aircraft for Efficient Airport Surface Operations," AIAA Guidance, Navigation and Control (GNC) Conference and Modeling and Simulation Technologies (MST) Conference, Toronto, Canada, August 2010.
+
+
+
+	
+		Runway Scheduling for Charlotte Douglas International Airport
+		
+			WaqarMalik
+		
+		
+			HanbongLee
+		
+		
+			YoonCJung
+		
+		10.2514/6.2016-4073
+	
+	
+		16th AIAA Aviation Technology, Integration, and Operations Conference
+		Washington, D.C.
+		
+			American Institute of Aeronautics and Astronautics
+			June 2016
+		
+	
+	W. Malik, H. Lee, and Y. Jung, "Runway Scheduling for Charlotte Douglas International Airport," the 16th AIAA Aviation Technology, Integration and Operations Conference, Washington, D.C., June 2016.
+
+
+
+	
+		Ration by Schedule for airport arrival and departure planning and scheduling
+		
+			ChrisBrinton
+		
+		
+			StephenAtkins
+		
+		
+			LaraCook
+		
+		
+			StevenLent
+		
+		
+			TomPrevost
+		
+		10.1109/icnsurv.2010.5503239
+	
+	
+		2010 Integrated Communications, Navigation, and Surveillance Conference Proceedings
+		
+			IEEE
+			May 2010
+		
+	
+	C. Brinton, S. Atkins, L. Cook, S. Lent, and T. Prevost, "Ration by Schedule for Airport Arrival and Departure Planning and Scheduling," 2010 Integrated Communications Navigation and Surveillance (ICNS) Conference, May 2010.
+
+
+
+	
+		Optimization of Airport Surface Traffic: A Case-study of Incheon International Airport
+		
+			YeonjuEun
+		
+		
+			DaekeunJeon
+		
+		
+			HanbongLee
+		
+		
+			YoonCJung
+		
+		
+			ZhifanZhu
+		
+		
+			MyeongsookJeong
+		
+		
+			HyounkyongKim
+		
+		
+			EunmiOh
+		
+		
+			SungkwonHong
+		
+		10.2514/6.2017-4258
+	
+	
+		17th AIAA Aviation Technology, Integration, and Operations Conference
+		Denver, CO
+		
+			American Institute of Aeronautics and Astronautics
+			June 2017
+		
+	
+	Y. Eun, et al., "Optimization of Airport Surface Traffic: A Case-study of Incheon International Airport," th 17th AIAA Aviation Technology, Integration, and Operations Conference, Denver, CO, June 2017.
+
+
+
+	
+		Comparison of First-Come First-Served and Optimization Based Scheduling Algorithms for Integrated Departure and Arrival Management
+		
+			Bae-SeonPark
+		
+		
+			HyeonwoongLee
+		
+		
+			Hak-TaeLee
+		
+		
+			YeonjuEun
+		
+		
+			DaekeunJeon
+		
+		
+			ZhifanZhu
+		
+		
+			HanbongLee
+		
+		
+			YoonCJung
+		
+		10.2514/6.2018-3842
+	
+	
+		2018 Aviation Technology, Integration, and Operations Conference
+		Atlanta, GA
+		
+			American Institute of Aeronautics and Astronautics
+			June 2018
+		
+	
+	B. Park, et al., "Comparison of First-Come First-Served and Optimization Based Scheduling Algorithms for Integrated Departure and Arrival Management," the 18th AIAA Aviation Technology, Integration and Operations Conference, Atlanta, GA, June 2018.
+
+
+
+	
+		A Data Driven Analysis of a Tactical Surface Scheduler
+		
+			JeremyCoupe
+		
+		
+			LeonardBagasol
+		
+		
+			LiangChen
+		
+		
+			HanbongLee
+		
+		
+			YoonCJung
+		
+		10.2514/6.2018-3666
+	
+	
+		2018 Aviation Technology, Integration, and Operations Conference
+		Atlanta, GA
+		
+			American Institute of Aeronautics and Astronautics
+			June 2018
+		
+	
+	W. Coupe, L. Bagasol, L. Chen, H. Lee, and Y. Jung, "A Data Driven Analysis of a Tactical Surface Scheduler," the 18th AIAA Aviation Technology, Integration, and Operations Conference, Atlanta, GA, June 2018.
+
+
+
+	
+		Validation of Simulations of Airport Surface Traffic with the Surface Operations Simulator and Scheduler
+		
+			RobertDWindhorst
+		
+		
+			JustinVMontoya
+		
+		
+			ZhifanZhu
+		
+		
+			SergeiGridnev
+		
+		
+			KatyGriffin
+		
+		
+			AdityaSaraf
+		
+		
+			SteveStroiney
+		
+		10.2514/6.2013-4207
+	
+	
+		2013 Aviation Technology, Integration, and Operations Conference
+		Los Angeles, CA
+		
+			American Institute of Aeronautics and Astronautics
+			August 2013
+		
+	
+	R. D. Windhorst, et al., "Validation of Simulations of Airport Surface Traffic with the Surface Operations Simulator and Scheduler," AIAA Aviation Technology, Integration and Operations Conference, Los Angeles, CA, August 2013.
+
+
+
+	
+		Massachusetts Institute of Technology Clean Energy Entrepreneurship Prize 2008 Final Report DOE Award # DE-FG36-07GO17110
+		
+			HLee
+		
+		10.2172/1018530
+	
+	
+		Ph.D. Dissertation, Dept. of Aeronautics and Astronautics
+		
+			2014
+			Office of Scientific and Technical Information (OSTI)
+			Cambridge, MA
+		
+		
+			Massachusetts Institute of Technology
+		
+	
+	H. Lee, "Airport Surface Traffic Optimization and Simulation in the Presence of Uncertainties," Ph.D. Dissertation, Dept. of Aeronautics and Astronautics, Massachusetts Institute of Technology, Cambridge, MA, 2014.
+
+
+
+	
+		A Comparison of Two Optimization Approaches for Airport Taxiway and Runway Scheduling
+		
+			HLee
+		
+		
+			HBalakrishnan
+		
+	
+	
+		the 31st Digital Avionics Systems Conference
+		Williamsburg, VA
+		
+			October 2012
+		
+	
+	H. Lee, and H. Balakrishnan, "A Comparison of Two Optimization Approaches for Airport Taxiway and Runway Scheduling," the 31st Digital Avionics Systems Conference, Williamsburg, VA, October 2012.
+
+
+				
+			
+		
+	

@@ -1,0 +1,448 @@
+
+	
+	
+		
+Harry N. Swenson † NASA Ames Research Center, Moffett Field, California, 94035-1000A time advance algorithm associated with the scheduling functionalities of the Traffic Management Advisor (TMA) for arrival flights is presented and evaluated.The algorithm enhances TMA's meter fix schedule by advancing the flights' Scheduled Time of Arrival (STA) by an amount that minimizes their systemic operating cost.The systemic operating cost leverages the inherent trade-off of time and fuel efficiency resident in the cost index of modern flight management systems.The resulting STAs are achievable by speeding up the leading flights from their desired nominal speed profiles.A key advantage of this approach is that it reduces systemic delay to tight groupings of arriving aircraft as well as increases sustained throughput of the operation.A fast-time, Monte Carlo simulation that emulates TMA's scheduling functionalities is performed for arrival flights to the Phoenix Airport to quantify the benefit of the time advance algorithm.Results show consistent time saving benefits, ranging from 3 to 50 minutes for 112 flights with varying levels of traffic congestion.
+Nomenclature
+I. Introduction2][3] In the United States, the operationally deployed Traffic Management Advisor (TMA) has served as an important component in achieving this objective. 4TMA provides air traffic controllers and Traffic Management Coordinators (TMCs) with a time-based metering function, arrival flow visualization and statistics, and runway allocation to increase capacity and reduce delay.The currently fielded TMA is referred to as the Time-Based Flow Management (TBFM) system within the Federal Aviation Administration's (FAA) portfolio of automation systems and programs.TMA is now deployed in all 20 en-route Air Route Traffic Control Centers (ARTCCs, or Centers) and many major Terminal Radar Approach Control (TRACON) facilities in the US.TMA sequences the arrival flights on a constrained first-come-first-serve basis.To determine the sequence of flights for scheduling, TMA computes the Estimated Time of Arrival (ETA) to the meter fix a and the runway threshold for each aircraft.TMA then uses the ETAs to sequence aircraft and determine the scheduled times of arrival (STAs) to the meter fix and runway threshold for each aircraft.The STAs are spaced according to scheduling constraints based on airport/runway configuration, separation requirements, and flow rates entered by the TMC.In the absence of scheduling constraints, TMA sets the computed STA for each aircraft equal to its ETA.When the traffic is heavy enough, TMA will begin to delay aircraft to accommodate the scheduling constraints.In this case, the STAs for these aircraft will be delayed from their ETAs.TMA in its current form, however, does not consider a time advance, which sets an STA of flight earlier than its ETA.The choice of using only delays to maintain separation constraints on TMA's schedule, although straightforward and robust, does not consider the opportunity of reducing the systemic operating cost of the flight by time advance.The systemic cost refers to the collective direct operating cost of the flights.Each airline seeks to minimize the direct operating costs of its own operations by considering both fuel and time costs in flight planing. 5This leads to the selection of preferred cruise and descent speeds that vary among aircraft types and from route to route.TMA models airlines' preferred speeds and uses them in computing the nominal trajectories and resulting ETAs for all flights.With proper selection of the speeds, the ETA represents the arrival time that would minimize a flight's direct operating cost.A delay or a time advance deviates from the minimum-cost ETA and increases the cost.Whereas not all flights can fly their minimum-cost speed profiles during heavy traffic due to scheduling constraints, it can be shown that a time advance combined with delay can reduce the projected systemic cost of the schedule when compared to the cost of using delays alone.This paper proposes an algorithm to improve the projected systemic cost of achieving TMA's meter fix schedule, as a step towards more efficient arrival operations.This algorithm identifies "packs" of arrival flights and, for each pack, shifts the computed STAs ahead for some flights by an amount that minimizes the pack's systemic cost.Packs are defined as groups of aircraft whose ETAs will require controller action to achieve proper separation.The algorithm is fast, straightforward, and can be easily integrated with TMA's scheduler without changes to its infrastructure.Further background information about the TMA's scheduler is given in Section II.Section III derives the amount of time advance for a group of flights and describes the algorithm for identifying packs of flights on TMA's schedule.Section IV describes the Monte Carlo simulations designed to quantify the amount of cost savings as well as assert the robustness of the algorithm.Section V presents the simulation results of the Phoenix Airport arrival traffic scheduling.The envisioned integration of the proposed algorithm with TMA's scheduler is described in Section VI.
+II. TMA's SchedulerThis section provides a brief, simplified description of TMA's scheduler component, the Dynamic Planner (DP), with a focus on the meter fix/runway scheduling and runway allocation.A comprehensive description of the DP can be found elsewhere. 6Figure 1 shows the key features of the airspace relevant to the scheduling functionalities of DP.The airspace is divided into Center airspace and TRACON airspace.The Center and TRACON facilities provide TMA with static information such as airspace constraints, arrival procedures, separation requirements, and dynamic information such as flight plans, radar track data, and weather forecast.When running TMA in real time, DP receives periodic updates of arrival flights' meter fix and runway threshold ETAs from another TMA component.DP computes the STAs for the meter fix and the runway threshhold according to the ETAs and scheduling constraints.Flights are scheduled one by one, on a firstcome-first-serve basis, in an order defined roughly by their runway ETAs.DP also allocates a runway for each flight and uses the ETA for that runway for its order consideration.When the traffic is heavy enough, DP will begin to delay aircraft to accommodate scheduling constraints.The scheduling constraints for the meter fix come from in-trail separation requirements, the airport flow rate imposed by the TMCs, and other considerations.The STA of a flight is frozen once it crosses the freeze  To demonstrate DP's scheduling logic with a simple scenario, consider the scheduling of four arriving aircraft that are to cross the same meter fix. Figure 2 shows the ETAs and STAs for these four arrival flights.AC1 has the earliest ETA and is expected to cross the meter fix earlier than the other three flights.AC1 is followed by AC2 and AC3, whose ETAs are very close to each other.AC4 follows AC3 and has the latest ETA.DP assigns each flight's STA, starting with the flight with the earliest ETA, which is AC1.In the absence of scheduling constraints, DP sets the STA for AC1 equal to AC1's ETA.AC2, AC3, and AC4 must be delayed so that their STAs satisfy the in-trial separation requirements, usually input as a distance and converted to a time in DP.Various scheduling events trigger partial or complete updates of the schedule.Radar track and flight plan updates only trigger recalculation of the STAs of flights that are on the schedule but outside the freeze horizon.In general, the following steps are performed by DP to update the STAs (for all flights, for some flights, or only for flights outside the freeze horizon):
+ETA STA1. DP computes preliminary meter fix STAs for all flights that have yet to cross the meter fix.2. DP computes the runway STAs for flights one by one.In the absence of any scheduling constraints, a runway STA is equal to the Proposed Time of Arrival (PTA), which is defined as the flight's preliminary meter fix STA plus a nominal TRACON transit time between the meter fix and the runway considered.In the presence of scheduling constaints, DP assigns a runway STA later than the PTA.The delay (STA -PTA) needs to be absorbed in the TRACON.3. If the delay to be absorbed in the TRACON is greater than the maximum TRACON delay (an input parameter to DP), DP distributes the excessive delay to the Center by pushing the preliminary meter fix STA for the flight to a later time, which is the final meter fix STA.Otherwise, the preliminary meter fix STA stands as the final meter fix STA.DP also allocates runways for flights upon specific event triggers.This allocation affects the runway schedule and therefore can affect the meter fix schedule too, due to the runway schedule feedback.The runway allocation calculation is intensive, and DP performs it twice for each arrival flight: once when its first STA is calculated and again when it is about to be frozen.For each flight to be considered, DP first tries every eligible runway for the flight and computes the schedule of all the trailing flights that may be affected by the flight.A runway that minimizes the System Schedule Time, which is the sum of the STAs of the flights that are affected, will be selected for the flight being considered.Currently, only the meter fix schedule is directly used by controllers in guiding the arrival traffic.Research to extend the scheduling functions in the terminal area is underway, as the extended TMA is one of the critical components of the Air Traffic Management Technology Demonstration -1 (ATD-1), 7 which showcases an integrated set of technologies that provide an efficient arrival solution for managing aircraft beginning from just prior to top-of-descent and continuing down to the runway.The FAA has renamed the extended scheduling functions as the Terminal Sequencing and Spacing (TSS) technologies and is planning to adopt this technology as an enhancement of the TBFM program.
+III. Time Advance AlgorithmEarly work on time advance by Neuman and Erzberger 8 proposed two versions of a Time-Advance (TA) algorithm: the idealized fuel-saving TA algorithm and the pure TA algorithm.Both versions attempted to minimize the systemic cost of merging arrival flights by using a simple cost model that does not distinguish aircraft types.A heuristic maximum allowable time advance was proposed as a function of traffic demand estimated by the number of aircraft per hour.Both versions first shift the STAs of all flights on the schedule by a fixed amount of time.The idealized fuel-saving TA algorithm then examined the resulting STAs one by one to remove unnecessary time advances for flights, while the pure TA algorithm made no further adjustment.Another independent study 9 also advanced the STAs of all flights by a parametric amount of time, and investigated the fuel benefits as a function of the amount of time advance using arrival schedules at one runway of the Dallas/Fort Worth International Airport.Although systemic benefits were observed, both approaches used simple cost models and did not clearly relate the amount of minimum-cost time advance to local traffic information.Therefore, neither of these two approaches were operationally acceptable without further research.A recent study computed separation-compliant trajectories for arrival flights, using time advance to reduce the timespan of the landing flights. 10Compared to TMA, of which the schedule ensures separation compliance only at the scheduling points such as the meter fix and runway, this separation-compliant approach ensures separation compliance at every point on an arrival flight's trajectory.However, computation of such trajectories is time-consuming and can be a performance bottleneck for real-time ground automation tools.The time advance algorithm proposed in this work utilizes information already computed by TMA or already accessible to TMA's scheduler, the DP.Instead of advancing all flights' STAs with the same amount of time, it identifies packs of flights according to local traffic information, such as the flights' ETAs, originally computed STAs, speed performance envelopes, and the scheduling constraints.For each pack of flights, the algorithm advances each flight's STA by a computed amount, called the Minimum-Cost Time Advance, that minimizes the systemic direct operating cost of achieving the STAs for the pack.
+III.A. Direct Operating CostThe systemic direct operating cost is the sum of each flight's direct operating cost,C(t) = Fuel Cost P f × f (t) + Time Cost P f × CI × (t -t ref ) . (1)Here t is the time of crossing a reference point, which can be a meter fix or a runway.P f is the fuel price, f is the fuel consumption, t ref is a reference time, and CI is the Cost Index, which is the ratio of the time-related cost to the fuel cost.The time-related cost accounts for items such as flight crew wages, airplane lease cost, maintenance costs, connection flight constraints, and others that are potentially a function of the flight time.The Cost Index is determined by individual airlines, and usually varies among aircraft types and from route to route.Before a flight takes off, the flight crew enters the Cost Index into the flight management computer for it to compute the preferred speeds for climb, cruise, and descent. 5When CI is zero, the direct operating cost accounts for solely the fuel cost and the computed preferred speeds are lower.When CI is large, the time cost far outweighs the fuel cost and the preferred speeds are higher.A direct operating cost reaches a minimum at a specific crossing time.As CI increases, the time cost becomes important and the minimumcost time decreases.Figure 3 shows the estimated direct operating cost of a B757 flight from 35,000 ft and 180 nmi away from the airport to about 10 nmi away from the airport.Details of the computation of these curves are described in the Appendix.For illustration's purpose, the reference time was arbitrarily chosen to be the arrival time of a minimum-fuel trajectory so as to keep both curves within the same range.The choice of the reference time does not affect the time advance algorithm.The time advance algorithm is designed based on two critical assumptions:• The direct operating cost can be approximated by a quadratic function in the vicinity of the minimumcost arrival time.• The ETAs correspond to the flights' minimum-cost arrival times.The following sections derive the minimum-cost time advance for a group of flights and describe how the algorithm identifies packs of flights on the schedule.Although the derivation is for the meter fix schedule, it can be applied to the runway schedule as well.
+III.B. Minimum-Cost Time AdvanceConsider a group of N arrival flights scheduled to arrive at a meter fix.The flights are assumed to be outside the freeze horizon, although the derivation applies to arrival flights anywhere in the Center.The STAs computed by the DP are named the original STAs to be distinguished from the STAs shifted later by the Time Advance algorithm.Let t i,ETA denote the ETA of the ith flight and t i,STA denote the original STA of the ith flight.They are ordered by the index such that b t i,ETA ≤ t i+1,ETA , i = 1, . . ., N -1.and t i,STA < t i+1,STA , i = 1, . . ., N -1.The original delay for each flight isD i = t i,STA -t i,ETA .(2)Without loss of generality, assume that the DP must delay all but the first flight,D i = 0, i = 1 > 0, i = 2, 3, . . . , NThe Minimum-Cost Time Advance for this group of flights is derived as follows.Using the quadratic approximation, each flight's cost function, C i , is expressed asC i (t) C i (t i,ETA ) + C i (t i,ETA ) (t -t i,ETA ) 2 , (3)where C is the second-order derivative of C andC i (t) > 0in the vicinity of t i,ETA .The systemic direct operating cost of achieving the STAs, i.e., flying the group of flights to the meter fix according to the STAs, isC tot = N i=1 C i (t i,STA ) = N i=1 C i (t i,ETA ) + C i (t i,ETA )D i 2 .(4)Now, shift the STAs of these flights by an amount of ∆t, thenC tot (∆t) = N i=1 C i (t i,STA -∆t) = N i=1 C i (t i,ETA ) + C i (t i,ETA )(D i -∆t) 2(5)The Minimum-Cost Time Advance is the time, ∆t a , that minimizes C tot (∆t).Differentiating the right-hand side of Equation 5 and equating it to zero,dC tot d∆t ∆t=∆ta = -2 N i=1 C i (t i,ETA )(D i -∆t a ) = 0. (6)After rearranging,∆t a (N ) = N i=1 C i (t i,ETA )D i N i=1 C i (t i,ETA ) ,(7)where the superscript (N ) emphasizes the fact the the Minimum-Cost Time Advance is computed for a group of N flights.The following remarks are made regarding Eq. 7, a critical formula for the time advance algorithm:• The Minimum-Cost Time Advance, ∆t a , is non-negative and can be regarded as a weighted average of the original delays, D i .• Other constraints impose an upper bound on ∆t a .One possible constraint is the frozen STA of another flight in front of the first flight.Another key constraint is the maximum time advance achievable by each flight using speed changes, which depends on aircraft type and how far each flight's preferred cruise and descent speeds are from its maximum cruise and descent speeds.• The weight C i is a function of the aircraft type and the aircraft's distance from (or nominal flight time to) the meter fix.The latter dependency affects ∆t a much less in many situations because the effect of distance cancels out in the ratio of the weights.As a first-order approximation, C i can be modeled as an aircraft-type specific constant.b DP actually schedules the STAs in an order that is based on flights' runway ETAs, which can be different from the order of meter fix ETAs in some special cases.The derivation still holds even if these cases are considered.
+III.C. Identifying PacksThe computed ∆t a can be too aggressive for the trailing flights in the group if there are gaps in the ETAs of the flights.In this case, it is better to allow gaps in the STAs by splitting the group of flights into multiple packs.As an example, Figure 4 shows a group of six flights that have delays for all but the leading flight.Since there is a gap between the ETAs of AC4 and AC5, applying the computed ∆t a for all six flights will time-advance both AC5 and AC6 uncessarily.Instead, STAs of AC1 to AC4 should be shifted using computed ∆t a (4) computed from the first four flights' original STAs and ETAs, and STAs of AC5 and AC6 should be shifted using ∆t a (2) computed from the original STAs and ETAs for just these two flights.The rest of this section describes how to identify packs in the group of flights in a algorithmic way.The time advance algorithm identifies packs of flights by ensuring that the last flight in the pack is not time-advanced, i.e, its STA is not earlier than its ETA after applying ∆t a .A pack can have only as few as one flight, although a one-flight pack does not result in a time advance.Consider a meter fix schedule of N flights, some having delays.The algorithm takes the following steps to identify packs:1. Look for the first flight that can be time-advanced, starting from the one with the earliest STA.A flight cannot be time-advanced if its STA is minimally-spaced with another flight's STA ahead of it on the schedule.If such a flight is found, label it as flight 1 and the subsequent flights on the schedule as 2, 3,. .., etc.2. Identify the delays D i , for flights 1, 2, 3,. . .,etc.D 1 should be zero, because otherwise flight 1 must have been delayed due to the scheduling constraints and cannot be time-advanced.3. Consider a preliminary pack of flights 1 and 2. Compute ∆t a (2) for the pack, using Eq. 7. If ∆t a (2) is smaller than D 2 , extend the preliminary pack to include flight 3. Repeat the procedure until one of the following two conditions is met:• The last aircraft N on the meter fix schedule is reached: Identify flights 1 to N as a pack, and advance the STAs of flights in this pack by ∆t a (N ) .• ∆t a (i) ≥ D i for flight i: Exclude flight i.Identify flights 1 to i -1 as a pack, and advance the STAs of flights 1 to i -1 by ∆t a (i-1) .Search for the next pack by repeating step 1, relabeling flight i as the flight 1.The following remarks are made regarding this algorithm:• It works from earlier packs to later ones, using a short look-ahead horizon of one flight.• Once a pack is identified and their STAs advanced, the algorithm makes no additional adjustment to this pack.• Although it computes a ∆t a that minimizes the systemic operating cost for each pack, it does not result in the minimum systemic operating cost for all the flights on the schedule.One extreme example is a single flight followed by a large pack.The one-flight pack does not result in a time advance, and its STA constrains the available time advance of the following large pack.The algorithm is expected to most beneficial for medium to heavy traffic with clustered ETAs.If the traffic is light, there is no delay to reduce and the time advance algorithm has no effect.If the traffic is extremely heavy, the time advance algorithm does not find room on the meter fix schedule to advance the flights' STAs.In both extreme cases no benefit will be found.
+IV. Monte Carlo SimulationA fast-time Monte Carlo simulation was designed to assess the benefits and robustness of the time advance algorithm.While the algorithm was intended to be ultimately implemented in DP, the architecture of DP was designed for real-time usage and did not easily facilitate fast-time simulation with various test traffic scenarios.Instead, The Stochastic Terminal Arrival Scheduling Software (STASS) 11 was used.STASS models all the essential scheduling functionalities of DP with the following distinctions:• STASS computes the schedule for all flights in one batch without periodic schedule updates.• STASS models primitive runway allocation functionalities which are less efficient than the DP's runway allocation.Specifically, STASS takes a traffic scenario, Center and TRACON nominal transit times, and in-trail and runway separation requirements as its input.A traffic scenario contains a list of flights, each characterized by aircraft type, weight class (which depends on the aircraft type), meter fix, and a freeze horizon ETA.The freeze horizon ETA models the time a flight is expected to reach the freeze horizon.STASS computes the meter fix ETA by adding a freeze horizon transit time, set to 19 minutes in this analysis, to the freeze horizon ETA.Each flight is assigned a nominal runway, and its runway ETA is computed by adding to the meter fix ETA a nominal TRACON transit time.The nominal TRACON transit time is a function of the runway and meter fix pair.The nominal runway ETA was used for the order of consideration, which is the order by which STASS follows to assign meter fix and runway STAs.STASS first computes the preliminary meter fix STAs for all the flights, then assigns the runway STAs for all the flights one by one.An assigned runway STA may require delay to be absorbed.A maximum TRACON delay time is imposed to ensure flights can absorb the TRACON delay with simple speed reduction.If the maximum TRACON delay time is not enough for absorbing all the delay, the preliminary meter fix STA for that flight must be pushed to a later time to absorb the extra delay.The Monte Carlo simulation generates random arrival scenarios spanning light, medium, and heavy traffic, from a template traffic scenario, by varying the flights' freeze horizon ETAs.The template traffic scenario's aircraft composition and arrival routes are are applied to all scenarios.A time window for constraining the variation of freeze horizon ETAs for each scenario was varied to achieve different levels of traffic demand.A large time window represents light traffic and a narrow time window represents heavy traffic.To capture the effect of traffic demand variation during the same time window, the expected separation violation at the runway is computed from the nominal runway ETAs.The runway ETAs represents the time of arrival at the runway threshold if an aircraft follows its desired descent procedures.If two aircraft have close ETAs at the same runway, they will violate the runway separation constraints.Thus the expected separation violation at the runway characterizes the overall level of traffic demand challenge.The performance metric for the scheduler was chosen to be the System Schedule Time, 6 which was the sum of the flights' runway STAs.The reason to use the runway STAs instead of the meter fix STAs as a performance metric is to include the effect of the time advance algorithm on the TRACON flight times.An alternative performance metric would be the systemic direct operating cost, which was expected to be highly correlated with the System Schedule Time.However, the systemic direct operating cost involves fuel burn comparison, and cannot be used unless all the TRACON transit routes are characterized by fuel burn.This is due to the fact that aircraft may be assigned different runways in different runs.The template traffic scenario was taken from real traffic data of flights that landed in the Phoenix Airport between 5pm and 7:30pm on September 10, 2014.It contained 101 jet flights and 11 turboprop flights arriving from all directions.A total of 600 traffic scenarios with varying levels of traffic demand were generated from the template traffic scenario.Figure 5 shows the four meter fixes whose schedules were computed for the jet flights.Turboprop flights were scheduled at different meter fixes (or the same meter fixes with different crossing altitudes) which are not shown here.The maximum time advance achievable by speeding was modeled as 100 seconds for all flights.Whenever the minimum-cost time advance computed by Eq. 7 exceeded 100 seconds, a value of 100 seconds was used instead.Modeling of the runways and TRACON transit times assumed the East Flow airport configuration, with which aircraft land towards the east on two runways, 07R and 08.Table 1 shows the TRACON transit times from each meter fix to each arrival runway.The transit times were estimated using constructed routes for the ATD-1 simulations 12 and the Trajectory Synthesizer 13 component of TMA. Figure 6 shows the modeled arrival routes from each meter fix to each runway.Each route is identified by a meter-fix specific color, while gray routes are shared by flights from different meter fixes.Two modes of STASS's runway selection were explored:• Nominal Runway: always schedule a flight to its nominal runway• Earliest Runway: always schedule a flight to the runway that has the earliest time to the Phoenix Airport corresponds to an expected runway separation violation of about 40 (among 112 flights).Time advance has time saving benefits between 3 and 50 minutes for scenarios in which the number of expected runway separation violations was between 20 and 60.For heavier traffic scenarios in which the number of expected runway separation violations was above 60, Time advance's benefit starts to vary greatly, with savings of around 100 minutes for some scenarios and zero for some others.Also shown in Fig. 7 was the average delay per flight, computed by
+V. ResultsD avg = N i=1 (t i,STA -t i,ETA ) N ,(8)where t i,STA and t i,ETA were the times at the runway.Note that traffic demand resulting in more than 10 minutes' average delay is very unlikely to occur on a regular basis, for the FAA will often institute other traffic management initiatives such as ground stops and ground holds to prevent it from occuring.The 10 minute average delay benchmark corresponds roughly to 85 expected runway separation violations in Fig. 7.Figure 8 shows the time saved by the Time-Advance algorithm with the Earliest Runway selection mode.While the time saved per scenario is on average positive, individual savings are more scattered than those for the Nominal Runway mode, and can be negative for some scenarios.This was because the Earliest Runway mode only attempted to optimize the landing time for the flight considered without regarding landing times of the trailing flights.Time advance changed the selected runway for certain flights and such change can have negative impact on the schedule of trailing flights.Figure 9 shows an example in which the Earliest Runway Selection mode leads to excessive meter fix traffic delays of its trailing flights.Consider five aircraft AC1, AC2, AC3, AC4, and AC5, and two runways Rwy1 and Rwy2.STASS already allocates Rwy1 to AC1 and AC2.Rwy2's schedule is empty.AC3, AC4, and AC5 come through the same meter fix.The TRACON transit time to Rwy1 is shorter than that to Rwy2.AC3 is being considered for runway allocation between its nominal runway, Rwy1, and Rwy2.In the absence of scheduling constraints, AC3 can always land on Rwy1 earlier than on Rwy2 and no delay is to be absorbed.With the presence of AC2, AC3 can still land on Rwy1 earlier than Rwy2, and STASS's Earliest Runway selection mode selects Rwy1.However, the schedule requires delay for AC3 to be absorbed, and the maximum TRACON delay is not enough for absorbing all the delay.Therefore, the feedback from the runway schedule pushes the meter fix STA of AC3 to later times, thus pushing the STAs of the trailing flights AC4 and AC5 to later times as well.As a result, traffic is delayed at the meter fix and AC3, AC4, and AC5 end up with later STAs at both the meter fix and the runway.Had Rwy2 been selected for AC3, AC3 could maintain its preliminary meter fix STA and fly to Rwy2 without delay.The trailing flights AC4 and AC5 will not suffer from delays at the meter fix and will have a better chance of landing earlier, therefore achieving a better System Schedule Time.In summary, the simulation results showed consistent time saving benefits with the time advance algorithm across all levels of traffic demand, especially at medium to high traffic demand.Although running STASS in the Earliest Runway mode can result in negative time saving for certain traffic scenarios, the time saving average over traffic scenarios is still positive.While the variation of runway allocation can counter the benefits of the time advance algorithm under certain traffic conditions, this effect is attibuted to STASS's primitive runway allocation model.Better modeling of TMA's runway allocation logic is expected to reduce the scattering of the time saving benefits and will be investigated in the future.
+MF Prelim
+VI. Integration with TMA's SchedulerThe current time advance algorithm can be implemented as a part of DP, TMA's scheduler, in a straightforward way.Recall the steps performed by DP to update the STAs described in Section II.With the time advance algorithm implementation, the steps are modified as follows:• Compute the preliminary meter fix STAs for flights that are in the Center.• Apply the time advance algorithm to shift the meter fix STAs of these flights.• Compute the runway STAs for flights in the Center and in the TRACON.Delay the preliminary meter fix STAs, if necessary, to avoid absorbing excessive delays in the TRACON.The weights in Equation 7, C , can be approximated by a function of the weight class or the aircraft type, both of which are available to the DP.The maximal allowable time advance for individual flights can be estimated by the difference in the fast and nominal trajectories already computed by TMA.The time advance algorithm can potentially be applied to the schedules at additional route merge points between the meter fix and the runway.Scheduling flights at these merge points has an approach taken by the Terminal Area Precision Scheduling and Spacing System to improve airport throughput and reduce controllers' workload. 12
+VII. Conclusions and Future WorkThis paper presents a time advance algorithm that can enhance the efficiency and reduce delay of the arrival schedule computed by the Traffic Management Advisor (TMA).Monte Carlo simulation results showed time-saving benefits across a wide range of traffic demand.For a set of representative 112 flights into the Phoenix Airport, the time advance algorithm reduced flights' delay by 3 to 50 minutes in traffic scenarios with varying levels of traffic congestion.The algorithm is easily implementable on TMA, using information already computed by TMA's scheduler and requires minimal changes to TMA's infrastructure.Future work being considered include the following:• Evalulation of the time saving and fuel benefits with better modeling of TMA's runway allocation logic.• Exploration of the benefits of time advance on the schedule of runways and the merge points between meter fixes and runways.• Better modeling of the coefficients C .
+Appendix: Fuel Consumption as a Function of Arrival TimeFigure 3 presents the direct operating cost of a B757 flight at 35,000 ft and 180 nmi away from the destination airport as a function of the arrival time.The fuel price, P f , was set to $0.43.The fuel consumption part of the direct operating cost was computed in the following way.For a specific arrival time, a minimum-fuel trajectory from the aircraft's position to a point on the arrival route that is 3000 ft in altitude and 10 nmi from the airport was constructed.This minimum-fuel trajectory was computed using a set of 5-state aircraft equations of motion and the GPOPS-II optimal control software. 14The computation was repeated for a range of arrival times to obtain the fuel consumption as a function of the arrival time and thus the curve for CI = 0. Speeds were bounded by the minimum-drag speed 15 and a Mach number of 0.85.Later arrival times required the trajectory to have path stretch along with a minimum-drag speed.The CI = 27 curve was derived from the CI = 0 curve using Equation 1.When the fuel consumption was at a global minimum, i.e., without the arrival time constraint, the minimum-fuel trajectory has a cruise segment with the maximum-range speed and a descent segment with the minimum-drag speed. 5Figure 1 .1Figure 1.The Center/TRACON diagram (Courtesy of Larry Meyn, NASA Ames Research Center).
+horizon (see Fig. 1), a boundary inside which arrival flights' STAs are no longer updated.The freeze horizon can be time-based or distance-based.A time-based freeze horizon freezes the STAs of flights whose ETAs at the meter fix are less than or equal to 19 minutes, for example, into the future.A distance-based freeze horizon freezes the STAs of flights who are within 130 nmi, for example, of the meter fix.The STAs are frozen so that the Center air traffic controllers can guide each arrival flight towards realizing a fixed schedule.
+Figure 2 .2Figure 2. Scheduling four arrival flights at a meter fix.
+Figure 3 .3Figure 3.The direct operating cost of an arriving B757 flight.
+Figure 4 .4Figure 4. Two packs of flights are identified.Blue STAs are modified by the Time Advance Algorithm.
+Figure 5 .5Figure 5.The Phoenix Airport arrival routes.
+Figure 7 Figure 6 .76Figure7shows the time saved by the Time-Advance algorithm with the Nominal Runway selection mode.Each data point corresponds to one traffic scenario.The abscissa represents the number of expected runway separation violation.As a reference point, the original template scenario created from the evening traffic
+Figure 7 .7Figure 7. Time-Advance benefits with nominal runway assignment.
+Figure 8 .8Figure 8. Time-Advance benefits with earliest runway assignment.
+Figure 9 .9Figure 9. Optimal runway selection of AC3 delays trialing flights AC4 and AC5.
+Table 1 .1Phoenix Airport TRACON transit times in secondsEngineType: JetRunway/Fix HOMRR BRUSR GEELA SQUEZ07R10971028682967089617746831087EngineType: TurbopropRunway/Fix HOMRR BRUSR PAYNT SUNSS07R11951167713974081076870711960
+			Downloaded by NASA AMES RESEARCH CENTER on January 28, 2015 | http://arc.aiaa.org| DOI: 10.2514/6.2015-1326
+			of 13 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on January 28, 2015 | http://arc.aiaa.org| DOI: 10.2514/6.2015-1326
+			of 13 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on January 28, 2015 | http://arc.aiaa.org| DOI: 10.2514/6.2015-1326
+			American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on January 28, 2015 | http://arc.aiaa.org| DOI: 10.2514/6.2015-1326
+			of 13 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on January 28, 2015 | http://arc.aiaa.org| DOI: 10.2514/6.2015-1326
+			of 13 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTER on January 28, 2015 | http://arc.aiaa.org| DOI: 10.2514/6.2015-1326
+		
+		
+			
+For the minimum-fuel trajectory calculation, the aircraft performance model parameters were taken from the Base of Aircraft Database (BADA) 16 3.8 with slight simplification.The airspeed-dependent thrustspecific fuel consumption in BADA was replaced with an average, constant value for simplification.			
+			
+
+				
+
+
+	
+		High Throughput Arrival Operations from Simulation to Reality
+		
+			TPrevot
+		
+		
+			BBaxley
+		
+		
+			TCallantine
+		
+		
+			WJohnson
+		
+		
+			LQuon
+		
+		
+			JRobinson
+		
+		
+			HNSwenson
+		
+	
+	
+		Proceedings of the International Conference on Human-Computer Interaction in Aerospace
+		the International Conference on Human-Computer Interaction in Aerospace
+		
+			2012. 2012
+		
+	
+	NASAs ATM Technology Demonstration-1: Transitioning Fuel Efficient
+	Prevot, T., Baxley, B., Callantine, T., Johnson, W., Quon, L., Robinson, J., and Swenson, H. N., "NASAs ATM Technology Demonstration-1: Transitioning Fuel Efficient, High Throughput Arrival Operations from Simulation to Reality," Proceedings of the International Conference on Human-Computer Interaction in Aerospace (HCI-Aero 2012), 2012.
+
+
+
+	
+		The Efficient Descent Advisor: Technology Validation and Transition
+		
+			RichardCoppenbarger
+		
+		
+			MiwaHayashi
+		
+		
+			GauravNagle
+		
+		
+			DouglasSweet
+		
+		
+			RenanSalcido
+		
+		10.2514/6.2012-5611
+		AIAA-2012-5611
+	
+	
+		12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference and 14th AIAA/ISSMO Multidisciplinary Analysis and Optimization Conference
+		
+			American Institute of Aeronautics and Astronautics
+			Sept. 2012
+		
+	
+	Coppenbarger, R. A., Nagle, G., Sweet, D., and Hayashi, M., "The Efficient Descent Advisor: Technology Validation and Transition," Proceedings of the AIAA Aircraft Technology, Integration, and Operations Conference, AIAA-2012-5611, Sept. 2012.
+
+
+
+	
+		Impact of Future Time-Based Operations on Situation Awareness of Air Traffic Controllers
+		
+			EOprins
+		
+		
+			DZwaaf
+		
+		
+			FEriksson
+		
+		
+			KVan De Merwe
+		
+		
+			RRoe
+		
+	
+	
+		8th USA/Europe Air Traffic Management R&D Seminar
+		
+			2009
+		
+	
+	Oprins, E., Zwaaf, D., Eriksson, F., van de Merwe, K., and Roe, R., "Impact of Future Time-Based Operations on Situation Awareness of Air Traffic Controllers," 8th USA/Europe Air Traffic Management R&D Seminar , 2009.
+
+
+
+	
+		Design and Operational Evaluation of the Traffic Management Advisor at the Fort Worth Air Route Traffic Control Center
+		
+			HNSwenson
+		
+		
+			THoang
+		
+		
+			SEngelland
+		
+		
+			DVincent
+		
+		
+			TSanders
+		
+		
+			BSanford
+		
+		
+			KHeere
+		
+	
+	
+		Proceedings of the 1st USA
+		the 1st USA
+		
+			June 1997
+		
+	
+	Swenson, H. N., Hoang, T., Engelland, S., Vincent, D., Sanders, T., Sanford, B., and Heere, K., "Design and Operational Evaluation of the Traffic Management Advisor at the Fort Worth Air Route Traffic Control Center," Proceedings of the 1st USA/Europe Air Traffic Management R&D Seminar , June 1997.
+
+
+
+	
+		Index
+		
+			BRoberson
+		
+		
+			RRoot
+		
+		
+			DAdam
+		
+		10.1680/cdmre.34969.bm07
+	
+	
+		CDM Regulations 2007 Explained
+		
+			Thomas Telford Publishing
+			2007. 2007
+			2
+			
+		
+	
+	Roberson, B., Root, R., and Adam, D., "Fuel Conservation Strategies: Cost Index Explained," Boeing Aero Quarterly, Vol. 2, No. 2007, 2007, pp. 26-45.
+
+
+
+	
+		The Dynamic Planner: the Sequencer, Scheduler, and Runway Allocator for Air Traffic Control Automation, NASA/TM
+		
+			GLWong
+		
+		
+			2000-209586, 2000
+		
+	
+	Wong, G. L., The Dynamic Planner: the Sequencer, Scheduler, and Runway Allocator for Air Traffic Control Automa- tion, NASA/TM-2000-209586, 2000.
+
+
+
+	
+		NASAs ATM Technology Demonstration-1: Moving NextGen Arrival Concepts from the Laboratory to the Operational NAS
+		
+			HSwenson
+		
+		
+			IiiRobinson
+		
+		
+			JE
+		
+	
+	
+		Journal of Air Traffic Control
+		
+			55
+			2
+			2013
+		
+	
+	Swenson, H., Robinson III, J. E., et al., "NASAs ATM Technology Demonstration-1: Moving NextGen Arrival Concepts from the Laboratory to the Operational NAS," Journal of Air Traffic Control, Vol. 55, No. 2, 2013.
+
+
+
+	
+		NATIONAL SYMPOSIUM ON DEVELOPMENTS IN IRRADIATION TESTING TECHNOLOGY, SEPTEMBER 9--11, 1969, NASA LEWIS RESEARCH CENTER, SANDUSKY, OHIO.
+		
+			FNeuman
+		
+		
+			HErzberger
+		
+		10.2172/4165376
+	
+	
+		NASA/TM-103880, National Aeronautics and Space Administration
+		
+			Office of Scientific and Technical Information (OSTI)
+			1991
+		
+	
+	Neuman, F. and Erzberger, H., Analysis of Delay Reducing and Fuel Saving Sequencing and Spacing Algorithms for Arrival Traffic, NASA/TM-103880, National Aeronautics and Space Administration, Ames Research Center, 1991.
+
+
+
+	
+		Fuel Cost, Delay and Throughput Tradeoffs in Runway Scheduling
+		
+			HLee
+		
+		
+			HBalakrishnan
+		
+		
+			2008. 2008
+			IEEE
+			
+		
+	
+	American Control Conference
+	Lee, H. and Balakrishnan, H., "Fuel Cost, Delay and Throughput Tradeoffs in Runway Scheduling," American Control Conference, 2008 , IEEE, 2008, pp. 2449-2454.
+
+
+
+	
+		Separation-Compliant Time Advance in Terminal Area Arrivals: Tradeoff between Makespan and Fuel Burn
+		
+			AlexanderVSadovsky
+		
+		
+			BrianFabien
+		
+		10.2514/6.2013-4783
+		AIAA-2013-4783
+	
+	
+		AIAA Guidance, Navigation, and Control (GNC) Conference
+		
+			American Institute of Aeronautics and Astronautics
+			2013
+		
+	
+	Sadovsky, A. and Fabien, B., "Separation-Compliant Time Advance in Terminal Area Arrivals: Tradeoff between Makespan and Fuel Burn," AIAA Guidance, Navigation, and Control (GNC) Conference, AIAA-2013-4783, 2013. 11
+
+
+
+	
+		Airport Arrival Capacity Benefits Due to Improved Scheduling Accuracy
+		
+			LarryMeyn
+		
+		
+			HeinzErzberger
+		
+		10.2514/6.2005-7376
+	
+	
+		AIAA 5th ATIO and16th Lighter-Than-Air Sys Tech. and Balloon Systems Conferences
+		
+			American Institute of Aeronautics and Astronautics
+			2005
+		
+	
+	Meyn, L. A. and Erzberger, H., "Airport Arrival Capacity Benefits Due to Improved Scheduling Accuracy," AIAA Aviation, Technology, Integration and Operations (ATIO) Conference, 2005.
+
+
+
+	
+		Evaluation of the terminal area precision scheduling and spacing system for near-term NAS application
+		
+			JThipphavong
+		
+		
+			LMartin
+		
+		
+			HSwenson
+		
+		
+			PLin
+		
+		
+			JNguyen
+		
+		10.1201/b12321-12
+	
+	
+		Advances in Human Aspects of Aviation
+		
+			CRC Press
+			2012
+			
+		
+	
+	Thipphavong, J., Martin, L., Swenson, H., Lin, P., and Nguyen, J., "Evaluation of the Terminal Area Precision Scheduling and Spacing System for near-term NAS application," 4th International Conference on Applied Human Factors and Ergonomics (AHFE), 2012.
+
+
+
+	
+		Trajectory Synthesis for Air Traffic Automation
+		
+			RhondaSlattery
+		
+		
+			YiyuanZhao
+		
+		10.2514/2.4056
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		Journal of Guidance, Control, and Dynamics
+		0731-5090
+		1533-3884
+		
+			20
+			2
+			
+			March 1997
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Slattery, R. and Zhao, Y., "Trajectory Synthesis for Air Traffic Automation," Journal of Guidance, Control and Dynam- ics, Vol. 20, No. 2, March 1997, pp. 232-238.
+
+
+
+	
+		GPOPS-II Version 1.0: A General-Purpose MATLAB Toolbox for Solving Optimal Control Problems Using the Radau Pseudospectral Method
+		
+			MAPatterson
+		
+		
+			AVRao
+		
+		
+			2013
+		
+		
+			University of Florida
+		
+	
+	Patterson, M. A. and Rao, A. V., "GPOPS-II Version 1.0: A General-Purpose MATLAB Toolbox for Solving Optimal Control Problems Using the Radau Pseudospectral Method," University of Florida, 2013.
+
+
+
+	
+		Introduction to Aircraft Performance, Selection, and Design
+		
+			FJHale
+		
+		
+			1984
+			Wiley
+			New York
+		
+	
+	Hale, F. J., Introduction to Aircraft Performance, Selection, and Design, Wiley New York, 1984.
+
+
+
+	
+		Advanced Aircraft Performance Modeling for ATM: Enhancements to the Bada Model
+		
+			ANuic
+		
+		
+			CPoinsot
+		
+		
+			M.-GIagaru
+		
+		
+			EGallo
+		
+		
+			FANavarro
+		
+		
+			CQuerejeta
+		
+		10.1109/dasc.2005.1563320
+	
+	
+		24th Digital Avionics Systems Conference
+		
+			IEEE
+			Nov. 2005
+		
+	
+	Nuic, A., Poinsot, C., Iagaru, M.-G., Gallo, E., Navarro, F. A., and Querejeta, C., "Advanced Aircraft Performance Modeling for ATM: Enhancements to the BADA Model," Proceedings of the IEEE/AIAA 24th Digital Avionics Systems Conference, Nov. 2005.
+
+
+				
+			
+		
+	

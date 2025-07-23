@@ -1,0 +1,609 @@
+
+	
+	
+		
+IntroductionProblems in coordinated motion planning for multiple agents can be roughly classified into two disjoint categories, decoupled coordination (each agent's motion is planned separately, then the plans are reconciled), and centralized coordination (all the agents' motions are planned simultaneously, with the interaction constraints considered from the start) [10].The problems considered in this paper fall in the latter category.Centralized coordination of multiple agent motion has been approached using various types of mathematical models, discrete (see, for example, Luna 16 and references therein) and continuous (see, for example, Hu et al. 11,12, Jung and Ghrist 14, Ghrist et al. 10, and references therein).A review of research on multi-robot coordination problems can be found in Ghrist et al. [10, section 1.1].In a number of coordination problems, the moving agents are confined to a transportation network (also known as roadmap coordination space; see Ghrist et al. 10).A general mathematical model of a transportation network is a multigraph [20] with the vertices being points in a Euclidean space and edges being parametrized curves connecting pairs of vertices.Examples of such networks include railroad networks for trains, railroad networks for industrial robots, trolley and tram car networks, and airspaces with fixed nominal routes.A subclass of network-confined coordination problems consists of those where the agents' paths are not given but sought as part of solving the problem.In such problems, the system exhibits behaviors both continuous (the agent's motion along an edge) and discrete (an agent's choice between two edges emanating from the same vertex).This coupling of the two behaviors suggests hybrid control systems (HCS) [26] as a suitable class of models for approaching the problem.Hybrid systems have been applied to various problems of transportation (e.g., highway traffic: Munõz et al. 18,Bayen et al. 3), and in particular to aerospace problems [24,13,2].Although the HCS model proposed herein is in principle applicable to all types of moving agents whose motion is to be coordinated in a given transportation network, this paper will be held to the specific context of Air Traffic Management (ATM).Thus, the moving agents here will be aircraft, and the central problem will consist of finding routes and speed advisories for a set of aircraft, subject to initial conditions, separation constraints, speed range constraints, and an arrival schedule.The role of the transportation network will be played in this context by an aerial route network (for brevity, it will be called simply route network), i.e. a collection of pre-defined aerial routes, to which all aircraft motion is to be confined, in a given airspace.This paragraph and the next two describe the context for the HCS problem central to this paper.The context here is a terminal airspace that constitutes a relatively small part of the U.S. National Airspace System (U.S. NAS).A typical setting is a Terminal Radar Approach Control Facility (TRACON) operation that spans 0-2 hours.In this context, the role and, therefore, computational demands, of the routing problem (i.e., the combinatorial problem of finding for each aircraft a walk in the multigraph that represents the route network) depend on the current ATO practices, on the prognoses for NextGen, and on the density (see below) of the multigraph.These dependencies are summarized in Table 1.Henceforth, the term dense refers, as in dense graph [7], to a high ratio between the number of edges and the squared number of vertices; sparse is the opposite of dense.In today's operations, the situation is as follows.Since these operations rely on air traffic controllers and pilots to keep the collision risk between aircraft below an acceptable threshold level, a sparse route network in terminal airspace aids the situational awareness required for controllers and pilots to perform separation tasks.The limited number of arrival routes in a given airport runway configuration allows to route aircraft hours in advance of arrival into the terminal airspace, thus removing the real-time urgency from the routing problem.While air traffic controllers instruct aircraft to turn away from the assigned route for separation from other aircraft, the general flow of aircraft (and situational awareness) is retained.Whether future ATO as proposed by NextGen and SESAR use a sparse terminal route network, as they do today, or a denser route network to achieve higher runway utilization, is to be determined.In general, a denser route network may increase runway utilization and lessen the inefficiencies that would have arisen from handling operational uncertainty with limited routing options.Achieving this at the expense of safety, however, is an unacceptable
+Sparser Route Network
+Denser Route Network Advantages• Promotes increased controller and pilot situational awareness
+• Computational tractability• Comparatively simplified procedural review process• Increased runway utilization and aircraft operational efficiency
+trade.For the HCS problem central to this paper, one is given the following data:1. A directed multigraph G = (V, E), with vertex set V and edge set E, each vertex v ∈ V being a point in a Euclidean space E of dimension 2 or 3. If e ∈ E is an edge from vertex v 1 to vertex v 2 , then the nom- inal route segment from waypoint v 1 to waypoint v 2 is a curve in E, connecting v 1 to v 2 .All such curves will henceforth be assumed rectifiable [25] and capable of a parameterization which is continuous and piecewise continuously differentiable.A cusp in the curve can be traversed with the assumption (made throughout this paper, but capable of relaxation) that inertia is neglected, and approximately smoothed if inertia is to be taken into account.A graph-theoretic path [20] in G is, therefore, associated (and, henceforth, identified) with a spatial path that can be traversed by an aircraft.A vertex of G of indegree ≥ 2 [20] (resp., outdegree ≥ 2) corresponds to two or more route segments merging (resp., diverging).The modeling framework below imposes no restrictions on the outdegree or indegree of a vertex.
+A finite setA = {1, . . ., A}of aircraft α ∈ A in G.If aircraft α is moving along a path in G, then the aircraft's position is specified by the arc length coordinate x α along the path.3.For each aircraft α ∈ A, a specification of its initial position x IN IT ;α , required destination x DEST ;α , and the required time t DEST ;α of arriving at the destination.Here x IN IT ;α and x DEST ;α are points in G, each point specified, for example, by an edge in G and a fractional distance along that edge.4. The inertia-free state equations [15] (henceforth the dot denotes differentiation with respect to physical time t)ẋα = s α , α ∈ A,where the s α 's are the corresponding speeds, describing the motion of those aircraft α that have not yet reached their destination.In what follows, and with the details provided below, the coordinates x α will play the role of state variables; the speeds s α , of the control variables.5. State constraints: the separation requirement for each pair of aircraft.This requirement is described mathematically, in terms of the coordinates x α , in section 3. 6.Control constraints: bounds on the speeds s α e .7. A cost functional, specified below.The problem, defined in detail below (definition 4.1) as the Scheduled Routing Problem, consists in finding for each aircraft α ∈ A a path p(α) in G from x IN IT ;α to x DEST ;α and a control strategy s α p(α) (t), i.e. a function from the time domain of the model to the set of admissible controls, such that the resulting movements x α (t) along the corresponding paths constitute a state trajectory that satisfies the above state and control constraints and that minimizes the cost.In this paper, we use an HCS framework to formulate a model specialized to the above problem.The main contributions of this model are as follows:• Reduction of the problem to a special case of an HCS where each solution trajectory lies in only one control mode.• A clear application of Depth-First Search [7] to search through the control modes as economically as possible, given the possibly exponential size of the problem.In the worst case when every aircraft can be assigned to any of the paths, and when each edge can serve as a path by itself, the number of aircraft-to-path assignments, i.e. of functions µ : A → E, is |E| |A| .The latter quantity, however, is a crude overestimate: the set of an aircraft's paths from initial position to destination is unlikely to involve a large subset of E. Nevertheless, if every aircraft has even as few as two such paths, then the number of routings is 2 |A| , which is still exponential in the number of aircraft.This exponential behavior is a challenge and is mitigated by two factors:the applicability of parallel computing, and the operational constraints of ATM (at the time of this writing) that restrict the number of possible aircraft-to-path assignments.These factors are discussed briefly in section 4.5.• Reduction of each control mode to a problem in classical deterministic optimal control, which allows, at least in principle, application of the fundamental results of Pontryagin [6] and Bellman [4], and of the numerical algorithms that have been developed and implemented [21,9].• A natural way to capture an aircraft's exiting the system; see Remark 4.1, below.These contributions together allow for parallel computation of solutions: the classical optimal control problems corresponding to different control modes can be solved in parallel, and their obtained minimal costs values compared.Furthermore, the Depth-First Search algorithm itself admits a parallel implementation [22].The hybrid model is formulated in section 2. The classical deterministic optimal control corresponding to a given control mode is formulated in section 4. Numerical solutions to some instances of the problem are given in section 5.
+An HCS formulationThe HCS defined in this section will be instrumental in a precise formulation of the Scheduled Routing Problem.Assume the data 1)-7), listed in the 3rd paragraph of section 1.• For each aircraft α ∈ A, let e IN IT ;α denote the edge occupied initially by aircraft α.Remark 2.1.However, since a given routing assigns each aircraft to a specific route, which is a parameterization of a path in G (see sections 4.1, 4.2 for more detail) and to which the aircraft's movement is restricted, the only way for one aircraft to overtake another is if their two routes permit.In particular, an aircraft may not overtake another on the same edge.• Let P e IN IT ;α , e DEST ;α be the set of all paths in the multigraph that begin with the edge e IN IT ;α and end with the edge e DEST ;α that contains x DEST ;α .Definition 2.1.The length of a path p ∈ P e IN IT ;α , e DEST ;α will be denoted l(p).• Define a control mode µ as a mapping that assigns each aircraft α to a path in P e IN IT ;α , e DEST ;α .In more detail, µ is a mapping from the set A of moving aircraft to the union ∪ α P e IN IT ;α , e DEST ;α such that µ(α) ∈ P e IN IT ;α , e DEST ;α for each α ∈ A• For aircraft α, each path µ(α) ∈ P e IN IT ;α , e DEST ;α is parameterized by arc length.For computational convenience, the arc length coordinate increases along the path, with the destination coordinate x DEST ;α being zero for each α.Thus, x α µ ∈ [-l(µ(α)), 0], andx DEST ;α = 0This convention ensures that an aircraft's destination is a vertex in the route network and, furthermore, that it is the same vertex in all control modes.• Each aircraft α in each control mode µ is required to reach its destination x α µ = x DEST ;α = 0 at a prescribed time t DEST ;α .Upon reaching destination, the aircraft is no longer in the model; this is reflected in the restriction on the time domains of the individual state equations (1), stated below.• In each µ, have the arc length coordinate x α µ evolve according to the state equationsẋα µ (t) = s α µ (t) for 0 ≤ t ≤ t DEST ;α , α ∈ A,(1)where s α µ is the control variable corresponding to the aircraft's speed of motion along the path.In this formulation, the state equations are imposed over different (albeit overlapping) time domains.The problem, however, will be converted below to one where all state equations are imposed over the same (rescaled) time domain.• For each µ and each α, impose the arrival requirementx α µ t DEST ;α = x DEST ;α(2)• For each µ and each α, impose the speed rangess M IN ;α µ ≤ s α µ ≤ s M AX;α µ (3)
+The geometry of separation constraintsIn some transportation types, including aircraft and trains, every pair of moving agents must be-as a safety measure-separated by a distance no smaller than a pre-determined minimal separation.For aircraft in the U.S. Airspace, the minimal separation requirements are defined by [19] and depend on numerous factors, including airspace type, air traffic automation systems in use, and aircraft weight classes3 (the classes defined by [19] are: Small, Large, Heavy, B757).The separation requirement will be a key constraint on the state variables in the Scheduled Routing Problem, formulated below.Recall (remark 2.1) that the movement of an aircraft is restricted to the assigned route.No attempt is made in this paper to capture all such requirements in detail (see, however, section 6.3 for a discussion of location dependence in separation requirements).Instead, we will use conservative approximations, addressing only the following asymmetry: if two moving aircraft are in-trail (i.e., one is directly following the other along a route segment which is not necessarily in a horizontal plane), then the minimal separation can depend on the weight class of the leading and trailing aircraft.To capture this potential asymmetry, for each pair α 1 , α 2 of aircraft with the first one leading, we introduce the minimal separation r α 1 ,α 2 .If the asymmetry takes place, it can be writtenr α 1 ,α 2 = r α 2 ,α 1(4)We now calculate the set of all the "forbidden" states, in a control mode µ of a hybrid system described above; i.e., the set of all states such that at least two aircraft would have violated the separation requirement if the system were to enter that state.The scenario shown in Figure 1A has two aircraft on two different rectilinear edges, which need not lie in a horizontal plane, with a common vertex and no specified orientation.(If the edges are curvilinear with low curvature near a common vertex or intersection, these portions can be approximated by linear segments; otherwise, the analysis becomes considerably more complicated.)Remark 3.1.Since edge orientation is not specified, Figure 1 describes four cases: both aircraft are moving toward the common vertex4 , both moving away from the common vertex, and two more cases in which one aircraft moves toward, and the other away from, the common vertex.The case when the two aircraft are on edges that do not share a common vertex yet are sufficiently close together (possibly intersecting) to allow violation of the separation requirement is treated in the last paragraph of this section.We will use the Euclidean inner product •, • and the corresponding norm || • || in the 2-D space containing the two edges.Pick the coordinate system5 with the common vertex as the origin and with the unit vectors a 1 , a 2 as the basis vectors that, regardless of the edge orientations, point from the origin toward the respective aircraft.With suitable scalars c 1 , c 2 , the vectors c 1 a 1 and c 2 a 2 are the respective position edges of the aircraft.The squared distance between the two aircraft is(A) (B)||c 1 a 1 -c 2 a 2 || 2 = (c 1 ) 2 + (c 2 ) 2 -2c 1 c 2 a 1 , a 2(5)Equating the latter expression to the squared minimal separation, say, r 2 1,2 , we obtain the equation(c 1 ) 2 + (c 2 ) 2 -2c 1 c 2 a 1 , a 2 = r 2 1,2(6)of an ellipse in the c 1 c 2 -plane.The corresponding set of conflicting sets is described by the elliptical sector obtained by intersecting the ellipse-bound region(c 1 ) 2 + (c 2 ) 2 -2c 1 c 2 a 1 , a 2 < r 2 1,2with the open octant c 2 > c 1 > 0, corresponding to the case when aircraft 1 is the one closer to the origin.In the other case (aircraft 2 is closer to the origin), the corresponding elliptical sector is obtained by intersecting(c 1 ) 2 + (c 2 ) 2 -2c 1 c 2 a 1 , a 2 < r 2 2,1with the octant c 1 > c 2 > 0. The role of the angle θ between the edges e 1 , e 2 in both sectors is the equality a 1 , a 2 = cos(θ).An example of two such sectors is shown in Figure 2. The asymmetry of the gray-shaded region about the dashed diagonal is the asymmetry (4).In each of the four cases listed in Remark 3.1, the respective continuous state coordinates x 1 µ , x 2 µ of aircraft 1, 2 in control mode µ map to the coefficients c 1 , c 2 , as follows (recall the notation introduced in definition 2.1):1.If both aircraft are moving toward the common vertex, then x α µ = l(e α )c α for α = 1, 2. 2. If both aircraft are moving away the common vertex, then x α µ = c α for α = 1, 2. dashed diagonal corresponds to (4).The mapping from the continuous state coordinates x 1 µ , x 2 µ to the coefficients c 1 , c 2 is constructed analogously to the above four cases.The above calculation is illustrated, for an example of two aircraft, in Figure 4.Each discrete mode's set of conflicting states is shown as a connected [1] gray region.For dimension A above 2, one must compute for each pair of (A) (B) (C) aircraft the set of states violating the separation requirements.Each such set is a cylinder, or union of cylinders, with the base shaped as shown in Figure 4C, in the total state space ∪ µ X µ .We note that the set of all separation-violating states in ∪ µ X µ is cylindrical in the sense of [14, Definition 2.2], the latter definition a key requirement for the applicability of a number of theoretical results of [14].A case that remains to be treated is that of two aircraft, labeled here 1 and 2, on edges that do not share a vertex, yet allow the two aircraft to violate the separation requirement.The two edges may or may not intersect.On denoting the position vectors of the edges' initial vertices as h 1 , h 2 , the above calculation can be generalized to this latter case by calculating the squared distance between the aircraft using, instead of the left-hand side of (5), the expression||(h 1 + c 1 a 1 ) -(h 2 + c 2 a 2 )|| 2(7)and updating the subsequent calculations accordingly.Note that taking both h 1 , h 2 to be at the origin would reduce the general formula (7) to the special case depicted in Figure 1.
+The Scheduled Routing Problem and the equivalent Stacked Scheduled Routing ProblemFor ease of exposition, we precede the general formulation of the problem, suitable for an arbitrary number of moving aircraft, with a specific, twoaircraft, example.
+An instance of the scheduled routing problem for two aircraftThe initial state of a two-aircraft scheduled routing is shown in Figure 5A; the required destinations (with possibly different required arrival times) for the two aircraft, in Figure 5B The only paths that take the aircraft from initial location to destination (aircraft 1 from e 1 to e 8 , and aircraft 2 from e 2 to e 7 ) are  (A) (B)p 1 : e 1 , e(A) (D)Figure 6: The four paths (8), in that order, for the problem in Figure 5.No other paths can be taken.The paths p 1 , . . ., p 4 are shown, in that order, in Figure 6.We obtain the control modes µ 1 , . . ., µ 4 , defined as follows:α µ 1 (α) µ 2 (α) µ 3 (α) µ 4 (α) 1 p 1 p 1 p 2 p 2 2 p 3 p 4 p 3 p 4The state space corresponding to each control mode µ is a rectangle consisting of those state vectors x 1 µ , x 2 µ which are compliant with the arc length bounds and separation constraints.The above system is subject to the operational requirement (2), here for α ∈ A = {1, 2}, that aircraft 1 and 2 arrive at their destinations at times t DEST ;1 , t DEST ;2 , respectively.In each of µ 1 , µ 4 , the pairwise conflict zone is simply connected [1]; i.e., consists of only one connected component and has no "holes".Consequently, once each of the conflict zones, of the form shown in Figure 4C, is approximated by an ellipse-bounded region, the state spaces for µ 1 , µ 4 have the topology shown in Figure 7A.In each of µ 2 , µ 3 , the paths of the two aircraft have two crossings (regarded here as short overlaps), hence the pairwise conflict zone has two connected components (Figure 7B).Each control mode µ is subject to the initial conditionx α µ (0) = x IN IT ;α for α ∈ A(9)The simplifying assumption underlying ( 9) is that both aircraft start their movement simultaneously.This assumption can be relaxed and is used here for mathematical simplicity only.Finally, for each control mode µ, we can specify a cost functional that suits the goals implied by the context of the specific application.One example, impractical but chosen for simplicity, is a cost functional that equals the average (squared) speed of the aircraft during the flight:α∈A t DEST ;α 0 s α µ 2 dt(10)Thus, for each control mode µ, we have an optimal control problem with state equations (1), subject to the initial condition (9), the control constraints that specify permissible value ranges for the speeds s α µ , and the following additional constraints:• The arrival requirement (2).• The separation requirement, defined by constructing a functiong SEP ;α 1 ,α 2 µ ((x α µ ) α∈A )of the state6 such that the pairwise conflict zone (shown as a grayshaded region in the appropriate panel of Figure 7) is exactly the set of states satisfying the functionsg SEP ;α 1 ,α 2 µ ≥ r 2 α 1 ,α 2 . (11)For the pair (α 1 = 1, α 2 = 2) (and, in the general scheduled routing problem, for every pair (α 1 , α 2 )) of aircraft, inequality (11) defines a union (denotedX α 1 ,α 2 µ) of regions in the state space of µ, each region bounded by an ellipsecylindrical ("tube-shaped") hypersurface.The separation requirement thus translates into the requirement that a solution (the state trajectory) is disjoint from the interior of every such region for every pair of aircraft.
+The Scheduled Routing Problem: a general formulationThe central problem of this paper, which will be called the Scheduled Routing Problem, can now be stated as follows.Definition 4.1.(Scheduled Routing Problem) Given a set A of aircraft moving on a route network G = (V, E) subject, in each control mode µ, to the state equations ( 1), the initial condition (9), the state constraints (11), and the control constraints (3), find (a) a control mode µ and (b) a corresponding control strategy (s µ α (τ )) α such that the corresponding state trajectory x µ (t) = (x α µ (t)) α∈A satisfies (2) and minimizes the total cost over all the control modes.Part (a) of the Scheduled Routing Problem consists of routing the set A of aircraft; i.e., of choosing for each aircraft a path from origin to destination.A solution found for part (a) heavily affects the process of solving part (b): there may be control modes µ for which part (b) has no feasible solution.Some ways to approach part (a) and the corresponding computational costs are discussed in section 4.5.Part (b) of the Scheduled Routing Problem is an optimal control problem with a Lagrange cost function.The problem, however, has two non-standard features that hamper application of classical optimal control theory and numerical computation of solutions.One feature is the presence of intermediate constraints: in the arrival requirement (2), all time instants t DEST ;α except the latest one are interior points in the time domain of the problem.The other is the following non-autonomous behavior: an aircraft, once at destination, no longer "participates" in the constraints or in the cost.We now use a formalism similar to that in [8] to reduce this problem to a classical, optimal control problem, which is autonomous if its cost functional is.In the rest of this section, the subscript µ is dropped for brevity.
+The Stacked Scheduled Routing Problem (SSRP), equivalent to theScheduled Routing Problem Let (α q ) A q=1 be an ordering of the aircraft by their arrival times (arranged in nondecreasing order).Let t 0 = 0, and for each q > 0 let t q = t DEST ;αq Define a new (normalized) time τ ∈ [0, 1] and, for each of the intervals [t q , t q+1 ], q = 0, . . ., A -1, introduce the following:• the state variable ρ q (τ ), which will play the role of "physical time" in the interval [t q , t q+1 ]: t q ≤ ρ q (τ ) ≤ t q+1 ;• the state variables y α q (τ ), α ∈ A, related to the above x α (t) byy α q (τ ) = x α (t) if ρ q (τ ) = t;(12)• the vector notation y q (τ ) = (y α q (τ )) α∈A ; • the control variables s α q (τ ), related to the above s α (t) bys α q (τ ) = s α (t) if ρ q (τ ) = t,(13)• the control variables z q > 0, which represent the "rate of flow of physical time" with respect to the normalized time τ .The above definition of the Lagrange cost reflects the assumption that an aircraft, once at destination, "disappears" from the system, in the sense of being no longer subject to the separation requirement with the other aircraft.From ( 1), (12), and ( 13), one readily obtains the state equationsd dτ y α q ′ q = z q s α q ′ q for q ′ ≥ q + 1 d dτ ρ q = z q    α ∈ A.(14)Finally, the initial conditions and arrival requirement, together with the requirement that physical time and state change continuously when passing from one interval [t q , t q+1 ] to the next, translate to the endpoint constraintsy α 0 (0) = x IN IT ;α (see (9)) (a) ρ q (1) = ρ q+1 (0) (b) ρ q+1 (0) = t q+1 (c) y α q ′ q (1) = y α q ′ q+1 (0) for q ′ ≥ q + 1 (d) y α q+1 q+1 (1) = x DEST ;α q+1 (e)                            0 ≤ q < A.(15)Conditions (15.bc) ensure the continuity of physical time flow; conditions (15.d), the continuity of an aircraft's motion.Remark 4.1.The state equations ( 14) and the endpoint constraints (15.d) come with the restriction q ′ ≥ q + 1 because they are imposed, in agreement with (1), only for those aircraft that have not yet reached their destination: by the end of the q-th time period, the first q aircraft have reached destination.Thus, upon reaching destination, an aircraft is excluded from the model, and is no longer represented by a state equation or subject to separation constraints with the other aircraft.This eliminates the necessity to continue modeling an aircraft whose role in the model has already been fulfilled.Throughout the rest of this paper, the choice (10) of the cost functional is assumed in all the numerical examples.Other choices of the cost functional are discussed in section 6.Since the time intervals between each consecutive pair of arrivals are modeled, in this latter formulation, as if they were occurring simultaneously ("stacked" upon one another), the following definition will be adopted.
+Definition 4.2. (a)To each control mode µ, associate the newly obtained optimal control problem consisting of: the state equations ( 14), endpoint constraints (15), cost functional (10), the separation constraints on the variables y α q ′ q , the control constraints corresponding to (3) specifying the speed ranges on the variables s α q ′ q , and the positivity constraints z q > 0, will be called a µ-stacked optimal control problem.(b) The set of all µ-stacked optimal control problems will be called a Stacked Scheduled Routing Problem (SSRP).(c) Of all the optimal solutions to all the µ-stacked optimal control problems, a solution achieving a lowest cost is called an optimal solution to the SSRP.Thus, an SSRP consists of a collection of optimal control problems, and an optimal solution to the SSRP tells not only how quickly the aircraft are to move, but also how they should be routed.The SSRP is equivalent to the Scheduled Routing Problem (definition 4.1).The narrower the speed ranges (3), the narrower the cone, and the smaller the portions of an optimal trajectory that lie on the boundary of the obstacle∪ α 1 =α 2 X α 1 ,α 2 µ .This suggests that, with narrow speed ranges, optimal trajectories for the Stacked Scheduled Routing Problem can be well approximated by piecewise linear curves.4.5.An approach to computing solutions and an analysis of the associated costs The total number of the control modes µ possible at the outset (i.e., before checking for those µ not allowing a feasible control strategy) is α∈A P e IN IT ;α , e DEST ;α .Paths which are, or contain, cycles are allowed in the model and can be desirable in some applications, e.g. in air traffic models where aircraft may be sent into a holding pattern to absorb delay.With regard to the SSRP specifically, the following holds true: Remark 4.2.Every solution to the control problem described above will correspond to exactly one of the control modes µ.This removes two difficulties associated inherently with hybrid systems and absent from classical control systems, the risk of excessively frequent switchings of control mode, and the necessity for "control mode memory," i.e. for keeping track of the control modes entered prior to the current time in the system's evolution.Each set P e IN IT ;α , e DEST ;α can be computed using the Depth-First Search algorithm, whose computational cost is known [7, section 23.3] to be O(|V | + |E|) 8 .By using parallel computation in the Depth-First Search, however, one may reduce the physical running time by a factor proportional to the number of processors available.Another reduction of computational cost of routing in the context of the SSRP is attempted in [23] by imposing a weighted graph structure on the Cartesian product [15, 12.7-1] α∈A P e IN IT ;α , e DEST ;α in such a way that the shortest paths give the routings for the most desirable control modes µ .These considerations suggest the following stepwise procedure for finding an optimal solution to an SSRP, in which the worst case-of having to enumerate all the control modes explicitly-is assumed (step 2 in the procedure).Upper bounds on the computational cost are provided, in []'s, where possible. .The physical running time, however, can be reduced by using parallel processing; the reduction would be by a factor proportional to the number of processors.] 2. Enumerate all the control modes µ. [An upper bound exponential in the |A|.] 3.For each µ, compute an optimal solution to the corresponding Stacked Scheduled Routing Problem, and the cost C µ of that solution.[The computational cost depends on the particular choice of the computational method; see, for example, [21].The numerical results in this paper were produced using a solver based on Sequential Quadratic Programming (SQP); see section 5.3.Since SQP is iterative, the task of estimating computational costs runs into the difficulty of estimating the rate of convergence, which depends on the specific initial guess and gradients arising in the execution of the method.]4. Select a control mode µ * such that C µ * ≤ C µ for all µ, and declare the corresponding optimal solution the optimal solution for the SSRP (definition 4.
+2). [O(the number of control modes).]Quantities Plot symboly 1 q , s 1 q - y 2 q , s 2 q + y 3 q , s 3 q --                   for q = 1, . . ., A.
+Sample numerical computations for the Stacked Scheduled Routing Problem
+Assumptions and notational conventionsAll the route networks appearing in the numerical examples of this section are graphs; namely, no two vertices are connected by more than one edge.This allows to specify each path as a sequence of vertices, rather than of edges.To simplify the computations, the separation requirements for each pair of aircraft are assumed symmetric.The numerical code admits a straightforward, albeit somewhat cumbersome algebraically, generalization that will dispense with this assumption.In panels (a, b) of Figures 9, 11, 12-17, the computed trajectories and controls are plotted using the symbols described in Table 2.In panels (A) (and, when present, (D)) of these Figures, as well as in Figures 8,10, the route networks are depicted as directed graphs; aircraft, as points labeled with values of α, each point serving as a center of a circle with radius equal to half the required pairwise separation.In all plots, axis label ρ refers, in agreement with the above, to physical time.All plots were generated using the Matlab software [17].The first two of the examples in section 5.4 are "abstract," in the sense that no particular application is specified for them.Thus, the units of length and physical time are left unspecified.Application and units are, however, specified for the third example.The required destination y DEST ;α is in each case the end of the path assigned to aircraft α in control mode µ: y DEST ;α = 0.
+The cost functionThe cost function used in the following examples is (10) which, on converting the scheduled routing problem to a Stacked Scheduled Routing Problem (definition 4.2), takes the formA q=0 q ′ ≥q+1 1 0 s α q ′ q 2 ρ q dτ.
+Computational methods for finding optimal control strategiesIn each control mode, the corresponding optimal control problem can be approached using a numerical method from any suitable family; see, e.g., [5] for a survey of such methods and [21] for a thorough exposition.For reasons of convenience at the time of this research (easy access to code which is opensource, platform-independent, and self-sufficient), the authors used the OCP solver [9], which is based on Sequential Quadratic Programming (SQP) [21].
+Numerical examples 5.4.1. Three aircraft, one control modeThe route network for this example is the 2-dimensional directed graph shown, together with the initial locations of the three aircraft, in Figure 8.Each aircraft can traverse only the edge on which it is positioned initially,  The minimal required separation is 0.3.The numerical solution computed for the control mode µ is shown in Figure 9.Remark 5.1.The numerical data for this example show that an optimal control strategy (speed profile) is piecewise constant.For solutions in which no two aircraft are ever at minimal separation, this structure of an optimal control strategy is consistent with the Pontryagin Maximum Principle.
+Two aircraft, four control modes, wide speed rangesThe route network for this example is the 2-dimensional directed graph shown, together with the initial locations of the two aircraft, in Figure 10.The two paths considered here arep 1 : v 1 , v 2 , v 8 , v 9 , v 10 , v 6 ; p 2 : v 1 , v 2 , v 3 , v 4 , v 5 , v 6The speed ranges are given byα 1 2 s M IN ;α µ 0.6 0.6 s M AX;α µ 1.4 1.4The required times of arrival at destination are α 1 2 t DEST ;α 28.3 36.1The minimal required separation is 1.0.The positions of the aircraft in the route network at ρ q (1) for q = 1.(D) The positions of the aircraft in the route network at ρ q (1) for q = 2 (aircraft α = 2 has just arrived at its destination and exited the system).The control modes are as follows.α µ 1 (α) µ 2 (α) µ 3 (α) µ 4 (α) 1 p 1 p 2 p 2 p 1 2 p 2 p 1 p 2 p 1 -10 -5 0 5 10 -15 -10 -5 0 5 10 v 1 v 2 v 3 v 4 v 5 v 6 v 7 v 8 v 9 v 10 α = 1 α = 2Initial state The respective numerical solutions for these modes are shown in Figures 11121314.The total costs for each control mode are as follows:control mode µ 1 µ 2 µ 3 µ 4 total cost 37.5823 38.8925 45.4652 31.5979Therefore, the optimal routing and control strategy are achieved in control mode µ 4 .Remark 5.1 applies to the numerical results shown for this example.
+Two aircraft, four control modes, narrow speed rangesIn this example, the route network, 3-dimensional, models a terminal airspace, which consists of two arrival paths merging into the same final approach segment.The route network and the initial positions of the two aircraft is shown in Figure 15.Here the edge (v 6 , v 7 ) is the final approach to a runway.For realism, one unit of arc length is taken here to be 3 nautical miles, and the unit of speed is taken to be 200 knots, a typical speed allowed in U.S. terminal airspaces at altitudes below 10, 000 feet.The two paths considered here are  The control modes are as follows.In control modes µ 2 , µ 3 , the control problem has no solution, since the path lengths are such that the imposed speed ranges prevent at least one aircraft from reaching its destination at time.The numerical solution for control mode µ 1 is shown in Figure 16 and incurs a total cost of 49.2396.In  Here the route network is a terminal airspace.The radius of each circle is half the minimal required pairwise separation of 3 NM.µ 4 , the computed optimal control strategies prescribe the constant speeds s 1 µ 4 = 1.03, s 2 µ 4 = 0.82 and the solution (Figure 17) incurs a total cost of 41.5594.Therefore, the optimal routing and control strategy are achieved in control mode µ 4 .p 1 : v 1 , v 2 , v 8 , v 9 , v 10 , v 6 ; p 2 : v 1 , v 2 , v 3 , v 4 ,α µ 1 (α) µ 2 (α) µ 3 (α) µ 4 (α) 1 p 1 p 2 p 2 p 1 2 p 2 p 1 p 2 p 10α = 2 v 1 α = 1 Initial state v 2 v 8 v 9 v 10 v 7 v 6 v 5 v 3 v 4Remark 5.1 applies to the numerical results shown for this example.
+DiscussionThe above modeling framework addresses the problem of navigating a set of aircraft in a route network, with constraints on the initial locations of the aircraft, required destinations, and required times of arrival at destination, as well as on the minimal pairwise distances between aircraft.We now discuss several directions in which the above model can be varied and generalized.
+A model that includes inertiaInertia can be included by treating both the y α µ 's and the s α µ 's as state variables, and the accelerations a α µ as the control variables.The corresponding new state equations would assume the formẏα µ = s α µ ṡα µ = a α µ , α ∈ AThe rescaling of physical time to normalized time τ ∈ [0, 1] formulated in section 4.2 would be carried out analogously.The resulting problem falls in the class of the kinodynamic motion planning problems; some related theoretical results can be found in [14] and in references therein.The positions of the aircraft in the route network at ρ q (1) for q = 1.
+Different choices of the cost functionOf the vast number of possible choices of cost function, we briefly discuss two.• In situations where inertia cannot be neglected and acceleration must be the control variable (or among the control variables), it may be de-  sirable to keep the movement as smooth as possible, e.g. for passenger comfort or cargo safety.A cost function that would serve this goal is the sum of the integrals of the squared accelerations: • In situations where it is undesirable to impose times t DEST ;α of arrival at destination as rigid constraints, and preferable to minimize the absolute differences between the actual arrival times t AAT ;α .This goal would be served by taking the sum α∈A t DEST ;αt AAT ;α 2 as the cost.
+Asymmetric and anisotropic pairwise separation requirementsIn some applications, the pairwise separation requirements for aircraft can be asymmetric (i.e., dependent on the relative position of the two aircraft) or anisotropic (i.e., dependent on the specific location in the airspace), or both.An example of asymmetry is as follows.If two aircraft are consecutively in-trail and at the same altitude, and the leader's and follower's respective weight classes [19] are Heavy and Small, the required separation is considerably larger than if the two aircraft types were in the opposite order.An example of anisotropy is the requirement of vertical separation between two aircraft, where aircraft are required to maintain either 1000 ft vertical separation or the prescribed lateral separation previously discussed; the resultant shape of an aircraft's safety envelope is a cylinder.A mathematical form for such an anisotropic constraint would use, not the Euclidean norm, but one of the following form: putting a k = (a x k , a y k , a z k ), the norm in the left-hand side of (5) would be replaced by a "mixed" norm, Euclidean in the xy-plane, and the max-norm along the height z.If r were the minimal horizontal separation, imposed when the two aircrafts' altitudes differ by less than a quantity h, the mixed norm and the corresponding separation constraint would be||c 1 a 1 -c 2 a 2 || mixed := max 1 r (c 1 a x 1 -c 2 a x 2 ) 2 + (c 1 a y 1 -c 2 a y 2 ) 2 , 1 h |c 1 a z 1 -c 2 a z 2 | ≥ 1The computations in section 3 would have to be modified accordingly and would no longer have the closed quadratic form.Figure 1 :1Figure 1: Aircraft 1, 2 on their respective rectilinear edges e 1 , e 2 , which share a common vertex, taken as the origin 0 in R 2 .The orientation of the edges is not specified.(A) The unit vectors a 1 , a 2 are collinear with the respective edges, but their directions do not necessary agree with the edges' orientations.(B) With suitably chosen scalars coefficients c 1 , c 2 , the vectors c 1 a 1 and c 2 a 2 are the respective position vectors of the two aircraft.
+Figure 2 :2Figure 2: An example of two elliptical sectors in the c 1 c 2 -plane corresponding to conflicting states.
+Figure 3 :3Figure 3: An example of two stripes in the c 1 c 2 -plane corresponding to conflicting states of two aircraft on the same edge.
+Figure 4 :4Figure 4: An example of two aircraft whose paths in the route network are prescribed and overlap.The black star shows the beginning of the overlap in (A) and the corresponding state (both aircraft being at that point) in (B); the white star, the end of the overlap in (A) and the corresponding state (both aircraft being at that point) in (B).The system, shown in (A), has 7 discrete modes (B) with both aircraft in the route network.Each mode's set of separation-violating states, shown in (B) as a connected [1] gray region, is "glued" to some of the others.The result of the gluing is the connected region shown in (C).
+. In this Figure, α = 1 : e IN IT ;1 = e 1 , e DEST ;1 = e 8 , α = 2 : e IN IT ;2 = e 2 , e DEST ;2 = e 7.
+Figure 5 :5Figure 5: An initial state (A) and required destinations (B) of a 2-aircraft set.
+Figure 7 :7Figure 7: Topology of approximated conflict zone in the state spaces (A) for µ 1 and µ 4 and (B) for µ 2 and µ 3 .The black dot (near top right), the required destination coordinate pair x DEST ;1 µ
+1 .1Compute all the sets P e IN IT ;α , e DEST ;α .[If this is accomplished by running Depth-First Search for each aircraft α ∈ A, hence the computational cost is O(|A|(|V | + |E|))
+Figure 8 :8Figure 8: The route network and the initial locations of the aircraft in the example of section 5.4.1.henceonly one control mode µ arises.
+Figure 9 :9Figure 9: Numerical solutions (for the only possible control mode) in the example of section 5.4.1.(A) State trajectory vs. time.(B) Control strategy vs. time.(C)The positions of the aircraft in the route network at ρ q (1) for q = 1.(D) The positions of the aircraft in the route network at ρ q (1) for q = 2 (aircraft α = 2 has just arrived at its destination and exited the system).
+Figure 10 :10Figure 10: The route network and the initial locations of the two aircraft in the example of section 5.4.2.
+v 55
+Figure 11 :11Figure 11: Numerical solutions for control mode µ 1 in the example of section 5.4.2.(A) State trajectory vs. time.(B) Control strategy vs. time.(C) The positions of the aircraft in the route network at ρ q (1) for q = 1.
+Figure 12 :12Figure 12: Numerical solutions for control mode µ 2 in the example of section 5.4.2.(A) State trajectory vs. time.(B) Control strategy vs. time.(C) The positions of the aircraft in the route network at ρ q (1) for q = 1.
+Figure 13 : 2 t132Figure 13: Numerical solutions for control mode µ 3 in the example of section 5.4.2.(A) State trajectory vs. time.(B) Control strategy vs. time.(C) The positions of the aircraft in the route network at ρ q (1) for q = 1.
+Figure 14 :14Figure 14: Numerical solutions for control mode µ 4 in the example of section 5.4.2.(A) State trajectory vs. time.(B) Control strategy vs. time.(C) The positions of the aircraft in the route network at ρ q (1) for q = 1.
+Figure 15 :15Figure 15: The 3-dimensional route network and the initial positions of the aircraft (centers of the circles in horizontal planes), for the numerical example of section 5.4.3.Here the route network is a terminal airspace.The radius of each circle is half the minimal required pairwise separation of 3 NM.
+Figure 16 :16Figure 16: Numerical solutions for control mode µ 1 in the example of section 5.4.3.(A) State trajectory vs. time.(B) Control strategy vs. time.(C) The positions of the aircraft in the route network at ρ q (1) for q = 1.
+Figure 17 :17Figure 17: Numerical solutions for control mode µ 4 in the example of section 5.4.3.(A) State trajectory vs. time.(B) Control strategy vs. time.(C) The positions of the aircraft in the route network at ρ q (1) for q = 1.
+Table 1 :1Implications of the complexity of the routing problem.• More flexibility in con-tingency management
+3 , e 6 , e 8 ; p 2 : e 1 , e 4 , e 8 ; p 3 : e 2 , e 3 , e 6 , e 7 ; p 4 : e 2 , e 4 , e 7 .(8) Aircraft 1 can take either p 1 or p 2 ; aircraft 2, either p 3 or p 4 .Consequently,(A)(B)P e IN IT ;1 , e DEST ;1 = {p 1 , p 2 }, P e IN IT ;2 , e DEST ;2 = {p 3 , p 4 }.
+Table 2 :2The legend11,[12][13][14][15][16]2][13][14][15][16] below.
+			Published on 10/10/2013 by Transportation Research: Part C, online at http://www.sciencedirect.com/science/article/pii/S0968090X13002064
+			Corresponding author.Email address: alexander.v.sadovsky@nasa.gov.Postal address: NASA Ames Research Center, Bldg 210, Mail Stop 210-6, Moffett Field, CA 94035-0001.Fax: 1.650.604.0174
+			The term weight class is used here because it is an FAA term[19].
+			In ATM, such a vertex is called a merge point.A merge point either must have a third edge emanating from it (i.e., must have outdegree[20] at least 1), or must be a final point of arrival for both aircraft.
+			This coordinate system is chosen here because it results in the simplest form of the squared distance between the two aircraft (the form we obtain here is the left-hand side of (5)).Other systems can be used, possibly resulting in a more cumbersome algebra.
+			If aircraft 1 is approaching, and aircraft 2 going away from, the common vertex, thenx 1 µ = l(e 1 )c 1 , x 2 µ = c 2 .
+			If aircraft 2 is approaching, and aircraft 1 going away from, the common vertex, thenx 1 µ = c 1 , x 2 µ = l(e 2 )c 2 .If θ ≥ 90 • ,then in the last two cases µ allows only one in-trail sequence, so the minimal separations used for the two sectors in Figure2are equal.If the two aircraft 1, 2 are on one and the same edge, then the set in the c 1 c 2 -plane of the conflicting states appears as in Figure3(the asymmetry about the
+			This construction has already been carried out: the latter function is to be defined as the squared distance(7), where all the quantities with subscript 1 correspond to α 1 ; all those with subscript 2, to α 2 .
+			Here V and E denote, respectively, the vertex set and the edge set of the multigraph that models the airspace, as defined in item 1 in the numbered list of section 1.The symbol O has the following meaning (see, e.g.,[7] and [15, section 4.4-3]): if f (n) and g(n) are functions of the positive integers n, and if starting with some integer n 0 one has |f (n)| ≤ (some constant)g(n) for all n ≥ n 0 , then one calls g(n) an upper bound for f (n) as n → +∞ and writes "f (n) = O(g(n)) as n → +∞," or simply "f (n) = O(g(n))."
+		
+		
+
+			
+AcknowledgmentD. Davis's research was supported by NSF Grant DGE-0707424.The authors thank D. Denery (NASA ARC) for suggesting the use of hybrid systems for ATM, W. Haskell (USC) for editing early drafts of the paper, H. Swenson (NASA ARC) and J. Mitchell (SUNY Stony Brook) for helpful suggestions, O. Diallo (NASA ARC) for help with editing in its final stages, and B. Fabien (University of Washington, Seattle) for help with the use of the OCP solver [9].The authors' choice of journal for this paper was based on the fact that air traffic management (ATM) in terminal space is a relatively narrow area of research, and, at that, somewhat isolated from the other areas of transportation engineering and operations research.(Research in other areas of ATM, e.g.airport surface traffic, has been published in Transportation Research journals.)We chose this journal in an attempt to break this "barrier" and reach a broader transportation research community than is commonly exposed to terminal space ATM work.
+			
+
+			
+Implications of the Pontryagin Maximum Principle for the SSRPThe assumption that we are in a specific control mode µ is still in force.Denote by ξ yq , ξ ρq the costate variables 7 for y q , ρ q .In those states where none of the state constraints is active, the Hamiltonian for each control mode of the SSRP iswhere f 0 is the performance index (running cost) corresponding to the cost functional (10).Since H does not explicitly depend on any of the state variables, it follows that the costate variables are constant along the trajectory portions clear of state constraints and, consequently, the maximization of H in each such state is a problem of static maximization.This, in turn, implies the existence of an optimal state trajectory in which these portions are segments of a straight line on each [t q , t q+1 ].If, furthermore, there is only one optimal trajectory, then its portions away from obstacle boundary are necessarily rectilinear.With the state equations ( 1) and the set (3) of control constraints, the set of all states reachable from a given state y 0 µ = (y 0;α µ ) α∈A is the pointed polyhedral cone that consists of all states y µ = (y α µ ) α∈A satisfyingThis cone has vertex y 0 µ and is the intersection of the half-spacesand y α µ ≥ y 0;α µ , α ∈ A.7 Also referred to as adjoint variables in literature on Pontryagin's Maximum Principle; e.g., see [15, section 11.8-2(a)].			
+			
+
+				
+
+
+	
+		Introduction to topology: pure and applied
+		
+			CAdams
+		
+		
+			RFranzosa
+		
+		
+			2008
+			Pearson Prentice Hall
+		
+	
+	Adams, C., Franzosa, R., 2008. Introduction to topology: pure and applied. Pearson Prentice Hall.
+
+
+
+	
+		Real-time discrete control law synthesis for hybrid systems using milp: application to congested airspace
+		
+			ABayen
+		
+		
+			CTomlin
+		
+	
+	
+		American Control Conference
+		
+			June 2003. 2003
+			6
+			
+		
+	
+	Proceedings of the 2003
+	Bayen, A., Tomlin, C., June 2003. Real-time discrete control law syn- thesis for hybrid systems using milp: application to congested airspace. In: American Control Conference, 2003. Proceedings of the 2003. Vol. 6. pp. 4620-4626.
+
+
+
+	
+		Network congestion alleviation using adjoint hybrid control: Application to highways
+		
+			AMBayen
+		
+		
+			RLRaffard
+		
+		
+			CJTomlin
+		
+	
+	
+		Hybrid Systems: Computation and Control
+		Lecture Notes in Computer Science
+		
+			RAlur
+		
+		
+			GJPappas
+		
+		
+			Springer Berlin / Heidelberg
+			2004
+			2993
+			
+		
+	
+	Bayen, A. M., Raffard, R. L., Tomlin, C. J., 2004. Network congestion alleviation using adjoint hybrid control: Application to highways. In: Alur, R., Pappas, G. J. (Eds.), Hybrid Systems: Computation and Con- trol. Vol. 2993 of Lecture Notes in Computer Science. Springer Berlin / Heidelberg, pp. 113-129.
+
+
+
+	
+		Dynamic Programming
+		
+			RBellman
+		
+		
+			2003
+			Dover
+		
+	
+	Bellman, R., 2003. Dynamic Programming. Dover.
+
+
+
+	
+		Survey of numerical methods for trajectory optimization
+		
+			JTBetts
+		
+	
+	
+		AIAA Journal of Guidance, Control and Dynamics
+		
+			21
+			1998
+		
+	
+	Betts, J. T., 1998. Survey of numerical methods for trajectory optimiza- tion. AIAA Journal of Guidance, Control and Dynamics 21.
+
+
+
+	
+		
+			VBoltyanskii
+		
+		
+			RGamkrelidze
+		
+		
+			EMishchenko
+		
+		
+			LPontryagin
+		
+		Mathematical Theory of Optimal Processes
+		
+			John Wiley & Sons, Inc
+			1962
+		
+	
+	Boltyanskii, V., Gamkrelidze, R., Mishchenko, E., Pontryagin, L., 1962. Mathematical Theory of Optimal Processes. John Wiley & Sons, Inc.
+
+
+
+	
+		Introduction to Algorithms
+		
+			TCormen
+		
+		
+			CLeiserson
+		
+		
+			RRivest
+		
+		
+			1990
+			The MIT Press
+			Cambridge, MA
+		
+	
+	Cormen, T., Leiserson, C., Rivest, R., 1990. Introduction to Algorithms. The MIT Press, Cambridge, MA.
+
+
+
+	
+		Maximum principle for optimal control problems with intermediate constraints
+		
+			ADmitruk
+		
+		
+			AKaganovich
+		
+		10.1007/s10598-011-9096-8
+	
+	
+		Computational Mathematics and Modeling
+		
+			22
+			
+			2011
+		
+	
+	Dmitruk, A., Kaganovich, A., 2011. Maximum principle for optimal control problems with intermediate constraints. Computational Mathe- matics and Modeling 22, 180-215, 10.1007/s10598-011-9096-8.
+
+
+
+	
+		Implementation of an algorithm for the direct solution of optimal control problems
+		
+			BCFabien
+		
+	
+	
+		ASME 2011 International Design Engineering Technical Conferences
+		
+			2011
+		
+	
+	Fabien, B. C., 2011. Implementation of an algorithm for the direct so- lution of optimal control problems. ASME 2011 International Design Engineering Technical Conferences.
+
+
+
+	
+		Computing pareto optimal coordinations on roadmaps
+		
+			RGhrist
+		
+		
+			JMO'kane
+		
+		
+			SMLavalle
+		
+		
+	
+	
+		The International Journal of Robotics Research
+		
+			24
+			11
+			
+			2005
+		
+	
+	Ghrist, R., O'Kane, J. M., LaValle, S. M., 2005. Computing pareto opti- mal coordinations on roadmaps. The International Journal of Robotics Research 24 (11), 997-1010. URL http://ijr.sagepub.com/content/24/11/997.abstract
+
+
+
+	
+		Optimal coordinated motions of multiple agents moving on a plane
+		
+			JHu
+		
+		
+			MPrandini
+		
+		
+			SSastry
+		
+	
+	
+		SIAM J. Control and Optimization
+		
+			42
+			
+			2003
+		
+	
+	Hu, J., Prandini, M., Sastry, S., 2003. Optimal coordinated motions of multiple agents moving on a plane. SIAM J. Control and Optimization 42, 637-668.
+
+
+
+	
+		Conjugate points in formation constrained optimal multi-agent coordination: A case study
+		
+			JHu
+		
+		
+			MPrandini
+		
+		
+			CTomlin
+		
+	
+	
+		SIAM J. Control
+		
+			2006
+		
+	
+	Hu, J., Prandini, M., Tomlin, C., 2006. Conjugate points in formation constrained optimal multi-agent coordination: A case study. SIAM J. Control.
+
+
+
+	
+		State estimation for hybrid systems: applications to aircraft tracking
+		
+			IHwang
+		
+		
+			HBalakrishnan
+		
+		
+			CTomlin
+		
+	
+	
+		Control Theory and Applications
+		
+			
+			2006
+			IEEE
+		
+	
+	Hwang, I., Balakrishnan, H., Tomlin, C., 2006. State estimation for hybrid systems: applications to aircraft tracking. Control Theory and Applications, IEEE Proceedings -153 (5), 556 -566.
+
+
+
+	
+		Pareto optimal multi-robot coordination with acceleration constraints
+		
+			JBJung
+		
+		
+			RGhrist
+		
+	
+	
+		Robotics and Automation
+		
+			may 2008. 2008. 2008
+			
+		
+	
+	Jung, J. B., Ghrist, R., may 2008. Pareto optimal multi-robot coordina- tion with acceleration constraints. In: Robotics and Automation, 2008. ICRA 2008. IEEE International Conference on. pp. 1942 -1947.
+
+
+
+	
+		Mathematical Handbook for Scientists and Engineers: Definitions, Theorems, and Formulas for Reference and Review
+		
+			GKorn
+		
+		
+			TKorn
+		
+		
+			1961
+			McGraw-Hill
+			New York
+		
+	
+	Korn, G., Korn, T., 1961. Mathematical Handbook for Scientists and Engineers: Definitions, Theorems, and Formulas for Reference and Re- view. McGraw-Hill, New York.
+
+
+
+	
+		An efficient and complete approach for cooperative path-findin
+		
+			RLuna
+		
+		
+			KBekris
+		
+	
+	
+		National Conference on Artificial Intelligence
+		
+			2011
+			2
+			
+		
+	
+	Luna, R. ans Bekris, K., 2011. An efficient and complete approach for co- operative path-findin. In: National Conference on Artificial Intelligence 2. pp. 1804-1805.
+
+
+
+	
+		
+		
+			Matlab
+		
+		
+			2010
+			The MathWorks Inc
+		
+	
+	version 7.7.0.471 (R2008b
+	MATLAB, 2010. version 7.7.0.471 (R2008b). The MathWorks Inc.
+
+
+
+	
+		Traffic density estimation with the cell transmission model
+		
+			LMunõz
+		
+		
+			XSun
+		
+		
+			RHorowitz
+		
+		
+			LAlvarez
+		
+	
+	
+		American Control Conference
+		Proceedings of the
+		
+			June 2003. 2003. 2003
+			5
+			
+		
+	
+	Munõz, L., Sun, X., Horowitz, R., Alvarez, L., June 2003. Traffic den- sity estimation with the cell transmission model. In: American Control Conference, 2003. Proceedings of the 2003. Vol. 5. pp. 3750 -3755 vol.5.
+
+
+
+	
+		Federal Aviation Administration
+		
+			U
+		
+		
+			AT C
+		
+		JO 7110.65
+		
+			2012
+			U.S. Dept. of Transportation
+			Washington, D.C
+		
+	
+	Order JO 7110.65U, A. T. C., 2012. U.S.A. Federal Aviation Adminis- tration. U.S. Dept. of Transportation, Washington, D.C.
+
+
+
+	
+		Combinatorial Optimization; Algorithms and Complexity
+		
+			CHPapadimitriou
+		
+		
+			KSteiglitz
+		
+		
+			1998
+			Dover Publications
+		
+	
+	Papadimitriou, C. H., Steiglitz, K., 1998. Combinatorial Optimization; Algorithms and Complexity. Dover Publications.
+
+
+
+	
+		Numerical Methods for Optimal Control Problems with State Constraints
+		
+			RPytlak
+		
+		
+			1999
+			Springer
+		
+	
+	Pytlak, R., 1999. Numerical Methods for Optimal Control Problems with State Constraints. Springer.
+
+
+
+	
+		Parallel depth first search, part i: Implementation
+		
+			VNRao
+		
+		
+			VKumar
+		
+	
+	
+		International Journal of Parallel Programming
+		
+			16
+			
+			1987
+		
+	
+	Rao, V. N., Kumar, V., 1987. Parallel depth first search, part i: Imple- mentation. International Journal of Parallel Programming 16, 6-479.
+
+
+
+	
+		Application of the shortest-path problem to routing terminal airspace air traffic
+		
+			AVSadovsky
+		
+	
+	
+		AIAA Journal of Aerospace Information Systems
+		
+	
+	to appear
+	Sadovsky, A. V., to appear. Application of the shortest-path problem to routing terminal airspace air traffic. AIAA Journal of Aerospace Infor- mation Systems.
+
+
+
+	
+		Hybrid control in air traffic management systems
+		
+			SSastry
+		
+		
+			GMeyer
+		
+		
+			CTomlin
+		
+		
+			JLygeros
+		
+		
+			DGodbole
+		
+		
+			GPappas
+		
+	
+	
+		Proceedings of the 34th IEEE Conference on
+		the 34th IEEE Conference on
+		
+			Dec. 1995. 1995
+			2
+			
+		
+	
+	Sastry, S., Meyer, G., Tomlin, C., Lygeros, J., Godbole, D., Pappas, G., Dec. 1995. Hybrid control in air traffic management systems. In: Decision and Control, 1995., Proceedings of the 34th IEEE Conference on. Vol. 2. pp. 1478 -1483 vol.2.
+
+
+
+	
+		Elementary Functional Analysis, 2nd Edition
+		
+			GShilov
+		
+		
+			1996
+			Dover
+		
+	
+	Shilov, G., 1996. Elementary Functional Analysis, 2nd Edition. Dover.
+
+
+
+	
+		A maximum principle for hybrid optimal control problems
+		
+			HJSussmann
+		
+	
+	
+		The 38th IEEE Conference on Decision and Control
+		
+			1999
+			
+		
+	
+	Sussmann, H. J., 1999. A maximum principle for hybrid optimal control problems. The 38th IEEE Conference on Decision and Control, 425-430.
+
+
+				
+			
+		
+	

@@ -1,0 +1,324 @@
+
+	
+	
+		
+LIST OF FIGURES
+INTRODUCTIONThis manual provides information on the MATLAB/Simulink ® implementation of the NASA Ames Research Center's Programmable Portable Guidance Display (PPGD) that enables users to develop pursuit guidance and flight director displays for research applications.The PPGD system supplies complete outer-loop guidance for lateral and longitudinal control along complex flightpaths for all classes of vehicles.All phases of flight are included: Take-Off/Go-Around (TOGA); climb, cruise, and descending; decelerating; and turning approaches to a hover.The manual provides derivations of the PPGD algorithms to facilitate future modifications.A more complete description of the underlying concepts is available in reference 1. Questions concerning the PPGD system should be referred to the author.Almost 30 years of research on pursuit displays at the NASA Ames Research Center and the application of a pursuit display to a civil tiltrotor aircraft during the CTR-10 simulation at Ames during 2001 are discussed in reference 1.The work in that endeavor used the prior research to develop an "inverse" flight director to reduce pilot workload during the transition from the front-side (thrust for speed control) to back-side (pitch for speed control) configuration while preserving the advantages of the basic pursuit displays.Piloted control of this class of vehicle is challenging, particularly for the transition from the cruise front side to the final approach and landing back-side configuration.It is especially challenging for a precision descending, decelerating, turning, and timeconstrained approach.Figure 1.1 shows the Primary Flight Display (PFD) driven by the PPGD system algorithms as used in the Rotorcraft Aircrew Systems Concepts Airborne Laboratory (RASCAL) Black Hawk helicopter application (ref.2).For the Black Hawk helicopter application, no head-up display (HUD) was used, and this display format was presented on the head-down PFD.It includes the pursuit guidance and the "inverse" flight director developed during the civil tiltrotor work.The basic elements of this display have been used in many previous NASA Ames vertical/short takeoff and landing (V/STOL) flight and simulation programs (refs. 3-8), and they have demonstrated the advantage of pursuit displays in combining situational awareness with command information.Both PFD and HUD implementations have been used.In figure 1.1, the white flightpath symbol (circle with wings and tail) is shown near the center of the display; it is similar to that used for several operational HUDs.The essence of pursuit guidance is to place the flightpath on the leader, the green perspective delta wing airplane symbol in figure 1.1.This placement causes the vertical and lateral position errors to converge on the desired path exponentially with a time constant equal to the distance the leader is ahead of ownship.The leader is driven with scaled position errors and therefore combines command and situational information in a single flightpath-centered symbol, thereby minimizing the problem of concentrating on command (typically a flight director) and ignoring situational (raw data) information.The "Inverse" flight director pitch command is the magenta diamond off the right wing of the flightpath symbol and is referenced to the wing tip showing a small "pitch-up" command.The power (throttle, collective) command is the "handle" in the left wing; it is referenced to the wing and is showing an "addpower" command.The symbols are described in detail in section 4.0.Sections 2.0 through 4.0 provide the algorithms used in the PPGD Simulink model given in section 5.0.Section 6.0 describes the input variables needed for the Simulink model from an aircraft or a simulator and the outputs to the displays.Section 7.0 describes the data required for the Simulink model.The appendices give derivations of the algorithms in sections 2.0 through 4.0.
+LATERAL NAVIGATION (LNAV) ALGORITHMS
+Example Two-Turn ApproachThe example lateral navigation (LNAV) path shown in figure 2.1 is an approach to runway 28R at San Francisco International Airport.This example has the following LNAV segments:(1) Short straight leg between waypoint nm2 (n minus 2) and waypoint nm 1  approximations.The turn radii should therefore be kept reasonably small (maximum less than a few miles).The final turn is defined by joining the final leg at a specified distance from the runway glide-slope intercept and joining the great-circle downwind leg from waypoint nm1 (n minus 1).In the present code the size of the final turn must be kept less than 185 degrees to provide some tolerance for the turn from the downwind leg to the final leg.The location of the turn center at waypoint nm1 is defined by fairing the turn into the inbound and outbound great-circle legs.The code has been tested only for turns less than 135 degrees.For turns greater than about 135 degrees, fly-over waypoints would normally be used.No provision for fly-over waypoints is included in the code.Since the turns use constant-radius arcs, there is a discontinuity in the heading rate entering and leaving the turn.Turn anticipation is provided to alleviate the need for step changes in bank angle.Input and output parameters for guidance and control to follow the path and for display are discussed in the following sections.
+Input Required• lat_np1_deg waypoint np1 (n plus 1) latitude.This waypoint is nominally the glide-slope intercept point on the runway, deg• lon_np1_deg waypoint np1 longitude, deg• df final leg length; it is the length of the straight-in final approach after the final turn, n, feet• psi_rw_deg the heading of the final leg (nominally runway heading), deg• dir the direction of the final turn, 1 for a right turn and 0 for a left turn,• rn_ft the radius of the final turn, feet• lat_nm1_deg waypoint nm1 (n minus 1) latitude, deg• lon_nm1_deg waypoint nm1 longitude, deg• rnm1_ft the radius of turn at waypoint nm1, feet• lat_nm2_deg waypoint nm2 (n minus 2) latitude, deg• lon_nm2_deg waypoint nm2 longitude, deg• initial_seg initial segment on the path.Each leg and each turn is a segment.For the example in figure 2.1 there are five segments, numbered 1-5.initial_seg is the segment number at the initial condition of the planned approach.• k_bank_lead specifies how much turn anticipation is accomplished before the next segment.Turn anticipation assumes a constant roll rate to a roll angle based on the nominal turn radius and the present ground speed.• lead_phidot leader's roll rate for turn anticipation, deg/sec A MATLAB m function is provided in section 5.0 to convert the waypoint locations in runway coordinates into latitude and longitude assuming a flat Earth, if desired.
+Output Provided• twocir_ye lateral error measured perpendicular to the path, positive right, feet• twocir_psit heading of the tangent to the path at the perpendicular point, feet• twocir_dist distance along the path from the perpendicular point to waypoint np1, feet• dist_ngate distance to the next segment on the path; this variable is used for turn anticipation, feet• iseg number of the current segment, 1-5• persp_bank bank angle command for turn anticipation, deg• k_trk reduces the track command gain during turn anticipationIn addition to these variables the endpoints of the great-circle segments, the location of the start and end of the turn arcs, the arc lengths, and the arc centers are output to enable drawing the LNAV path on a NAV display if desired.The finite continuous velocity rate (finite slope) in velocity of this VNAV is seen in the velocity rate (fourth plot of fig.3.1), which has no discontinuities.
+Assumptions for This VNAV(1) Constant angle, , segments with short constant rate of change of with distance, , transitions between segments (2) Constant velocity segments or constant rate of change of velocity, , segments with short constant transitions between segments (3) The sum of velocity rate, , and the flightpath angle, , (effective flightpath angle (EFF FPA) in fig.3.1) is continuous.This number provides the finite rate of change of inceptor characteristic.(4) The EFF FPA is consistent with the flightpath angle/speed envelope limits of the vehicle as determined from the / diagrams (section 3.1.3)and is shown in figure 3.1.The equation of motion along the flightpath is:
+Flightpath Angle/Speed Characteristics, /∑ F x -W sin γ=m (3.1)where ∑ is the sum of the external forces (thrust, drag, etc.) along the flightpath.Eq. (3.1) can be rewritten: Assuming small and in degrees, this equation becomes:∑ = + sin180 ∑ = 180(1.69) + ≈ 3.0 + (3.2)where is in knots/second.For a given vehicle configuration (constant flaps, gear, throttle, , , etc.) the left side of the equation will be constant, and from Eq. (3.2) we can trade for on the / diagrams.For example, from figure 3.2 we see that we can either climb at 3 degrees at a constant 160 knots with a throttle setting of 0.475 (right side of Eq. (3.2) equals 3) or we can accelerate at 1 knot/second at = 0 (right side of Eq. (3.2) also equals 3).For = 3, = 7.2 while for = 0, would equal 4.2 degrees to keep constant.The last variable, EFF FPA, plotted in figure 3.1, is the right side of Eq. (3.2).This variable (for the planned VNAV profile) must have values consistent with the maximum and minimum values (color red in the figure) from the / diagrams for the particular vehicle.Because some margin for control must also be provided, a trade-off between the planned VNAV profile and the / envelope limit values for each vehicle configuration is required.
+VNAV Real-Time CalculationsFor the flight director (section 4.6) we need target values for ( ), ℎ( ), ( ), and ( ).From appendix B:Δ = -where the subscript refers to the segment transition points along the VNAV path.Altitude:( ) = + (Δ ) (3.3) ℎ( ) = ℎ + + 2 (Δ ) (3.4)Velocity: for ≠ 0:= 6 -3 = 2 -6 - 6 1.69 ∆ (3.6)for > 0:∆ ( ) = -+ -2 + / + -2 - /(3.7)where:= 4 + 27 / for < 0: Δ ( ) = -+ 2 - 3 / cos 3 + 4 3(3.8)where:= cos /2 (-)27Then: ( ) = + (Δ ) (3.9) ( ) = + (Δ ) + 2 (Δ ) (3.10)for ≡ 0, = constant:   The flightpath symbol is limited to about 90% of the display area, and the leader symbol is then driven with respect to the flightpath and is limited to about 95% of the display area.This setup provides accurate guidance even if the display elements are limited.The symbols blink when limited.The flight director commands are not shown in figure 4.1.The pitch command, , is presented as a caret on the right wing tip of the flightpath symbol.The thrust lever command, , is a "handle" notched into the left wing of the flightpath symbol.Figure 1.1 in section 1.0 shows the PFD with these symbols.( ) = (3.11) ( ) = + 2 (∆ ) 1.The "s" caret symbol in figure 4.1a is removed when ≤ 0.2 degrees, indicating that the scheduled or nominal rate of change of speed is small.The turbulence filter time constant in figure 4.2 is ≈ 0.1 seconds when using ground speed and ≈ 1.5 when using airspeed.In figure 4.2, ∆ , the commanded change in velocity, is a blend between airspeed and ground speed as shown in figure 4 The airspeed-to-ground speed (A/S-to-G/S) blend is calculated in the "Quickened Vel Rate-Airspd/ Grndspd Blend" subsystem in the "Quickened FP & Vel Rate" subsystem in the section 5.0 Simulink model.In CTR-10 it was linear, and it occurred over the last 1500 feet of distance before touchdown if an approach to hover was being flown.At low speeds the ground speed is limited (to ) in calculating display variables to preclude large (or infinite) display angles.For CTR-10 the speed was limited to 57.3 feet per second (fps) or 33.9 knots.Above this speed the display showed true angles and below this speed each degree of display was equal to 1 fps of lateral or vertical velocity.where:
+Velocity Rate of Change Caret,( , ) = + 2 + 1.The upper two feedback loops in figure 4.5 provide quickening for the velocity-rate symbol, ∆ .They compensate for the filtering on " " and and allow the pilot to close a much tighter control loop.Details of the quickening, etc. are discussed in reference 1.The variables and are stored in tables as a function of the present configuration of the vehicle, equivalent airspeed, altitude, and flightpath angle.The speed filter natural frequency used in CTR-10 was ≈ 2.0 when using ground speed and 0.3 when using airspeed.The variable and the speed input " " varied linearly between the airspeed and ground values as is done for the A/S-to-G/S speed blend in figure 4.3.The nominal rate of change of true airspeed/ground speed, , can use Eq.(4.6) in section 4.5 for airspeed rate and from VNAV for ground-speed rate after converting the dimensions to degrees.They vary between them linearly the same as for the speed input, " ".If wind information is not available or the wind is constant, then from Eq. (4.4) in section 4.5, ≈ from VNAV.This was used in CTR-10 and RASCAL and is what the Simulink model in section 5.0 uses.
+Engine ModelFor a vehicle with collective control for thrust, the time constant in the linearized engine model in figures 4.4 and 4.5 is approximately zero.For a conventional engine, such as on a conventional takeoff and landing (CTOL) vehicle, the time constant can be on the order of seconds.In addition, on a conventional engine there is usually a significant nonlinearity between the thrust lever position, , and thrust.Since the response of the vehicle in or is almost proportional to thrust, the sensitivities ( and in figs.4.4 and 4.5) should be to an intermediate variable with the nonlinearity approximately removed.For a "B757/A320" CTOL class vehicle simulation, Δ was used, where:Δ = -, percent(4.1)= + + , percent(4.2)with: = 0, = 0.12, = 0.0088The variable was the thrust from the / diagrams for this model.Δ was used for the quickening feedbacks in figures 4.4 and 4.5 in place of Δ for this vehicle.The model in section 5.0 assumes that steady-state thrust is proportional to throttle position.
+Nominal Pitch, , and Thrust Lever Angle, (or )To determine and (or from section 4.4) for use in figures 4.2, 4.4, and 4.5, use the / diagrams discussed in section 3.1.3.Enter these diagrams with vehicle nominal configuration, altitude, and equivalent airspeed, and for flightpath angle use:= + 180 , deg(4.3)with: With these coordinates for and , obtain values for and (or ) from the ⁄ diagrams.must be corrected for to get .For the "B757/A320" simulation, was also corrected for altitude as the / diagrams were for 2500 feet.= + cos( - ) + sin( - ) , fps(4.4)
+=-57.Since the nominal values of pitch and thrust lever angle are washed out (see Figs. 4.4 and 4.5), the rate of change of these parameters is more important than the absolute value.
+Flight DirectorThere are several modes for the flight-director commands ( and in fig.4.2) used for different flight conditions.
+Flight Condition (1): Fixed Throttle Speed on Elevator= -Δ , deg (4.11) = - , pct (4.12) where:is the fixed thrust lever command.where: , is used for switching modes to prevent overshooting.When nearing the desired TOGA altitude, the mode switches to flight condition (3) when Δ = 0 in figure 4.4.= = 1 - - - (4In these flight conditions, a positive is a pitch-up command and the flight-director caret is above the wing tip of the flightpath symbol.A positive is an increase-power command and the flightdirector "handle" is below the left wing of the flightpath symbol.
+Mode Control and RNAV CaptureFor full functionality, the flight director needs a pilot interface for mode selection.For the PPGD system in the U.S. Army RASCAL Black Hawk, the flight director was interfaced through an onboard PC.For the present PPGD code the system initially defaults to flight condition (3) (section 4.6) and uses a simple set of logic for LNAV and VNAV capture.The LNAV capture logic is: When TOGA is engaged, the system goes, in sequence, to flight conditions (4) and (1) as discussed in section 4.6.4.No level-out at TOGA altitude is provided for in the present PPGD model in section 5.0.If: |Δ | ≤
+PPGD SIMULINK MODELA conceptual layout of the Simulink model showing the inputs, outputs, and major subsystems is shown in figure 5.1.The inputs on the left from the aircraft (or simulator) and the outputs on the right from the model to the displays are described in section 6.0.The data required inside the model are described in section 7.0.Figure 5.2 is a MATLAB m file for constants that can be inputs such as those for describing the LNAV path.
+PPGD INTERFACES TO THE AIRCRAFT (OR SIMULATOR) ANDTO THE DISPLAY
+GeneralThe LNAV, VNAV, flightpath pursuit display, velocity control, and flight-director algorithms of sections 2.0, 3.0, and 4.0 are programmed into the figure 5.1 MathWorks Simulink model.The interfaces between PPGD and the aircraft (or simulator) and the displays are discussed in the following three subsections.
+Aircraft (or Simulator) InterfaceEach input constant for the height of the center of gravity of the vehicle above the main landing gear, feet
+NAV Display InterfaceIf it is desired to draw the LNAV path on a NAV display, the "NAV lnav path" bus in the Simulink model provides the latitude and longitude of the start and end of the turn arcs, the latitude and longitude of the arc centers, the heading for arc starts, the arc lengths in degrees and feet (dn,dnm1), and the latitude and longitude of the start and end of the great-circle segments.The "NAV DOTS" MATLAB function provides outputs for five predictor dots for the NAV display.The x and y coordinates are in aircraft body axes.In the model in figure 5.1 the dots are spaced 2 seconds apart for a total of 10 seconds of prediction.
+PFD and HUD Display InterfaceA typical PFD format with pursuit guidance is shown in figure 1  If magnetic headings are used on the PFD or the HUD, magnetic variation needs to be applied to the "heading_deg", "nom_track_deg", and "PFD_leader_trk_deg" output variables.They are given with respect to true north in the output.
+SIMULINK MODEL DATA REQUIREMENTS
+GeneralSection 6.0 describes the inputs from the aircraft (or simulator) and outputs to the displays for the Simulink model.This section describes the vehicle and display-system data required inside the PPGD model.The top-level diagram in the figure 5.1 model has seven first-level subsystems, and most of them have second-level subsystems.Filters and some MATLAB Function blocks are programmed as lower-level systems.The data required at the top level are the time constants on the "yddot" and "throt" first-order low-pass input noise filters.Most of the data required are internal to the subsystems, but several externally settable constants are given in figure 5.2.At the top-level "ext_fp_on_01" (enables external flightpath input), "weight_gross_lbf" (vehicle gross weight), "hrw" (runway altitude at glide-slope intercept), and "cg_gear" (vertical distance from the vehicle c.g. to the landing gear in the extended position) must be set.Data for each of the subsystems and the "NAV DOTS" MATLAB Function block are discussed in the following sections.
+LNAV SubsystemThe parameters for defining the LNAV path (section 2.0) are externally settable and included in figure 5.2 and described in section 2.2. Figure 5.2 is a MATLAB m function that includes a conversion of waypoints defined in runway coordinates (assuming flat Earth) into the required waypoint latitude and longitude if desired.The actual waypoint latitude and longitude should be used for longer paths.
+Final Turn Generation SubsystemThis subsystem is an enabled MATLAB Function block that generates the required parameters for the final turn.It is enabled in the simulator initial condition mode such that it calculates only once.No internal data are required.
+NM1 Turn Generation SubsystemThis subsystem is an enabled MATLAB Function block that generates the required parameters for the turn before the final turn (turn n minus 1).It is enabled to calculate only once as in section 7.2.1.No internal data are required.This subsystem can be duplicated for additional turns.
+RUN MATLAB Function BlockThis subsystem is a MATLAB Function block that calculates the necessary real-time outputs for guidance and control and for display.No internal data are required.
+PERSP_BANK SubsystemThis subsystem calculates the leader bank angle for turn anticipation.It also calculates a gain, k_trk, to reduce the track-command gain during turn anticipation in the flight director.No internal data are required.
+Auto-Flap SubsystemThis subsystem generates an auto-flap angle as a function of "Ve" and "toga_sw" and drives the flap position if the "FLAP SELECTOR Manual Switch" is in the auto-flap position.The time constant on the "Ve" first-order low-pass noise filter must be set.The "toga flap" value must be set and the velocity value in the less-than block needs to be set to match the TOGA flap value in the flap table.The nominal approach values in the "flap table", as a function of Ve, need to be set if it is desired to have auto flaps.The flap rate must be set in the limiter on the right.If the "FLAP SELECTOR Manual Switch" is in the manual flap position, an external signal, "manual_flap", drives the flap angle.
+VNAV SubsystemThis subsystem generates a VNAV path as a function of distance to go to the glide-slope intercept with the runway, "2cir_dist".It outputs nominal flightpath, altitude, velocity rate, and velocity.The only data required at this first level is "xrw_vnav", the total distance covered by the VNAV path.
+VNAV Tables SubsystemData from "Table 3.1 VNAV SEGMENT ENDPOINTS" are entered into the seven one-dimensional tables in this subsystem.The temporary constant, "table bias", is a correction for an error in the present table data.
+gam SubsystemThis subsystem generates the VNAV nominal flightpath, "gamnom", from the table data.No data are required.
+h SubsystemThis subsystem generates the VNAV nominal altitude, "hnom", from the table data.No data are required.
+VEL MATLAB Function BlockThis MATLAB Function block generates the VNAV nominal velocity rate, "Vdotnom", and velocity, "Venom_vnav", from the table data.No data are required.
+Quickened FP & Vel Rate SubsystemThis subsystem generates quickened flightpath and velocity rate.At this level, the lower limit in the "Saturation" block for the calculation of "gaml" should be set.It is presently set at 57.3 fps (33.9 knots) to make angles below this speed equal to one fps/deg of display.The time constant on the filter on "Ve" needs to be set (presently 1 second).
+Gamma and Vdot Sensitivity Tables SubsystemThis subsystem generates the sensitivities of flightpath and velocity rate to pitch and throttle that are used in the quickening subsystems.It also generates the heave time constant.These variables are in general a function of present gear, flap (or, e.g., nacelle), altitude, flightpath angle, and equivalent velocity values.For the cruise-efficient short take-off and landing (CESTOL) vehicle data used in this subsystem, the gear position was assumed to have negligible effect on the sensitivities.The table data were taken from the steady-state response of flightpath angle and velocity rate to pitch and throttle steps in the 1-to 4-second time frame for various flap angles.The heave time constant was obtained from the flightpath time response to a step throttle input.These data were generated at 2000 feet MSL altitude and at 195,000# gross weight.Simple corrections for different altitudes and weights were then made.For other vehicles, it may be necessary or possible to generate tables with more or less dimensions."gamma/V alt" and "gamma/V wgt" should be set to the values for the gamma/V diagrams used.The five three-dimensional tables need data as a function of limited flightpath angle ("gaml"), filtered equivalent velocity ("Vef"), and flap angle ("flap") as independent inputs.As seen in subsystems "Quickened Gamma" and "Quickened Vel Rate", the quickening generated using the sensitivities and heave time constant from these tables are washed out.Therefore, changes in the table values are more important than the absolute values.
+Pitch and Throttle Nominal Tables SubsystemThis subsystem generates the nominal values of pitch and throttle used in the quickening subsystems.These variables are in general a function of nominal gear, flap (or, e.g., nacelle), altitude, flightpath angle, and the equivalent velocity, "Venom"."Venom" is from the VNAV (section 7.4) for approach or from the Mode Select Panel, MSP (section 7.6) for TOGA.The table data were taken from the gamma/V diagrams for the same CESTOL in section 7.5.1 for various flap angles.These gamma/V diagrams were generated for an altitude of 2000 feet.Simple corrections for different altitudes were made.A simple correction for gear was also made, assuming the change in flightpath angle for gear up/down is proportional to velocity squared.No correction was made for the gross weight of the vehicle.For other vehicles, it may be necessary or possible to generate tables with more or less dimensions.The "gear_up_delta_gamma" proportionality constant must be set.It is obtained from gamma/V diagrams for the two gear positions.The lower limit in the "Saturation" block is presently set at 33.9 knots (57.3 fps) to make angles below this speed equal to one fps/deg of display."gamma/V alt" in the altitude correction logic should be set to the value for the gamma/V diagrams used.Data for the two three-dimensional tables must be entered as a function of nominal limited effective flightpath angle ("gamgV", in section 4.5), nominal equivalent velocity ("Venom"), and flap angle ("flap") as independent inputs.As seen in subsystems "Quickened Gamma" and "Quickened Vel Rate", the quickening generated using the nominal pitch and throttle from these tables are washed out.Therefore, changes in the table values are more important than the absolute values.This subsystem generates the quickened rate of change of airspeed, "delVadotQ", in the top half of the Quickened Vel Rate subsystem and ground-speed rate, "delVgdotQ", in the bottom half.When "rnav" is captured, the one-dimensional table, "Va2Vg blend", outputs a blend, "kag", (0-1) as a function of LNAV distance, "2cir_dist", to determine which is used for "delVdotQ" (Δ in fig.4.5).For CESTOL, the table is set to zero for all "2cir_dist" for airspeed rate only.The filter constants for CESTOL in the airspeed rate portion are = 0.3 revolutions per second (rps) and = 0.8, and in the ground-speed rate portion = 2.0 rps and = 0.8.These filters smooth noise in the velocity signals and may need to be adjusted for other vehicles or missions.In addition, the time constant in the linearized engine models in the throttle washouts should be set to the desired value.For CESTOL, they were set to 1 second.
+MSP & RNAV CAP SubsystemThis subsystem has no lower subsystems.It controls the flight condition (section 4.6) and LNAV and VNAV capture.Flight condition (2), fixed throttle path on elevator, is not used.The go-around speed, "Vega", the LNAV capture threshold, "lnav_cap_thress", and the VNAV capture threshold, "vnav_cap_thress" are externally set constants (fig.5.2).The time constant on the equivalent airspeed, "Ve", first-order filter must be set.For CESTOL, 1 second was used.The constant "Vega_thress" must be set as it controls when the guidance switches from a fixed throttleconstant pitch flight condition (4) to a fixed throttle speed on elevator flight condition (1) during TOGA.The throttle reference, "throtref", constant must be set for stall protection.When the throttle is greater than "throtref", the flight condition changes from closed loop on speed and flightpath (3) to fixed throttle speed on elevator (1).For CESTOL, throtref=60% as the model is overpowered.
+Flight Director and Leader SubsystemThis subsystem generates the pitch and throttle flight-director commands, the position and attitude of the leader symbol, and the rate of change of airspeed command, "delVdotcf" (Δ in fig.4.2).At this level the constants throttle reference ("throtref"), TOGA throttle ("throtga"), and TOGA pitch ("thetga"), must be set.For CESTOL they are throtref=throtga=60% and thetga=7 deg."throtref" should be the same value as set in section 7.6.
+Leader Lateral SubsystemThis subsystem generates the lateral position of the leader symbol, "trkc", (Δ in fig.4.1a) and the leader lateral perspective angle, "persp_lat", ( in fig.4.1c).The lower limit in the "Saturation" block must be set.It is presently set at 57.3 fps (33.9 knots) to make angles below this speed equal to one fps/deg of display.The one-dimensional table, "TL table", generates the leader symbol lead time for approach as a function of altitude above the runway, "hag".It is presently set to 15 seconds for altitudes greater than 1500 feet above the runway and 5 seconds for altitudes less than 100 feet, and it varies linearly between.The constant "TOGA TL" is the lead time for TOGA.The gain in the "persp_lat" path," b_HUD", is the wing span of the leader symbol on the HUD in degrees (4 degrees was used).
+Leader Gamma SubsystemThis subsystem generates the vertical position of the leader symbol, "gamlc", ( in fig.4.1a) and the leader vertical perspective angle, "persp_vert", ( in fig.4.1c).The lower limit in the "Saturation" block must be set.It is presently set at 57.3 fps (33.9 knots) to make angles below this speed equal to one fps/deg of display.The one-dimensional table, TV table, generates the lead time of the leader symbol as a function of altitude above the runway, "hag".It is presently set to 15 seconds for altitudes greater than 1500 feet above the runway and 5 seconds for altitudes less than 100 feet, and it varies linearly between.The gain in the "persp_vert" path," b_HUD", is the wingspan of the leader symbol on the HUD in degrees (4 degrees was used).
+Del Vdot Filtered Cmd SubsystemThis subsystem generates the commanded and filtered value of speed rate, "delVdotcf", (Δ in fig.4.2).It is proportional to speed error.It uses the air/ground speed blend, kag, from section 7.5.4 to blend air and ground values.For CESTOL, airspeed error is used at all distances.The loop gain, "1/Ks", is set for CESTOL to 0.3 for both air and ground-speed errors.The filter time constant on airspeed error for CESTOL is set to 1.5 seconds and 0.1 seconds for ground speed.
+FLT DIR MATLAB Function BlockThis MATLAB Function block generates the pitch command, "thetc" ( in fig.4.2), and the throttle command, "throtc" ( in fig.4.2), from the inputs, and it contains no vehicle-specific data that requires setting.
+NAV DOTS MATLAB Function BlockThis MATLAB Function block generates the predictor dots for the NAV display.Other than the externally settable constant, "Vg_min" (fig.5.2), input to the function, no data are required.If it is desired to change the spacing between the predictor dots (presently 2 seconds), then code changes would be necessary.
+PFD and HUD Display SubsystemThis subsystem has subsystems for the transform of the flightpath and the leader positions in Earth coordinates to display case coordinates and for limiting and blinking the symbols.It provides the interface to the PFD and HUD and is mostly signal conditioning; it is dependent on the particular displays used.The outputs are described in section 6.0.The flare cue parameters, "flare_gain" and "hdottd_bias", and the TOGA level-out altitude, "toga_alt_bug_ft", are externally settable parameters (fig.5.2).Many of the outputs have gain values of one for possible display gaining.The constant block for valid radar altitude information, "radar_alt_on_01", near the top of the subsystem must be set.It is presently 2500 feet.The time constant on the "airspeed_tape_kt" output needs to be set.It is presently set to 1 second.Many of the display variables have static limiting that must be set as desired.The "GS_ref_deg" output requires that the "thetga" constant be set (7 for CESTOL) and should be the same as in section 7.7.The flare cue, "flare_cue_gamma_deg", is a simple linear ℎ versus ℎ law.The altitude to display the flare cue in the output, "flare_cue_on_01", needs to be set.It is presently set to <400 feet.The lower limit in the left saturation block must be set.It is presently set at 57.3 fps (33.9 knots) to make angles below this speed equal to one fps/deg of display.The limiting on the "flare_cue_gamma_ deg" output needs to be set.The upper limit in the right saturation block is set to limit the flare cue to approximately 3 degrees negative.The lower value, -10, keeps the symbol on the display.The time constant on "climb_rate_fpm" should be set.It is presently set to 0.7 seconds.The "side_slip_ball" output has a gain of 0.1 g's per one ball displacement; it is limited to +/-three balls and should be set as desired."PFD_fd_throt_cmd_deg" (the flight director throttle command) output has a gain of -0.25 degrees of display per percent of throttle command (CESTOL) and should be set asdesired.The flap input to "HUD_approach_mode_on_01" must be set as desired.It is presently set to the final approach value for CESTOL, 40 degrees.The outputs "PFD_leader_vert_persp_deg" and "PFD_leader_lateral_persp_deg" are gained up from the HUD values (sections 7.7.1 and 7.7.2) to reflect the larger wingspan on the PFD.The limiting is also increased."vert_error_dots" and "lat _error_dots" outputs have one-dimensional tables of display sensitivity, feet per dot of display.The tables are a function of altitude above the runway.For CESTOL, vert_error_dots are each 15 feet below 100 feet and 100 feet above 667 feet, and they vary linearly between.For CESTOL, lat_error_dots are each 18 feet below 100 feet and 120 feet above 667 feet, and they vary linearly between.These tables should be set as desired.The output to blink the leader symbol, "leader_blink_on_slow_01", has two inputs for turn anticipation and a one-dimensional table as a function of LNAV distance to go, "2cir_dist", for VNAV glide-slope anticipation.The present inputs for turn anticipation blink the leader at a slow rate 7 to 2 seconds before the turn and can be set as desired.The table for glide-slope anticipation presently blinks the leader at the slow rate 5 seconds before the start of glide-slope capture.The table must be modified for different VNAVs and the desired anticipation time.
+HUD and PFD Earth/Case Transform SubsystemsThe four "thet bias" constant blocks need to be set.They set the distance that the zero pitch (thet) reference is with respect to the center of the display, positive up.For the present displays, it is 6 degrees for the HUD and 0 for the PFD.
+PFD Limiting SubsystemLimiting of the PFD flightpath and leader symbols is calculated in this subsystem.Control of symbol blinking when limited is also calculated.As discussed in section 4.1, the flightpath and leader symbols are limited in display coordinates.Display coordinates are measured from the center of the display, x laterally and y vertically.The flightpath is limited (19.5 and 13.5 degrees for x and y, respectively) and the leader is then driven with respect to the flightpath but limited in x and y (20.0 and 14.0 degrees, respectively) in the present display.Blinking of the symbols has a 0.1-degree hysteresis.These values must be set as desired for the display to be used.
+HUD Limiting SubsystemLimiting of the HUD flightpath and leader symbols is calculated in this subsystem.Control of symbol blinking when limited is also calculated.The present HUD has two display modes controlled by the "HUD_approach_mode_on_01" logic.There is a "Normal" mode and a de-clutter "Approach" mode.The lateral travel, x, is larger for the display elements in the "Approach" mode, and the flightpath is limited to 19.5 and 7.5 degrees in display x and y, respectively.The leader is limited to 20.0 and 8.0 degrees, respectively.When in the "Normal" mode, the flightpath x is limited to 9.5 and the leader to 10.0 degrees.Symbol blinking when limited has a 0.1-degree hysteresis.These values must be set as desired for the display to be used.Figure 1 . 1 .11Figure 1.1.Programmable Portable Guidance Display ......................................................................
+Figure 2 . 1 .21Figure 2.1.Example LNAV approach to SFO 28R...........................................................................
+Figure 3 . 1 .31Figure 3.1.Example VNAV for a tiltrotor.........................................................................................
+Figure 3 . 2 .32Figure 3.2.Example / diagram for a STOL vehicle.....................................................................
+Figure 4 .4Figure 4.1a.Pursuit display elements................................................................................................
+Figure 4 .4Figure 4.1b.Vertical pursuit display elements...................................................................................
+Figure 4 .4Figure 4.1c.Leader perspective angles..............................................................................................
+Figure 4 . 2 .42Figure 4.2.Pursuit display and pitch flight director configuration..................................................
+Figure 4 . 3 .43Figure 4.3.Blend of airspeed to ground speed.................................................................................
+Figure 4 . 4 .44Figure 4.4.Flightpath control...........................................................................................................
+Figure 4 . 5 .45Figure 4.5.Velocity rate control......................................................................................................
+Figure 5 . 1 .51Figure 5.1.PPGD conceptual Simulink model................................................................................
+Figure 5 . 2 .52Figure 5.2.PPGD input constants MATLAB m file........................................................................
+Figure B1 .B1Figure B1.Altitude assumptions .....................................................................................................
+Figure B2 .B2Figure B2.Velocity assumptions ...................................................................................................... 41
+Figure 1 . 1 .11Figure 1.1.Programmable Portable Guidance Display.
+( 2 )290-degree left turn to a downwind leg (3) Downwind leg (4) Tight 180-degree right base turn (5) Short final leg The LNAV is potentially a path with n turns to a runway.The turns are constant-radius arc legs.They are joined by great-circle legs.For the example shown in figure 2.1, and in the present Simulink code, only two turns are available.Leg segment numbers are shown in the figure.The Simulink code is set up such that additional turns can be easily added.The algorithms for the spherical Earth great-circle legs are from reference 9.The algorithms for the turns assume flat Earth
+Figure 2 . 1 .21Figure 2.1.Example LNAV approach to SFO 28R.
+Figure 3 . 131Figure 3.1 shows an example vertical navigation (VNAV) path for a tilt rotor.This example has the following VNAV segments as shown in the first plot of figure 3.1: (1) Shallow climb, acceleration to climb speed (2) Steep climb, climb speed (3) Level acceleration to cruise speed (4) Level, constant cruise speed (5) Shallow descent at cruise speed (6) Shallow descent decelerating to the initial speed on final (7) Steep final approach with slow deceleration to touchdown speed This example assumes a constrained path for climb.An alternate climb would use a fixed power setting with constant speed on an unconstrained vertical path.
+Figure 3 .3Figure 3.2 shows an example / diagram for a STOL vehicle in the takeoff configuration.It shows the steady-state trimmed / capability for various throttle positions as a fraction of full throttle.Also shown are lines of constant pitch angle, theta.The two circles at 160 knots correspond to the example that follows.
+Figure 3 . 1 .31Figure 3.1.Example VNAV for a tiltrotor.
+Figure 3 . 2 .32Figure 3.2.Example / diagram for a STOL vehicle.
+3. 2 Figure 4 .24Figure 4.1a shows the elements of the pursuit displays.The details are discussed in reference 1.This section concentrates on the vertical part of the flightpath display, velocity control, and the longitudinal flight director.The drive signals for the leader symbol are given in figures 4.1a and 4.1b.For lateral path control, the pilot controls the flightpath symbol (actual track) laterally onto the leader symbol using bank angle.For vertical path control he uses quickened flightpath, , which is discussed in section 4.2.The velocity error tape (∆ ), the rate of change of nominal velocity ( ), and the rate of change of velocity with respect to the nominal value (Δ ) on the left wing of the flightpath symbol are discussed in section 4.3.Section 4.6 discusses the flight director, and section 4.7 mode control.Sections 4.4 and 4.5 discuss details used in the other sections.
+Figure 4 .4Figure 4.1a.Pursuit display elements.
+Figure 4 .4Figure 4.1b.Vertical pursuit display elements.
+Figure 4 .4Figure 4.1c.Leader perspective angles.
+Figure 4 .4Figure 4.1c shows the perspective attitudes of the leader symbol.
+Figure 4 .4Figure 4.2 shows the overall configuration of the vertical flightpath, velocity, and pitch flight director displays.The following sections give the algorithms, and appendix C gives some derivations.The following symbols are used in figure 4.2:
+turbulence smoothing filter time constant, sec Δ difference between the actual and nominal pitch angles, -, (section 4.5), deg Δ difference between the actual and nominal thrust lever angles, -, (section 4.5), pct flight director pitch command, deg flight director thrust lever angle command, deg lateral perspective on the leader, (Δ ) ( ) ⁄ , deg vertical perspective on the leader, (Δℎ) ( ) ⁄ , deg leader's roll angle, tan ( )/ , deg leader wingspan on the HUD or PFD, deg Δ lateral error from the LNAV path (positive right), ft Δℎ vertical error from the VNAV path (positive up), ft LNAV path curvature (1/radius), 1/ft
+Figure 4 . 2 .42Figure 4.2.Pursuit display and pitch flight director configuration.
+.3.where: true airspeed, knots true airspeed command, knots ground speed, knots component of ground speed along the flightpath, knots commanded ground speed, knots distance along the VNAV path, zero at the start, ft track angle, deg nominal track angle on the LNAV path, deg
+Figure 4 . 3 .43Figure 4.3.Blend of airspeed to ground speed.
+4. 2 Figure 4 .24Figure 4.4 shows the closed-loop task for quickened flightpath angle.It shows how is generated for the display in figure 4.1a and for the input to the flight director in figure 4.2.where: heave time constant of the approximate first-order vehicle model, sec time constant of the first-order engine model (section 4.4), sec the steady-state response (in the ≈ 1-to 4-second time frame) of the vehicle to a step change in ( fixed), deg/deg the steady-state response (in the ≈ 1-to 4-second time frame) of the vehicle to a step change in ( fixed), deg/pct and: = 180 tan ℎ , deg
+Figure 4 . 4 .44Figure 4.4.Flightpath control.
+Figure 4 .4Figure 4.5 shows the closed-loop task for the control of velocity rate.It shows how Δ is generated for the display in figure 4.1a and for the input to the flight director in figure 4.2 where: speed filter natural frequency, rps speed filter damping ratio (≈ 0.8) ∆ velocity rate error, deg filtered rate of change of speed, deg Δ filtered minus nominal rate of change of speed, deg Δ filtered commanded rate of change of speed (fig.4.2), deg steady-state rate of change of airspeed (in the -4 to -1 ≈ second time frame) of the vehicle to a step change in ( fixed), deg/deg steady-state rate of change of airspeed (in the -4 to -1 ≈ second time frame) of the vehicle to a step change in ( fixed), deg/pct
+Figure 4 . 5 .45Figure 4.5.Velocity rate control.
+fps component of rate of change of ground speed along the true airspeed, fps equivalent airspeed, fps rate of change of equivalent airspeed from VNAV, fps magnitude of the horizontal component of the wind vector, fps nominal vehicle heading in the presence of wind, rad heading of the wind vector (positive with the wind), rad the atmospheric density ratio The variables ℎ and ℎ ⁄ ⁄ come from the wind profile as a function of altitude.
+4. 6 . 2 Flight62
+1000 ft then LNAV captures.Once LNAV is captured, the VNAV capture logic is armed and is: If: |∆ℎ| ≤ 500 ft then VNAV captures.The LNAV and VNAV capture thresholds are externally set constants (fig.5.2).
+Figure 5 . 1 .51Figure 5.1.PPGD conceptual Simulink model.
+the HUD flare cue (not shown in fig.1.1), deg fd_on_01 flag to turn on the flight-director command symbols, Boolean fp_thick_01 flag to make the flightpath symbol thick, Boolean pitch_ref_thick_01 flag to make the pitch reference symbol thick, Boolean GS_ref_thick_01 flag to make the glide-slope reference symbol thick, Boolean GS_ref_on_01 flag to turn the glide-slope reference symbol on, Boolean vert_dots_on_01 flag to turn the VNAV deviation scale on, Boolean flare_cue_on_01 flag to turn the flare cue symbol on, Boolean radar_alt_on_01 flag to turn the radar altitude digital symbol on, Boolean PFD_s_caret_on_01 flag to turn the s caret symbol on, Boolean fd_ann_on_01 flag for the flight-director annunciator, FD, on, Boolean leader_on_01 flag to turn the leader symbol on, Boolean HUD_fp_X_deg X position of the flightpath symbol in display coordinates, deg HUD_leader_X_deg X position of the leader symbol in display coordinates, deg HUD_fp_Y_deg Y position of the flightpath symbol in display coordinates, deg HUD_leader_Y_deg Y position of the leader symbol in display coordinates, deg PFD_fp_X_deg X position of the flightpath symbol in display coordinates, deg PFD_leader_X_deg X position of the leader symbol in display coordinates, deg PFD_fp_Y_deg Y position of the flightpath symbol in display coordinates, deg PFD_leader_Y_deg Y position of the leader symbol in display coordinates, deg HUD_fp_blink_on_01 flag to blink the flightpath symbol, Boolean PFD_fp_blink_on_01 flag to blink the flightpath symbol, Boolean leader_blink_slow_on_01 flag to blink the leader symbol slow on, Boolean PFD_leader_vert_perspect_deg leader vertical perspective angle (positive nose up), deg PFD_leader_lateral_perspect_deg leader lateral perspective angle (positive nose right), deg PFD_fd_pitch_ cmd_deg pitch flight-director command (caret on right wing of the flightpath symbol -up for pitch-up command), deg PFD_V_error_ tape_deg velocity error tape position (left wing of the flightpath symbol -up for fast), deg HUD_caret_deg caret position w.r.t. the left wing of the flightpath symbol (positive up), deg gear_dn flag for gear down Boolean HUD_ approach_Mode_on_01 flag to turn on the approach mode of the HUD, Boolean HUD_leader_blink_on_01 flag to blink the leader symbol, Boolean PFD_leader_blink_on_01 flag to blink the leader symbol, Boolean
+7. 5 . 353Quickened Gamma Subsystem (fig.4.4, Flightpath Control) This subsystem generates quickened gamma, "gamlQ", ( in fig.4.4).The only vehicle-specific data in this subsystem is the time constant in the linearized engine model in the throttle washout.For the CESTOL model, it is set to 1 second.7.5.4Quickened Vel Rate Subsystem (fig.4.5, Velocity Rate Control)
+
+
+
+
+Table 3 .32. Example CTR VNAV Segment Endpoints .......................................................................vi
+Table 3 .3Equations (3.3) through (3.12) give the necessary relations for calculating the flight director realtime target values during segments or transitions between segments.These equations were used to generate figure 3.1 using the example data in table 3.2.69(3.12)1 gives a format for tabulating the beginning values, , for each segment or transition between segments and the rate of change of flightpath angle with distance, , and the rate of change of acceleration, , during the segment transitions.Table3.2givesvaluesfor the example tilt rotor VNAV profile in figure3.1.The values in table 3.2 were calculated using the algorithms in appendix B.
+TABLE 3 .31. VNAV SEGMENT ENDPOINTS
+input variable from the aircraft or simulator required for the PPGD model is discussed in order:rollaircraft roll attitude,degheadingconventional aircraft Euler angle true heading,deghdotrate of climb,fpsalt_setaltimeter setting,in Hgyddotlateral acceleration at the center of gravity (c.g.),fpslat_veh_degvehicle latitude,deglon_veh_degvehicle longitude,degimodetriggers LNAV path generation during a simulation run,gen_new_pathgenerates a new LNAV path in simulator initial condition,haltitude above mean sea level (MSL),feettrktrue track angle,degmcp_toga_modeengages the TOGA mode; 0 is no TOGA; 1 is TOGA engagedmanual_flapflap angle (or other configuration variable, e.g., nacelle, froman external selector if auto_flaps is not used),degVeequivalent airspeed,knotsVgground speed,knotsthetpitch attitude,degthrotthrottle position,pctgear_dngear up/down; 0 is gear up, 1 is gear downext_fpvertical flightpath angle from an external source,degext_fp_on_01input constant that enables the external flightpath, 0 off, 1 onweight_gross_lbfvehicle gross weight,lbshrwinput constant for the runway MSL altitude at the glide-slopeintercept point,feetcg_gear
+.1.A typical HUD format is similar.Each output variable from the PPGD model to the PFD or HUD display is discussed in order.The flightpath, fp, and leader display coordinates, X and Y, are measured from the center of the display.X is positive to the right and Y is positive up.PFD_carets_caret_degcaret position w.r.t. the s_caret (positive up),degHUD_V_error_tape_degvelocity error-tape position (left wing of the flightpathdegsymbol -up for fast),PFD_fd_throt_cmd_degthrottle flight director command (handle on left wing-downdegfor increase throttle command),PFD_leader_gamma_degflightpath angle of the leader symbol,degPFD_leader_trk_degtrue track of the leader symbol,degleader_bank_degroll angle of the leader symbol,degHUD_leader_vert_perspect_degleader vertical perspective angle (positive nose up),degHUD_leader_lateral_perspect_deg leader lateral perspective angle (positive nose right),degvert_error_dotsVNAV deviation (scale on right of displays),dotsdist_to_go_nmLNAV distance to go on the NAV display (digital uppernmright of display),air2ground_Vel_blend_01annunciates VNAV speed reference -air or ground speedBoolean(AIR/GRND blend in upper right of display); presently notusedpitch_deg lat_error_dots roll_deg flap_deg heading_deg TOGA_fd_ann_01aircraft pitch attitude, LNAV deviation (scale on bottom of displays), aircraft roll attitude, flap angle, aircraft true heading attitude, TOGA mode annunciation on switch -display TOGA in all three annunciatorsdots deg deg deg degthrottle_%throttle position (the tape to the right of the airspeed tape),pctGS_ref_degnominal VNAV glide-slope angle (dashed line parallel todegthe horizon),nom_track_degnominal LNAV true track angle (symbol above the horizondegline),radar_alt_ftradar altitude (digital readout lower center of the mainfeetdisplay),airspeed_tape_ktcalibrated airspeed (airspeed tape drive),knotsairspeed_bug_ktreference speed (airspeed tape bug and digital value aboveknotsthe tape),grnd_speed_ktground speed (digital value below the airspeed tape),knotsaltitude_tape_ftaltitude above MSL (altitude), tape drive),feetaltitude_bug_ftreference altitude (altitude tape bug and digital value abovefeetthe tape),climb_rate_fpmrate of climb (tape to the right of the altitude tape),fpmalt_setaltimeter setting (digital value below altitude tape),in Hgapp_fd_ann_01approach mode annunciation off/on switch -display APPin all three annunciatorsside_slip_ballside-slip ball displacement (bottom center of the display inballsthe PFD HSI),PFD_s_caret_degs caret position w.r.t. the left wing of the flightpath symboldeg(positive up),
+			Science Application International Corporation (SAIC), Ames Research Center, Moffett Field, CA 94035-0001.
+		
+		
+			
+APPENDIX A: LNAV ALGORITHM DERIVATIONSIn the PPGD model in section 5.0, the LNAV subsystem is made up of four subsystems with MATLAB Function block code, three of which are enabled for one-time path generation, and one for generating real-time LNAV outputs for guidance as described in section 2.0.The first pathgeneration subsystem is for the final turn (n) and the second for the turn prior to the final turn (nm1, n minus 1).The "LNAV ARC SUBSY" calculates turn arc parameters for NAV display.The MATLAB code is mostly coordinate transformations, and it is self-explanatory with comments.If it is desired to add more turns than the two presently programmed, the subsystem for turn nm1 can be duplicated for additional turns.Indices would have to be incremented.The Perspective Bank subsystem generates bank commands for turn anticipation as described in section 2.0.Based on distance to turn entry or exit ("dist_ngate"), present ground speed ("Vg"), nominal turn radius ("curv"), and the input gain "k_bank_lead" (nominally 0.5 -amount of bank change before segment change), it generates a constant roll rate to the bank angle required for the next segment as determined by "iseg", the LNAV segment number.It also generates an output gain, "k_trk", for use in positioning the leader symbol laterally.It is used in the "Flight Director and Leader" subsystem.
+B.1.2 Flightpath Angle Transition Distance,If is the radius of curvature, assume:A simplified equation of motion perpendicular to the flightpath is:where = lift.The change in load factor, Δ , during the change is:Since = , from Eqs. (B2) and (B4):where is in knots and Δ is in degrees.For smooth transitions, Δ ≈ 0.03 and:where Δ =and the total altitude change is:
+B.1.4 Distance Relations,From figure B1:From Eq. (B1) eliminate and solve for :where Δ = and from Eq. (B9), this becomes:and:Eqs. (B5), (B6), (B9), (B10), and (B11) are used to calculate the distance and altitude endpoint values in table 3.1.
+B.1.5 Dynamic Values During Segments or Transitions Between SegmentsSections B.1.2through B.1.4give the endpoints of segments or the transitions between segments.To obtain ( ) and ℎ( ) for use as targets in the flight director, section 4.6, in real time use Eqs.(B7) and (B8), respectively:where: Δ = -
+B.2 Velocity Derivations
+B.2.1 Assumptions(1) Distance, , is the independent variable.(2) The profile is made up of constant velocity, , segments or constant rate of change of velocity, , segments with short constant transitions between segments.
+B.2.2 Basic RelationsFigure B2.Velocity assumptions.These equations must be solved for the endpoints of the transitions between segments.Two cases are needed.The first is when the velocity change is independent of the flightpath change, and the second is when the transition between and in figure B2 is coordinated with the change in flightpath angle, , in figure B1.
+B.2.3 Endpoints for Acceleration Change Independent of Flightpath ChangeAssume:(1) Since implies a rate of change of inceptor (throttle for a CTOL and pitch for a VTOL), assume a reasonable value ( ≈ 0.2 knots/sec would give a VTOL pitch change of about 6 degrees in 10 seconds for a 2-knot/sec change in acceleration during the transition).( 2) and are known.
+B.2.3.1 When is also known, solve for ∆ and ∆ :From Eq. (B15):where ∆ = and then from Eqs. (B16) and (B17):where ∆ = and:An example is the transition between segments ( 5) and ( 6) in figure 3.1 and table 3.2.
+B.2.3.2 When is known:Use from Eq. (B19) in Eq. (B20) to obtain:An example is the transition between segments (3) and (4) in figure 3.1 and table 3.2.
+B.2.4 Endpoints When the Acceleration and Flightpath Change Are Coordinated
+B.2.4.1 When , , are known:Solve Eq. (B20) for :Then:where:where ∆ comes from Eq. (B5)Then use Eqs.(B19) and (B20) for and ∆ .∆ should agree with the value from Eq. (B5).An example is the transition between segments ( 2) and ( 3) in figure 3.1 and table 3.2.Examples include the transitions between segments (1) and ( 2) and between segments ( 6) and ( 7) in figure 3.1 and table 3.2.
+B.2.4.2 When
+B.2.5 Endpoints for Segments with = , ≡ :From Eq. (B16) with ≡ 0: ∆ = -Substitute in Eq. (B17) with ≡ 0 :Eq. (B25) with Eqs.(B1), (B5), and (B10) were used to obtain for segment (7) in figure 3.1 and table 3.2.
+B.2.6 Dynamic Values During Segments or Transitions Between SegmentsSections B.2.3 through B.2.5 give the endpoints of segments or the transitions between segments in table 3.1.To obtain ( ) and ( ) for use as targets in the flight director, section 4.6, in real time for constant or sections, solve Eqs.(B17) and (B24), respectively.
+B.2.6.1 = constant
+B.2.6.2 = constant, ≡ :From Eq. (B24):Use this value for the ( ) target value for the flight director in section 4.6.
+APPENDIX C: FLIGHTPATH, VELOCITY, AND LONGITUDINAL FLIGHT DIRECTOR DISPLAY DERIVATIONS C.1 GeneralThis appendix provides only the derivations for section 4.5, "Nominal Pitch, , and Thrust Lever Angle, (or )" as all other algorithm derivations are given either in section 4.0 or reference 1.
+C.2 Rate of Change of Ground Speed,The vector equation of motion: with:where: 1fp is aligned along the true airspeed, .1e is aligned along the horizontal projection of the true airspeed, , degrees of heading from North (assuming zero sideslip).1e-2e are in the ground plane.is the angle ( flightpath angle) about 2e between the Earth, e, and fp coordinates.is the transform matrix between the e and fp coordinate frames.Since is aligned along the 3e axis:Since the rotational rate of the fp coordinates due to is also aligned with the 3e axis and the rotational rate of the fp coordinates due to is aligned with the 2e and 2fp axis: 1W is aligned along the direction of the wind vector, , (assumed to to be horizontal), degrees from North. is the transform matrix between the W and e coordinate frames.			
+			
+
+				
+
+
+	
+		Pursuit Display Review and Extension to a Civil Tilt Rotor Flight Director
+		
+			GordonHHardy
+		
+		10.2514/6.2002-4925
+		AIAA- 2002-4925
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		
+			American Institute of Aeronautics and Astronautics
+			Aug. 2002
+		
+	
+	Hardy, G.H.: Pursuit Display Review and Extension to a Civil Tilt Rotor Flight Director. AIAA- 2002-4925, Aug. 2002.
+
+
+
+	
+		
+			Moralez
+		
+		-Flight Assessment of a Pursuit Guidance Display Format for Manually Flown Precision Instrument Approaches. AHS 60th Annual Forum
+		
+			June 2004
+		
+	
+	Moralez, et al.: In-Flight Assessment of a Pursuit Guidance Display Format for Manually Flown Precision Instrument Approaches. AHS 60th Annual Forum, June 2004.
+
+
+
+	
+		Flight evaluation of pursuit displays for precision approach of powered-lift aircraft
+		
+			CharlesSHynes
+		
+		
+			JamesAFranklin
+		
+		
+			GordonH JHardy
+		
+		
+			JamesLMartin
+		
+		
+			RobertCInnis
+		
+		10.2514/3.20440
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		Journal of Guidance, Control, and Dynamics
+		0731-5090
+		1533-3884
+		
+			12
+			4
+			
+			July-Aug. 1989
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Hynes, C.S.; Franklin, J.A.; Hardy, G.H.; Martin, J.L.; and Innis, R.C.: Flight Evaluation of Pursuit Displays for Precision Approach of Powered-Lift Aircraft. AIAA J. Guidance and Control, July-Aug. 1989, pp. 521-529.
+
+
+
+	
+		
+			VKMerrick
+		
+		
+			GGFarris
+		
+		
+			AAVanags
+		
+		A Head Up Display for Application to V/STOL Aircraft and Landing. NASA TM 102216
+		
+			Jan. 1990
+		
+	
+	Merrick, V.K.; Farris, G.G.; and Vanags, A.A.: A Head Up Display for Application to V/STOL Aircraft and Landing. NASA TM 102216, Jan. 1990.
+
+
+
+	
+		Some VTOL Head-Up Display Drive-Law Problems and Solutions
+		
+			VKMerrick
+		
+	
+	
+		NASA TM
+		
+			104027
+			Nov. 1993
+		
+	
+	Merrick, V.K.: Some VTOL Head-Up Display Drive-Law Problems and Solutions. NASA TM 104027, Nov. 1993.
+
+
+
+	
+		Flightpath Synthesis and HUD Scaling for V/STOL Terminal Area Operations. NASA TM 110348
+		
+			VKMerrick
+		
+		
+			JAJeske
+		
+		
+			April 1995
+		
+	
+	Merrick, V.K.; and Jeske, J.A.: Flightpath Synthesis and HUD Scaling for V/STOL Terminal Area Operations. NASA TM 110348, April 1995.
+
+
+
+	
+		Flight Evaluations of Advanced Controls and Displays for Transition and Landing on the NASA V/STOL Systems Research Aircraft
+		
+			JAFranklin
+		
+		
+			MWStortz
+		
+		
+			PFBorchers
+		
+		
+			IiiMoralez
+		
+		
+			E
+		
+	
+	
+		NASA TP
+		
+			3607
+			April 1996
+		
+	
+	Franklin, J.A.; Stortz, M.W.; Borchers, P.F.; and Moralez III, E.: Flight Evaluations of Advanced Controls and Displays for Transition and Landing on the NASA V/STOL Systems Research Aircraft. NASA TP 3607, April 1996.
+
+
+
+	
+		A head-up display for low-visibility approach and landing
+		
+			RSBray
+		
+		
+			BScott
+		
+		10.2514/6.1981-130
+	
+	
+		19th Aerospace Sciences Meeting
+		
+			American Institute of Aeronautics and Astronautics
+			July 1980
+		
+	
+	Bray, R.S.: A Head-Up Display Format for Application to Transport Aircraft Approach and Landing. NASA TM 81199, July 1980.
+
+
+
+	
+		Using .NET technologies for ATE instrument driver development
+		
+			EWilliams
+		
+		10.1109/autest.2010.5613598
+		
+	
+	
+		2010 IEEE AUTOTESTCON
+		
+			IEEE
+			2010
+			45
+		
+	
+	Williams, E.: Aviation Formulary V1.45. http://williams.best.vwh.net/avform.htm, 2010.
+
+
+				
+			
+		
+	

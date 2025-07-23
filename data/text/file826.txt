@@ -1,0 +1,1809 @@
+
+	
+	
+		
+IntroductionOne of the greatest sets of choke points in the National Airspace System is the combined terminal area and surface.Arrival, departure, and surface operations are nodes within one great fluid network, however scheduling research has been largely segregated between these domains.Whereas the segregation simplifies each scheduler, the following resource utilization inefficiencies in the current system may be alleviated more by integrating.First, uncertainties passed between domains and between service provider and users are treated as hard constraints.The segregated domains use firstcome-first-served traffic management to cope with the uncertainty, which can add inefficiencies and can even increase the uncertainty.For example, the firstcome-first-served traffic management policy incentivizes front-loading arrival meter fixes, arrival runways and departure queues.The current system uses this technique to maintain high throughput in the midst of high uncertainty by providing queues close to constrained resources.However, queue congestion adds delay to trajectories, reducing fuel efficiency.Airlines not only burn extra fuel to meet their schedules, but they pad their schedules, which further escalates uncertainty.Detailed information passed between domains and more intelligent management or negotiation of the uncertainties could alleviate some of the constraints and allow more precise queuing, resulting in more efficiency.Second, terminal areas with constrained resources often favor one set of operations over another (e.g.arrivals over departures or one airport over another within the same terminal area), and they typically do not consider user preferences when scheduling to these resources.This is because each set of operations is scheduled separately to gain control of resources on a first-come-first-served basis.Often the operations that have the earliest opportunity to reserve the resources get the resources, even if it causes another part of the system to gridlock.A more integrated approach could more equitably schedule the constrained resources to benefit the system as a whole.Finally, the segregated schedulers make the system slow to adjust to changes or recover from disturbances.For example, if convective weather forces a stream of arrivals to a different arrival meter fix, they may be assigned more path distance than necessary to conform to the runway configuration.By the time the runway configuration changes to adapt to the new dominant flow direction, the weather may have cleared, returning the flow to normal.Integrated scheduling may enable downstream operations to adjust to upstream disturbances proactively rather than reactively, enhancing the system's robustness and resilience.This paper proposes a framework for integrating scheduling between arrival, departure, and surface operations to address the potential drawbacks of segregated scheduling.The goals of integrated scheduling are:1. Reduce and manage uncertainty to simultaneously maximize throughput, efficiency and schedule integrity.2. Equitably manage operations competing for resources and incorporate user preferences.3. Enhance system robustness and resilience to change or disturbances.Although integrated scheduling can improve operations efficiency, it may also increase complexity related implementation cost and operator workload.Therefore, integrated scheduling development should also consider the degree of integration necessary to achieve the above goals while minimizing complexity.The following section discusses the current state-of-the-art both in the field and in NASA development for each of the segregated scheduling domains and the limitations of segregating these domains.Then an integrated scheduling hierarchy is proposed that organizes scheduling tasks by time horizon rather than domain.Finally, this paper identifies current NASA research gaps and proposes key areas where future research should focus to facilitate scheduler integration.
+Segregated SchedulingThus far, terminal area schedulers have been individually developed to solve very domain-specific problems with different time horizons.This section describes individual flight schedulers decomposed into the arrival, departure, and surface domains shown in figure 1.The configuration scheduler is discussed as a fourth domain, which allots time windows when given resources (meter fixes, routes, runways, taxiways, etc.) are available to the individual flight schedulers.
+Arrival SchedulingArrival scheduling focuses on the phase of flight just prior to top-of-descent to landing.Flights that depart from airports within the arrival scheduling horizon are also included.Arrival schedulers primarily aim to maximize arrival throughput and fuel efficiency.This is achieved by scheduling arrivals to precise time slots at coordination points (i.e.meter fixes, merge points, and runways) along an assigned fixed route from meter fix to runway.The accuracy with which flights can conform to their scheduled slots determines the amount of scheduling buffer required between slots.The more accurate the schedule conformance, the smaller the scheduling buffers required, the greater the potential throughput.The most mature example of arrival scheduling NASA technology is the Traffic Management Advisor with Terminal Metering (TMA-TM 1 ) [1] which uses a staged first-come-first-served arrival scheduler with a freeze horizon ~40 minutes prior to the estimated time of arrival (ETA) at the runway.For jet aircraft, this freeze horizon extends into Center airspace, ~150 nmi radius from the Terminal Radar Approach Control (TRACON) boundary and ~200 nmi radius from airport.This large freeze horizon enables the scheduler to push back all delay not anticipated to be absorbed with speed control within the TRACON to the Center.This minimizes vectoring in the TRACON, which serves to increase schedule conformance, leading to the primary goal of  increased throughput.This also achieves a secondary goal of increased fuel efficiency by minimizing level segments in the TRACON so that continuous lowthrust descents can be executed without interruption [2].Flights with frozen arrival schedules are monitored and controlled precisely to meet the schedule at each coordination point along the fixed path either by on-board avionics for aircraft with highly advanced equipage or by TRACON controllers.It is assumed that any deviation from this schedule can be kept within the bounds of the scheduling buffer.If not, it is the controller's responsibility to tactically fit the flight within a natural gap in the schedule.If the schedule is sufficiently saturated due to high demand, there are few gaps to absorb deviating flights and the disturbance can extend all the way to Center airspace.In such cases, when the schedule is deemed unrecoverable, all schedules are unfrozen and rescheduled, referred to as "list rippling".A recent study attempted to automate this form of rescheduling to accommodate go-around procedures [3].Currently, an advanced tactical component of the arrival scheduler is being developed at NASA Ames to mitigate the impact of scheduling disturbances called Method to Enhance Scheduled Arrival Robustness (MESAR) 2 .This component monitors the system to catch emerging scheduling disturbances early and selectively re-schedules the a subset of flights necessary to recover the schedule.In a packed schedule situation, the tactical scheduler can temporarily reduce the scheduling buffers for the subset of flights being re-scheduled due to the higher accuracy of arrival time estimates once flights are within the TRACON.
+Surface SchedulingSurface scheduling focuses on the taxi phase of flight from the arrival runway to the gate, and the gate to the departure runway.One surface scheduler objective is to minimize total delay or maximize runway throughput.Another objective is to minimize fuel burn by minimizing taxi-time on the active movement area such that most of the taxi-time is spent in active taxi rather than waiting at taxi intersections or runway crossings.Minimal taxi-time is achieved by holding flights at the gate for as long as possible to reduce congestion.However, due to large taxi-time uncertainties and arrival constraints, gate holding for just-in-time departure can reduce throughput.Due to the large uncertainties, surface schedulers have placed less focus on meeting specific departure times and more focus on managing spot and runway queue size to simultaneously maximize efficiency and throughput.Unfortunately, the greatest uncertainties do not lie within the active movement area (i.e.taxiways and runways), but with gate pushback time, and ramp movement time from gate pushback to spot (entrance to active movement area), both of which are most often controlled by airlines and not the Air Navigation Service Provider (ANSP).For this reason, not only do surface schedulers typically start at the spot, but they continuously reoptimize the schedule on a short planning horizon and even shorter freeze horizon to mitigate the uncertainty.Recently surface metering has been field tested at several airports [4,5].When gate-departure demand exceeds runway departure capacity, individual flights are held at the gate or pre-assigned holding pad with engines off to shorten the queue lines.In addition to reducing taxi-out time and therefore fuel consumption, surface metering reduces takeoff delay.The most mature example of surface scheduling NASA technology is the Spot and Runway Departure Advisor (SARDA) [6].The most recent human-inthe-loop (HITL) simulation of SARDA at Dallas Fort Worth International used a 15-minute planning horizon that reschedules every 10 seconds, and only the first three flights in both spot release and runway sequence from the last scheduling iteration were frozen [7].SARDA uses a two-stage scheduler.The first stage considers the departures and arrivals expected at the runway within a 15-minute planning window along with wake vortex and traffic management initiative constraints, and generates expected takeoff times for departures.The second stage of the scheduler generates departure spot release times by subtracting nominal taxi times with an uncertainty buffer from the runway schedule.More recently, the algorithm has been extended to include gate pushback times in the ramp area by subtracting nominal transit time between gates and spots from spot release times.A candidate concept for an integrated system of both strategic and tactical components of SARDA advisory tools, via a Collaborative Decision Making (CDM) mechanism between airlines and ATC, has been developed [8].The strategic advisory component assigns gate pushback times with a planning window that can range from 30 minutes to 2 hours.SARDA-CDM guarantees a spot release time window to flights that pushback no later than their assigned pushback time.Flights that do not meet their assigned latest gate pushback time are scheduled tactically subject to availability.
+Departure SchedulingDeparture scheduling focuses on the phase of flight from takeoff to cruise.Departure schedulers aim to meter and de-conflict flights at departure meter fixes or fill specific slots in en route or arrival streams.Currently fielded departure scheduling is a function of TMA called tactical departure scheduling [9].TMA's en-route departure capability schedules outbound departures to metering arcs that join enroute streams.Arrival TMA schedules inbound departures that originate within the arrival freeze horizon of the destination airport.The planning horizon of tactical departure scheduling is similar to that of arrival scheduling in order for inbound departures to compete fairly for arrival runway slots.However, the accuracy of departure scheduling is severely limited by the current state of departure trajectory prediction and uncertain departure wheels-off times [9].Departure trajectory prediction suffers from a wide variation of departure path (even along Area Navigation RNAV routing) and inaccurate aircraft weight estimates [10,11].Departure wheels off time uncertainties are due to all the same uncertainties that plague surface scheduling.Departure scheduling is especially challenging when weather blocks departure fixes or gates causing departure fix compression or fix swapping.Not only are fewer meter fixes available, but miles-in-trail restrictions are often imposed on the remaining fixes to account for increased uncertainty and spacing requirements associated with vectoring near the fixes [12].
+Integrated Departure Route Planning (IDRP) is a Traffic Management Coordinator (TMC) Decision
+SupportTool (DST) planned for 2017 implementation in the field [13,14].It integrates information about weather and congestion impacts on departure routes into constraints and recommends how to reroute not-yet-airborne departures to avoid the constraints with a 30-to 60-minute planning horizon.Expedited Departure Path (EDP) was a tactical Air Traffic Controller (ATC) DST designed to offer advisories for optimal sequencing and merging of departures to departure meter fixes as scheduled [15].A secondary goal of departure schedulers is to enable continuous climb by opportunistically shooting gaps in arrival streams.EDP offered tactical advisories for continuous climb when no lateral conflicts with crossing traffic are found.Research in departure control DSTs continued with Sharing of Airspace Resources (SOAR) [16].SOAR has been developing communication procedures and DSTs to enable schedule-based continuous climb of departure through crossing arrival streams, and efficient departure stream merging at departure meter fixes.The most mature example of NASA technology facilitating departure scheduling is Precision Departure Release Capability (PDRC) recently transferred to the FAA [17].PDRC schedules departures constrained by Call For Release procedures, which require the Tower to get Center approval prior to releasing departures to specific destinations.PDRC improves the accuracy of the OFF time predictions used by tactical departure scheduling by enabling the surface scheduler to share it's predicted OFF times with the departure scheduler.For the current surface management system, this pushes back the tactical departure scheduling horizon to the spot.In site tests, PDRC also made more specific horizontal profile TRACON departure routing and departure runway assignment available to the departure scheduler to reduce TRACON transit time error.NASA is currently developing a departure scheduler that extends the tactical component of surface scheduling to consider terminal airspace constraints [18].Departures are continuously resequenced and rescheduled across multiple airports on a 5-second scheduling cycle to produce controller OFF times ensuring that minimum separation is maintained at both the runway threshold and departure fix.This enables departure scheduling coordination between multiple airports sharing departure fixes.
+Configuration SchedulingConfiguration scheduling does not operate on individual flights, but rather it determines time windows for which specific terminal area resources (routing, runways, meter fixes, taxi-ways etc.) are available.The configuration or available resources for a given time period narrows down the routing options the arrival, departure, or surface scheduler may assign to an individual flight.The simplest form of configuration scheduling is when a group of route segments and fixes are blocked by convective weather rendering the routing inaccessible.If convective weather can be predicted in advance of the scheduling horizon, the scheduler can avoid assigning blocked routes.Currently fielded Route Availability Planning Tool (RAPT) assigns convective weather blockage status to departure routes up to 30 minutes in advance to help traffic managers determine if and when specific published routes are available for use [19].Dynamic routing research has developed algorithms to create dynamic meter fixes or routes around blocked airspace [20][21][22][23][24].These algorithms could be used to design a larger set of pre-defined weather contingency routes than currently exists.A more advanced solution to blocked routing is to use these algorithms to dynamically generate temporary routes around the weather in real-time.Recently NASA experimented with how dynamic routing could be used in extended terminal airspace to funnel arrivals around convective weather to an arrival meter fix [25].Dynamic routes were designed with a 45-minute freeze horizon and updated every 15 minutes.From a controller perspective, several different routing structures may be active within the airspace at the same time.However, a given individual flight will enter a single route structure predicted to be unblocked and stable for the entire time the flight traverses the airspace to the meter fix.The arrival scheduler will then use the route structure associated with a given flight to schedule its meter fix, merge point, and runway crossing times.Other resources frequently associated with configuration scheduling are runways.The runway configuration (which runways may be used for arrival, departure, or both) determines the available TRACON routing as well.A runway configuration change may be scheduled to adapt to a change in winds, visibility, noise or emission level curfews, runway obstruction, traffic volume, dominant traffic direction, or an arrival/departure push.Several algorithms have been developed to generate optimal runway configuration schedules [26][27][28][29][30][31].The most mature example of configuration scheduling NASA technology is Tactical Runway Configuration Management (TRCM) designed to select runway configuration plans that maximize throughput and minimize delays associated with transitioning between configurations [31].As with dynamic routing, TRCM is expected to use a ~45 minute freeze horizon large enough to inform individual flight schedulers of upcoming configuration changes prior to generating their individual flight schedules.TRCM also limits the frequency of major directional shifts in configuration to no more than 1-in-30 minutes, and minor runway assignment policy changes to no more than 1-in-15 minutes.
+Segregated Scheduling LimitationsArrival scheduling development has not considered departures as constraints to minimize some of the uncertainty problems surface and departure schedulers faced.For aircraft nearing their destination, excessive delay burns extra fuel, which would soon be exhausted, making landing aircraft as quickly as possible a top safety priority.Therefore, scheduled arrival times were passed to the surface scheduler as hard constraints.As the precision of arrival operations improves and uncertainty diminishes, the resulting precision of arrival constraints is a huge benefit to the surface scheduler, enabling it to find gaps for inserting takeoffs on mixed usage runways and efficiently sequence takeoffs and departure runway crossings.But precise arrival constraints do little to help departure scheduling in peak arrival conditions if they are so tightly packed that there are no gaps for departure schedulers to use.This is why mixed usage runways have either alternating arrival/departure pushes, or they handle overflow arrival operations that do not saturate the runway.For the most part, arrival routes are procedurally segregated from departure routes.This is done laterally where possible to create more efficient continuous descent and climb vertical profiles.However, this segregation technique can extend the length of both arrival and departure routes.Where this kind of segregation is not possible, arrivals are typically given the more efficient path, leaving departures to tunnel underneath arrival streams or fly extra path miles to loop above them.In some cases, departures are left to opportunistically shoot gaps in arrival streams to fly more efficient vertical profiles.Such procedures require a lot of extra controller attention and so are not often used at busier or complex TRACONs or in higher traffic volume conditions, where they could have the greatest benefit.Opportunistic changes to departure trajectories also affect departure transition times to meter fixes or en-route slots.Most of the disadvantage given to surface and departure schedulers comes from large uncertainties, the largest of which is gate pushback time.This uncertainty induces a large tradeoff between precision and scheduling horizon, influencing these schedulers to focus on very tactical, short time horizon solutions.These short time horizon solutions make it very difficult for departures to compete with arrivals for precisely scheduled resources.
+Integrated Scheduling FrameworkWhereas there is a clear functional distinction between configuration scheduling and the other domains, the boundaries are less distinct between arrival, departure, and surface scheduling.These domains are making progress towards the first integrated scheduling goal of reducing and managing uncertainty and third goal of enhancing system robustness and resilience, but not the second goal of equitably managing resources between them to maximize system efficiency.Individual scheduler performance is limited by hard constraints imposed by segregation and they do not address scheduler imbalance.Integrated procedures have been disregarded due to lack of precision and robustness, but recent individual scheduler advances make this next step more viable.Refocusing research toward arrival/departure/surface scheduler integration strategies will not only free scheduling research from accustomed hard constraints, but will begin to address scheduler imbalance.The solution is by no means one mega, global optimization engine.Even the individual domain schedulers are broken down into functional elements, some with different time horizons, which share information.The arrival scheduler development, while initially less tactical, has discovered that this leaves the solutions vulnerable to disturbances too large to be rectified by it's narrow range of control authority.Current research is adding a more tactical component (MESAR's selective re-scheduling) to the arrival scheduler to cope with large disturbances.On the other hand, the surface scheduler is no stranger to large disturbances (i.e.uncertainty).Surface scheduler development has discovered that its highly tactical and reactive approach to optimizing the solution may be the best way to manage uncertainty.However, recent research added a more strategic component (SARDA-CDM) to the surface scheduler to manage its largest disturbance, gate pushback uncertainty, making it possible to generate a candidate solution prior to tactical optimization.As the arrival scheduler becomes more tactically capable and the surface scheduler becomes more strategically capable, these domains are poised for integration.In order for these segregated scheduler domains to integrate, they must be broken down into common hierarchical components to ensure that information is passed between domains at every level.Figure 2 shows a flow chart of information exchange between four hierarchy levels: 1) configuration schedule, 2) flight schedule, 3) flight schedule update, and 4) schedule conformance.Each flow chart element represents arrival, departure, and surface domains.
+Level 1: Configuration ScheduleThe configuration schedule occupies the top level of the integrated scheduling hierarchy with a planning horizon on the order of hours and a freeze horizon of at least 45 minutes to provide the subset of resources available to the lower levels.Inputs used to generate a configuration schedule solution include a library of resources and configurations that utilize predefined sets of resources, nonnegotiable and negotiable constraints, and demand forecast.Nonnegotiable constraints, such as weather forecast, pre-filter the solution space and static negotiable constraints are used to refine the solution space and generate a configuration schedule tailored to the demand forecast.Nonnegotiable constraints are constraints that automatically prohibit the use of a particular set of resources and any configurations that make use of them.Weather-related nonnegotiable constraints are the most numerous and least predictable.Convective weather can prohibit the use of specific route segments, fixes and runways.Wind direction and magnitude can prohibit the use of specific runways in one or both directions.Some weather conditions only prohibit a particular configuration and not the resources themselves.For example, Instrument Meteorological Conditions may prohibit the use of both parallel runways as arrivals, but one may be used for arrivals and one for departures.Other nonnegotiable constraints are policy driven.For example, some arrival or departure routes over heavily populated areas may be prohibited during certain hours of the day.
+Figure 2. Integrated Scheduling HierarchyNegotiable constraints prohibit the use of some resources or configurations at the same time as others.For example runways and route segments may not be used (or it would be extremely inefficient to schedule their use) in both directions at the same time.Herein lies the choice of which set of coexistent configurations to make available to lower hierarchy schedulers.At this point, traffic demand input is evaluated to maximize efficiency or throughput, and minimize the cost of transitioning from one configuration to another.In general, the transition cost is less, the more similar the new configuration is to the old, or the earlier the configuration change is planed before the change occurs.Frequency of a  With a planning horizon on the order of hours, resource demand for preferred routes may be evaluated as a rate (e.g. per 15 minutes).Short notice resource related disturbances that necessitate a frozen configuration schedule to update, may require evaluating demand at the individual flight level and coordinating directly with the flight schedule update level.Due to the potential cascading disruption a short notice configuration schedule update may have, these should only be triggered by nonnegotiable constraints.Examples include unpredicted pop-up weather, sudden change in wind direction or magnitude, visibility, or runway/taxiway closures due to aircraft mechanical failure or other obstruction.Solutions to configuration schedule updates may call upon resources reserved specifically for solving short-notice configuration changes such as transition routes or holding areas.For example, the runway itself can be used as a taxiway when queued aircraft have to move to the other end of the runway due to a configuration change.Evaluating the efficiency or throughput benefit of a configuration can be quite complex and requires detailed domain-specific traffic information as demonstrated by TRCM research.TRCM attempts to globalize configuration scheduling, but the process can be modularized when the negotiable constraints governing the configurability of one set of resources are independent from another.For example, arrivals from a similar direction generally enter a TRACON in the vicinity of the same arrival fix regardless of the runway configuration in effect.Therefore, dynamic routing from a given arc direction to a given meter fix could remain separate from runway-configuration scheduling.The meter fix becomes the coupling point between the two configuration schedulers.If the runway configuration change requires that the meter fix location be moved, this information must be passed to the dynamic routing scheduler with enough lead time to satisfy the freeze horizon.
+Level 2: Flight ScheduleThe flight schedule hierarchy level provides the initial optimal flight-specific schedule.As flights enter the planning horizon, the flight scheduler determines the available route options for each flight given the active configuration, and calculates feasible scheduled time of arrival (STA) ranges at coordination points along each route.Available route options may include several different routes between multiple meter fix/runway pairs.Route availability may be subject to individual aircraft performance capabilities and equipage.The scheduler then tries to find the best route and schedule within this solution space that minimizes delay, maximizes throughput and efficiency, and may incorporate airline preference input as well.Ideally, arrivals and departures would be scheduled together at the same planning horizon.Distributed parallel processes could prioritize route options based on cost functions incorporating user preferences and calculate feasible STA ranges for each domain or even each individual flight.But this information should be fed to a centralized scheduler to organize the constraints and costs into an optimal schedule.However, if some of this information (e.g.gate pushback time) is not available at a comparable level of uncertainty within the same time horizon, then a multi-stage scheduler is needed.Figure 3 diagrams information flow for a twostage coordinated flight scheduling approach between arrival and surface/departure schedulers.In an attempt to balance arrival/departure demand and capacity, the first stage arrival scheduler uses flight plan departure times to schedule some gaps in the arrival schedule for departures at shared arrival/departure coordination points which can then be translated to target takeoff times and departure routes.The second stage consists of the more tactical surface and departure scheduling to fill the gaps and meet the target times provided by the first stage.At this low level of precision, the arrival and surface/departure schedulers are coordinated rather than fully integrated.The surface/departure scheduler still works opportunistically at the smaller time horizon, but the arrival scheduler works with the information it has at the larger planning horizon to maximize the opportunity.The resulting coordinated schedule is the combination of arrival and departure schedules.MITRE proposed a more near-term two-stage coordinated scheduling concept called High Density Area Departure/Arrival Management (HDDAM) to manage metroplex arrival and departure meter fixes [32].In HDDAM both arrival and departure flight scheduling occur independently within the second stage.The first stage consists of an arrival/departure slot-negotiator function, which takes as inputs demand requests and resource capacities from the entities that own them, and assigns generic arrival and departure slots per airport at each shared resource.The independent arrival and departure flight schedulers then schedule individual flights to fill their respective allotted slots.
+Level 3: Flight Schedule UpdateThe flight schedule update is the more tactical reactive level of the terminal scheduling hierarchy addressing the third integrated scheduling goal of enhancing system robustness and resilience.It is a schedule-based method to quickly contain and recover from schedule disruptions due to nonconformance.For arrivals, scheduling disturbances include late flights unable to meet their scheduled time, emergencies requiring a flight to land as soon as possible, or missed approaches causing flights to go-around and fit back into the arrival queue.In the case of late or go-round flights, one solution is to vector the flight into a holding pattern until a natural gap opens up to fit the flight back in.This is similar to the approach taken by NASA's new CDM surface scheduler concept [8].If a flight does not pushback from the gate by the agreed upon latest gate pushback time, it's spot release time window can no longer be guaranteed and it must wait for the tactical surface scheduler to opportunistically fit the flight in.However, in high traffic volume, the flight could be waiting a long time to reenter the queue.Emergencies are more complicated as they force the issue of creating a gap where none may exist and may affect flights that were in conformance.The extreme schedule-based solution to these disturbances would be to unfreeze and reschedule all flights (list rippling) to rectify the nonconformance.This is highly disruptive in a segregated terminal environment.It could be even more disruptive in an integrated terminal environment depending on the cascading dependencies of the schedule.A more surgical approach would be to reschedule a subset of flights to contain and rectify the disturbance.In addition, the earlier a developing disturbance can be detected and mitigation initiated, the more efficient the mitigation can be.a disturbance is predicted, the next function is to identify the resolution method and subset of flights that could be affected by the disturbance.Finally, the schedule is updated for the minimum cost subset of affected flights.In an integrated scheduling environment, the rescheduled flight subset may include aircraft within in all three domains.In order to keep the rescheduled flight subset from growing too large in a high volume traffic situation with very few natural gaps, the schedule update must be allowed to temporarily relax constraints imposed on the initial flight schedule.For example, temporal scheduling buffers may be reduced or originally unavailable resources (route options, taxi-ways, etc.) reserved for such situations may be made available to the schedule update.
+Level 4: Schedule ConformanceThe lowest level of the terminal scheduling hierarchy includes the control techniques used to achieve schedule conformance.The control techniques used by each domain may be very different and may not pass any information between domains.Whether flight-deck or ground based, the function of schedule conformance control techniques is to efficiently resolve any deviations from the schedule.The performance of this lowest level bounds the solution space of the higher levels.The precision of a technique will determine the scheduling buffer required to dampen the system, affecting throughput.The flexibility and fast effectiveness of a technique will temper the use of flight schedule updates to respond to disturbances.
+Research GapsTerminal area and surface scheduling research is already strongly aligned to the proposed integration framework.However research efforts are not yet synchronized.Research directed specifically toward integrating domains are at different levels of maturity targeting different implementation time frames and TRACONs.To inform a more balanced integrated terminal scheduling research portfolio, this section identifies current research gaps and proposes key areas where future research should focus to facilitate scheduler integration.
+Level 1: Configuration Schedule GapsA stand-alone concept was developed to dynamically reroute arrivals around weather as they were funneled through extended terminal airspace to their meter fix.Rerouting algorithms were developed [20] and HITL simulations evaluated the operational feasibility of dynamically changing route structure without specific scheduling constraints [25].Recently, en-route Dynamic Weather Rerouting (DWR) has been successfully tested in the field [33] and is exploring the possibility of extending this technology to the extended terminal area to support arrival scheduling.Whereas reference [25] updated an entire route structure on a synchronized update rate, terminal DWR may update arrival routes to meter fixes on an individual basis.Moving forward, extended terminal-area weather re-routes (whether they are route structure based or individual flight based) should be integrated with scheduling by feeding more accurate ETAs for weather route options to the flight schedule prior to the freeze horizon.These above efforts are primarily concerned with processing non-negotiable weather constraints and providing more accurate information to the arrival scheduler and not with generating an integrated schedule of terminal-area and surface configurations.NASA configuration scheduling development under TRCM supported integrated arrival, departure, and surface operations from the start.However, TRCM technologies still need to address uncertainty.Evaluations of these technologies assume perfect forecasts, analyzing historical data for potential benefits.Integrated configuration scheduling development should move to higher fidelity fast-time simulations that incorporate uncertainty associated with weather and demand forecast.
+Level 2: Flight Schedule GapsCurrently arrival scheduling dominates this level with ~40-minute freeze horizons, but very little reliable information is passed from surface and departure scheduling.PDRC has made the greatest progress in correcting this imbalance by improving departure takeoff time estimates enough to compete for arrival slots.This gives these flights more equitability as arrivals in their destination TRACON, but not as departures competing with arrivals for resources within their original TRACON.The key areas where flight scheduling should focus to facilitate integration are to expand route options, mitigate uncertainty with stochastic and collaborative scheduling techniques, and incorporate user preference in the schedule.
+Expand Route OptionsCurrently, TMA-TM typically assumes there is only one schedulable route between any meter-fix and runway pair for a given performance based navigation equipage level.A flight is scheduled to a meter-fix, one or two merge points, and the runway, totaling to three or four coordination points.Departure crossings will only add more coordination points.The problem with adding more coordination points into the system is that it adds more constraints, which limit the solution space such that the coupled solution may incur more delay than the uncoupled solution.This can be alleviated by adding more route options, thereby introducing an extra degree of freedom to the scheduler, and expanding the solution space.Many surface scheduling algorithms consider multiple route options along taxiways between spot and runway [34][35][36][37][38]. Fewer airspace schedulers consider multiple route options for a given aircraft between the same meter fix/runway pair [39][40][41].Multiple terminal airspace route options have also been considered in lower level scheduling hierarchies [42][43][44].Rather than segregating all arrival and departure routes, several optimal departure routes should be designed even if they must temporarily occupy arrival airspace.Likewise, multiple routes should be available to arrivals for any meter-fix-to-runway pair for a given equipage level.When the demand is too high for a shared resource, alternate less efficient routes must be scheduled, but they may be scheduled to arrivals as well as departures depending on which option is more optimal for the system.Research has already shown that a combination of route segregation and temporal separation at a coordination point is a more effective method of arrival/departure scheduling than either method alone [45].Arrival scheduling may also consider departure demands on surface resources as well.This is already done in current practice by necessity at airports with dual use or crossing arrival and departure runways.But the current practice is to meter the arrivals such that there are gaps in which to opportunistically depart aircraft.These gaps could be more optimally sequenced with more flight-specific demand information passed [46][47][48].
+Mitigate UncertaintyThe main deterrent to arrival scheduling considering departures is the level of uncertainty in departure trajectory prediction at the necessary freeze horizon.In addition to improving departure trajectory prediction with CDM gate pushback times and RNAV departure routing, arrival schedulers may use stochastic techniques to mitigate the uncertainty.Stochastic scheduling incorporates flight arrival-time uncertainty at the coordination point by including the probability of separation in the cost function [49][50][51][52].If the flight scheduler cannot get an accurate 40minute advance gate pushback schedule from surface CDM, some system benefits may still be possible using flight plan departure times, even though surface scheduler assigned departure times would be much better.
+Incorporate User PreferenceThe benefit metrics that have driven terminalarea scheduling are largely system oriented.It is assumed that all flights wish to fly shorter distances and use less fuel.However, airlines may have other preferences that could influence scheduling.Strategic schedule integrity is a large concern, especially for flights in and out of large hubs.An airline may not wish one flight to arrive early when another flight feeding multiple connections is running late.SARDA-CDM [8] and other surface CDM schedulers [53,54] begin to address airline preference by allowing them to negotiate scheduled gate pushback time.Arrival scheduling should also develop techniques other than separation-constraint-modified first-come-first-served to address airline preferences [55].
+Level 3: Flight Schedule Update GapsSARDA evolved with tactical updates as an integral part of the flight scheduler.The schedule is constantly updated with only the sequence of a few flights at the front of the queue frozen.Because of this short freeze horizon, any propagating delays incurred can quickly be incorporated into the spot scheduler.When paired with CDM, the SARDA tactical scheduler acts as the flight schedule update hierarchy level.Airspace scheduling has only recently begun to develop automated tactical schedule updates with MESAR, which is being applied to arrivals only in initial development.Simulations of arrival operations to LaGuardia's crossing runways exposed the need for tactical schedule update in this situation but the updates were performed manually [56].The possibility of arrival/departure schedule negotiation to improve departure runway utilization at LaGuardia is currently being explored.Future simulations may incorporate MESAR-like automation to synch operations to crossing runways.Before MESAR is extended to a fully integrated arrival/departure flight scheduler, a similar technique may be applied to the coordinated flight scheduler.First an arrival schedule is developed to include some number of gaps for departures based on departure demand extrapolated from flight plan departure times.The departure scheduler attempts to use the gaps created in the arrival schedule as given, but may also request the arrival scheduler to update the schedule for a small set of arrivals to modify gap size or temporal location.In this way, tactical schedule update is used to negotiate a refined coordinated schedule between arrival and departures.If these negotiations will be nominal, they may occur more often than the occasional off-nominal nonconformance triggering a MESAR tactical arrival schedule update.Research is needed to determine how often such a negotiation would be attempted or can be accommodated.In the departure phase of flight, path control (i.e.vectoring and direct-to) and altitude clearances are the primary methods of control.There has been little DST development for precisely controlling departures in terminal airspace.The SOAR effort has recently developed DSTs to enable early altitude clearances [16] and just begun development of some precision path-based control [44].
+Level 4: Schedule Conformance GapsOn the surface, ANSP control mainly consists of taxi clearances at the spot, takeoff clearances at the runway, and runway crossing clearances.Pilots control speed to provide visual separation along the 2D fixed-path taxiways.Previous development of DSTs enabled pilots to follow 4D trajectory clearances on the surface [59,60].More recently, the SARDA surface scheduler was integrated with the flight-deck 4D taxi capability and tested in a humanin-the-loop simulation [61].In the simulation, both takeoff sequence and departure times generated by SARDA were displayed to the pilots and an errornulling algorithm provided speed advisories to meet the runway RTA.In order to support schedule conformance, control methods will need to be more trajectorybased and employ more flexibility to resolve errors due to uncertainty.Of the control techniques described above, arrival speed control is the most precise but also the least responsive.More precise path control methods should be developed to add responsiveness to the arrival domain and precision to the departure and surface domains.Because the system performance is dependent on the schedule conformance precision, control methods and scheduling concepts should incentivize flight-deck trajectory precision when possible.For example, the SARDA-CDM method of handling gate pushback nonconformance is an incentive for meeting the scheduled gate pushback time.Nonconforming aircraft are sent to a separate queue that does not affect the integrity of the original schedule of conforming aircraft.In the arrival phase, appropriately equipped aircraft can fly shorter Required Navigation Performance (RNP) routes with radius-to-fix turns onto a short final approach leg.When controllers are given the option to delegate separation to FIM equipped aircraft, they are encouraged to let the FIM aircraft follow the scheduled trajectory and instead apply more invasive control to less precise aircraft.In places where departure routes tunnel under arrival streams, controllers can give early altitude clearances to departures when they see a sufficiently large arrival gap.In a more trajectory-based schedule-driven environment where these arrival gaps are scheduled, the departure would have incentive to meet the scheduled gap rather than tunneling.Current scheduling techniques use time buffers between time slots to mitigate uncertainty and ensure minimum required separation.Aircraft equipped to achieve higher precision may be scheduled with smaller buffers.However, this approach benefits the system almost as much if not more than the equipped aircraft, making the advantage of equipping early less attractive.Path-based buffering (reserving path shortcuts rather than time to resolve nonconformance) may allow precision-equipped aircraft to be scheduled to a shorter path than less precise aircraft requiring larger path buffers [40].
+Degree of IntegrationAnother key area of research that must be addressed is the necessary degree of integration.The need for integration is driven by resource utilization inefficiencies.Where and when no such inefficiencies exist, flight schedules may not need to be integrated or flights may not need to be scheduled at all.A mechanism is needed to watch for resource competition leading to inefficiencies, and manage the degree of scheduling and integration accordingly.Real-time metrics are needed to justify the tradeoff between complexity and efficiency that integration may bring.
+ConclusionThis paper presented a framework to integrate arrival, departure, and surface operations scheduling.The framework consists of a hierarchy of scheduling functions organized by scheduling horizon rather than the traditional arrival, departure, and surface domains.Configuration schedule determines the schedule of configurations (i.e.set of airspace and surface resources) available to lower level schedulers.Future research in this area can expand route options, mitigate uncertainty with stochastic and collaborative scheduling techniques, and incorporate user preference in the schedule.Flight schedule update may be used to negotiate integrated arrival/departure schedules by giving the arrival schedule the flexibility to adapt to surface uncertainties.Schedule conformance research should develop more precision path-based control methods to add more flexibility to the arrival domain and more precision to the departure and surface domains.Finally, real-time metrics need to be defined to watch for resource competition and manage the degree of scheduling and integration required to justify the added complexity.Figure 1 .1Figure 1.Flight Scheduling Domains.
+change can also influence the transition cost.Ideally, the configuration schedule should be frozen prior to the planning horizon of the highest-level individual flight scheduler.
+Figure 3 .3Figure 3. Coordinated Arrival/Departure Flight Schedule
+Figure 44Figure 4 diagrams how arrival schedule updates can be incorporated into coordinated arrival departure scheduling.
+Figure 4 .4Figure 4. Coordinated Flight Schedule with Arrival Updates
+Each domain has been developing DSTs to aid the pilot or controller in achieving the scheduler goals.The domain specific DSTs cater to the preferred control methods of the domain.In the arrival phase of flight, speed control with as little path deviation as possible is preferred.Flight-deck speed control technologies include Required Time of Arrival (RTA) and Flight-deck Interval Management (FIM).Ground based DST development for arrivals are called Controller Managed Spacing (CMS) and Ground Interval Management (GIM).Recent evaluations of these technologies integrated FIM with CMS in a mixed-equipage environment[56,57].
+Flight schedule determines initial individual flight trajectories (i.e.route and schedule).Flight schedule update monitors flight ETAs for disturbances and updates the flight schedule when required.Finally, schedule conformance includes the control techniques flights use to meet the schedule.Research gaps within this framework were discussed and key areas of research focus recommended.Configuration schedule research should consider uncertainty more during its development.Otherwise, conformance scheduling should start to integrate with the flight scheduling hierarchy.Flight schedule research is having difficulty bridging the gap between arrival scheduling horizon and departure and surface uncertainties.
+1Known as Time Based Flow Management (TBFM) by the FAA.Also known as Terminal Area Precision Scheduling and Spacing System (TAPSS) by NASA or Terminal Sequencing and Spacing (TSS) by the FAA, when scheduling is coupled with TRACON controller tools.
+			This research is currently unpublished.For more information contact the MESAR scheduling lead at Jaewoo.Jung@nasa.gov.
+		
+		
+			
+Appendix I: List of Acronyms			
+			
+
+				
+
+
+	
+		Design and Evaluation of the Terminal Area Precision Scheduling and Spacing System
+		
+			HSwenson
+		
+		
+			JThipphavong
+		
+		
+			ASadovsky
+		
+		
+			LChen
+		
+		
+			CSullivan
+		
+		
+			LMartin
+		
+		
+			2011
+			Berlin, Germany
+		
+		
+			Ninth USA/Europe Air Traffic Management Research and Development Seminar
+		
+	
+	Swenson, H., J. Thipphavong, A. Sadovsky, L. Chen, C. Sullivan, and L. Martin, 2011, Design and Evaluation of the Terminal Area Precision Scheduling and Spacing System, Ninth USA/Europe Air Traffic Management Research and Development Seminar, Berlin, Germany.
+
+
+
+	
+		Efficiency Benefits Using the Terminal Area Precision Scheduling and Spacing System
+		
+			JaneThipphavong
+		
+		
+			HarrySwenson
+		
+		
+			PaulLin
+		
+		
+			AnthonySeo
+		
+		
+			LeonardBagasol
+		
+		10.2514/6.2011-6971
+	
+	
+		11th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Virginia Beach, Virginia
+		
+			American Institute of Aeronautics and Astronautics
+			2011
+		
+	
+	Thipphavong, J., H. Swenson, P. Lin, A. Seo, and L. Bagasol, 2011, Efficiency Benefits Using the Terminal Area Precision Scheduling ans Spacing System, 11 th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Virginia Beach, Virginia.
+
+
+
+	
+		Development and evaluation of the terminal precision scheduling and spacing system for off-nominal condition operations
+		
+			HNSwenson
+		
+		
+			Jaewoo Jung
+		
+		
+			JThipphavong
+		
+		
+			Liang Chen
+		
+		
+			LMartin
+		
+		
+			JNguyen
+		
+		10.1109/dasc.2012.6382303
+	
+	
+		2012 IEEE/AIAA 31st Digital Avionics Systems Conference (DASC)
+		Williamsburge, Virginia
+		
+			IEEE
+			2012
+		
+	
+	Swenson, H., J. Jung, J. Thipphavong, L. Chen, L. Martin, and J. Nguyen, 2012, Development and Evaluation of the Terminal Precision Scheduling and Spacing System for Off-Nominal Condition Operations, 31 st Digital Avionics Systems Conference, Williamsburge, Virginia.
+
+
+
+	
+		Demonstration of reduced airport congestion through pushback rate control
+		
+			IoannisSimaiakis
+		
+		
+			HarshadKhadilkar
+		
+		
+			HamsaBalakrishnan
+		
+		
+			TomGReynolds
+		
+		
+			RJohnHansman
+		
+		10.1016/j.tra.2014.05.014
+	
+	
+		Transportation Research Part A: Policy and Practice
+		Transportation Research Part A: Policy and Practice
+		0965-8564
+		
+			66
+			
+			2011
+			Elsevier BV
+			Berlin, Germany
+		
+		
+			Ninth USA/Europe Air Traffic Management Research and Development Seminar
+		
+	
+	Simaiakis, I., H. Khadilkar, H. Balakrishnan, T. Reynolds, R. Hansmann, B. Reilly, and S. Urlass, 2011, Demonstration of Reduced Airport Congestion Through Pushback Rate Control, Ninth USA/Europe Air Traffic Management Research and Development Seminar, Berlin, Germany.
+
+
+
+	
+		Assessing the impacts of the JFK ground management program
+		
+			StevenStroiney
+		
+		
+			BenjaminLevy
+		
+		
+			HarshadKhadilkar
+		
+		
+			HamsaBalakrishnan
+		
+		10.1109/dasc.2013.6712660
+	
+	
+		2013 IEEE/AIAA 32nd Digital Avionics Systems Conference (DASC)
+		Syracuse, New York
+		
+			IEEE
+			2013
+		
+	
+	Stoiney, S., B. Levy, H. Khadilkar, and H. Balakrishnan, 2013, Assessing the Impacts of the JFK Ground Management Program, 32 nd Digital Avionics Systems Conference, Syracuse, New York.
+
+
+
+	
+		A Concept and Implementation of Optimized Operations of Airport Surface Traffic
+		
+			YoonJung
+		
+		
+			TyHoang
+		
+		
+			JustinMontoya
+		
+		
+			GautamGupta
+		
+		
+			WaqarMalik
+		
+		
+			LeonardTobias
+		
+		10.2514/6.2010-9213
+	
+	
+		10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Fort Worth, Texas
+		
+			American Institute of Aeronautics and Astronautics
+			2010
+		
+	
+	Jung, Y., T. Huang, J. Montoya, G. Gupta, W. Malik, and L. Tobias, 2010, A Concept and Implementation of Optimized Operations of Airport Surface Traffic, 10 th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Fort Worth, Texas.
+
+
+
+	
+		Performance Evaluation of Individual Aircraft Advisory Concept for Surface Managemenet
+		
+			GGupta
+		
+		
+			WMalik
+		
+		
+			LTobias
+		
+		
+			YJung
+		
+		
+			THuang
+		
+		
+			MHayashi
+		
+		
+			2013
+			Chicago, Illinois
+		
+		
+			Tenth USA/Europe Air Traffic Management Research and Development Seminar
+		
+	
+	Gupta, G., W. Malik, L. Tobias, Y. Jung, T. Huang, and M. Hayashi, 2013, Performance Evaluation of Individual Aircraft Advisory Concept for Surface Managemenet, Tenth USA/Europe Air Traffic Management Research and Development Seminar, Chicago, Illinois.
+
+
+
+	
+		An Integrated Collaborative Decision Making and Tactical Advisory Concept for Airport Surface Operations Management
+		
+			GautamGupta
+		
+		
+			WaqarMalik
+		
+		
+			YoonJung
+		
+		10.2514/6.2012-5651
+	
+	
+		12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference and 14th AIAA/ISSMO Multidisciplinary Analysis and Optimization Conference
+		Indianapolis, Indiana
+		
+			American Institute of Aeronautics and Astronautics
+			2012
+		
+	
+	Gupta, G., W. Malik, and Y. Jung, 2012, An Integrated Collaborative Decision Making and Tactical Concept for Airport Surface Operations Management, 12 th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Indianapolis, Indiana.
+
+
+
+	
+		Characterization of Tactical Departure Scheduling in the National Airspace System
+		
+			RichardCapps
+		
+		
+			ShawnEngelland
+		
+		10.2514/6.2011-6835
+	
+	
+		11th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Virginia Beach, Virginia
+		
+			American Institute of Aeronautics and Astronautics
+			2011
+		
+	
+	Capps, A. and S. Engelland, 2011, Characterization of Tactical Departure Scheduling in the National Airspace System, 11 th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Virginia Beach, Virginia.
+
+
+
+	
+		Analysis of divergences from area navigation departure routes at DFW airport
+		
+			PaulFBorchers
+		
+		
+			KevinDay
+		
+		10.1109/dasc.2009.5347532
+	
+	
+		2009 IEEE/AIAA 28th Digital Avionics Systems Conference
+		Orlando, Florida
+		
+			IEEE
+			2009
+		
+	
+	Borchers, P. and K. Day, 2009, Analysis of Divergences from Area Navigation Departure Routes at DFW Airport, 28 th Digital Avionics Systems Conference, Orlando, Florida.
+
+
+
+	
+		Challenges to Modeling Vectored Area Navigation Departures at Dallas/Fort Worth International Airport
+		
+			PaulBorchers
+		
+		
+			OusmaneDiallo
+		
+		
+			KevinDay
+		
+		10.2514/6.2011-6836
+	
+	
+		11th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Virginia Beach, Virginia
+		
+			American Institute of Aeronautics and Astronautics
+			2011
+		
+	
+	Borchers, P., O. Diallo, and K. Day, 2011, Challenges to Modeling Vectored Area Navigation Departures at DFW Airport, 11 th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Virginia Beach, Virginia.
+
+
+
+	
+		Characterization of Nationwide TRACON Departure Operations
+		
+			MatthewSKistler
+		
+		
+			AlanCapps
+		
+		
+			ShawnAEngelland
+		
+		10.2514/6.2014-2019
+	
+	
+		14th AIAA Aviation Technology, Integration, and Operations Conference
+		Atlanta, Georgia
+		
+			American Institute of Aeronautics and Astronautics
+			2014
+		
+	
+	Kistler, M., A. Capps, and S. Engelland, 2014, Characterization of Nationwide TRACON Departure Operations, 14 th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Atlanta, Georgia.
+
+
+
+	
+		
+			RDelaura
+		
+		
+			NUnderhill
+		
+		
+			LHal
+		
+		
+			YRodriguez
+		
+		Evaluation of the Integrated Departure Route Planning (IDRP) Tool
+		
+			2012. 2011
+		
+	
+	DeLaura, R., N. Underhill, L. Hal, and Y. Rodriguez, 2012, Evaluation of the Integrated Departure Route Planning (IDRP) Tool 2011
+
+
+
+	
+		
+		
+			Prototype
+		
+		ATC-388
+		
+			Lincold Laboratory, MIT, Lexigton, Massachusetts
+		
+	
+	Project Report
+	Prototype, Project Report ATC-388, Lincold Laboratory, MIT, Lexigton, Massachusetts.
+
+
+
+	
+		
+			JDearmon
+		
+		
+			NTaber
+		
+		
+			HBateman
+		
+		
+			LSong
+		
+		
+			TMasek
+		
+		
+			DGilani
+		
+		Benefits Analysis of a Departure Management Prototype for the
+		New York Area; Berlin, Germany
+		
+			2011
+		
+		
+			Ninth USA/Europe Air Traffic Management Research and Development Seminar
+		
+	
+	DeArmon, J., N. Taber, H. Bateman, L. Song, T. Masek, and D. Gilani, 2011, Benefits Analysis of a Departure Management Prototype for the New York Area, Ninth USA/Europe Air Traffic Management Research and Development Seminar, Berlin, Germany.
+
+
+
+	
+		Development of Conflict-Free, Unrestricted Climbs for a Terminal Area Departure Tool
+		
+			YoonJung
+		
+		
+			DouglasIsaacson
+		
+		10.2514/6.2003-6794
+	
+	
+		AIAA's 3rd Annual Aviation Technology, Integration, and Operations (ATIO) Forum
+		Denver, Colorado
+		
+			American Institute of Aeronautics and Astronautics
+			2003
+		
+	
+	Jung, Y. and D. Isaacson, 2003, Development of Conflict-Free, Unrestricted Climbs for a Terminal Area Departure Tool, 3 rd AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Denver, Colorado.
+
+
+
+	
+		Scheduling and separating departures crossing arrival flows in shared airspace
+		
+			EricChevalley
+		
+		
+			BonnyParke
+		
+		
+			PaulLee
+		
+		
+			FaisalOmar
+		
+		
+			HwasooLee
+		
+		
+			NancyBienert
+		
+		
+			JoshuaKraut
+		
+		
+			EverettPalmer
+		
+		10.1109/dasc.2013.6712522
+	
+	
+		2013 IEEE/AIAA 32nd Digital Avionics Systems Conference (DASC)
+		Syracuse, New York
+		
+			IEEE
+			2013
+		
+	
+	Chevalley, E., B. Parke, P. Lee, F. Omar, H. Lee, N. Bienert, J. Kraut, and E. Palmer, 2013, 32 nd Digital Avionics Systems Conference, Syracuse, New York.
+
+
+
+	
+		Trajectory-Based Takeoff Time Predictions Applied to Tactical Departure Scheduling: Concept Description, System Design, and Initial Observations
+		
+			ShawnEngelland
+		
+		
+			RichardCapps
+		
+		10.2514/6.2011-6875
+	
+	
+		11th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Virginia Beach, Virginia
+		
+			American Institute of Aeronautics and Astronautics
+			2011
+		
+	
+	Engelland, S. and A. Capps, 2011, Trajectory- Based Takeoff Time Predictions Applied to Tactical Departure Scheduling: Concept Development, System Design, and Initial Observations, 11 th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Virginia Beach, Virginia.
+
+
+
+	
+		Design Characteristics of a Terminal Departure Scheduler
+		
+			AlanCapps
+		
+		
+			MathewSKistler
+		
+		
+			ShawnAEngelland
+		
+		10.2514/6.2014-2020
+	
+	
+		14th AIAA Aviation Technology, Integration, and Operations Conference
+		Atlanta, Georgia
+		
+			American Institute of Aeronautics and Astronautics
+			2014
+		
+	
+	Capps, A., M. Kistler, and S. Engelland, 2014, Design Characteristics for a Terminal Departure Scheduler, 14 th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Atlanta, Georgia.
+
+
+
+	
+		The Route Availibility Planning Tool (RAPT): Evaluation of Departure Management Decision Support in New York During the 2008 Convective Weather Season
+		
+			MRobinson
+		
+		
+			RDelaura
+		
+		
+			NUnderhill
+		
+		
+			2009
+			Napa Valley, California
+		
+		
+			Eighth USA/Europe Air Traffic Management Research and Development Seminar
+		
+	
+	Robinson, M., R. DeLaura, and N. Underhill, 2009, The Route Availibility Planning Tool (RAPT): Evaluation of Departure Management Decision Support in New York During the 2008 Convective Weather Season, Eighth USA/Europe Air Traffic Management Research and Development Seminar, Napa Valley, California.
+
+
+
+	
+		Flexible, Performance-Based Route Planning for Super-Dense Operations
+		
+			JosephPrete
+		
+		
+			JimmyKrozel
+		
+		
+			JosephMitchell
+		
+		
+			JoondongKim
+		
+		
+			JasonZou
+		
+		10.2514/6.2008-6825
+	
+	
+		AIAA Guidance, Navigation and Control Conference and Exhibit
+		Honolulu, Hawaii
+		
+			American Institute of Aeronautics and Astronautics
+			2008
+		
+	
+	Prete, J., J. Krozel, J. Mitchell, J. Kim, and J. Zou, 2008, Flexible, Performance-based Route Planning for Super-Dense Operations, AIAA Guidance, Navigation, and Control Conference, Honolulu, Hawaii.
+
+
+
+	
+		Dynamic Metroplex Airspace
+		
+			WilliamHall
+		
+		
+			StephenAtkins
+		
+		10.2514/6.2011-7064
+	
+	
+		11th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Virginia Beach, Virginia
+		
+			American Institute of Aeronautics and Astronautics
+			2011
+		
+	
+	Hall, W. and S. Atkins, 2011, Dynamic Metroplex Airspace, 11 th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Virginia Beach, Virginia.
+
+
+
+	
+		Weather Avoidance Optimal Routing for Extended Terminal Airspace in Support of Dynamic Airspace Configuration, 31 st Digital Avionics Systems Conference
+		
+			JChen
+		
+		
+			AYousefi
+		
+		
+			SKrishna
+		
+		
+			BSliney
+		
+		
+			PSmith
+		
+		
+			2012
+			Williamsburge, Virginia
+		
+	
+	Chen, J., A. Yousefi, S. Krishna, B. Sliney, and P. Smith, 2012, Weather Avoidance Optimal Routing for Extended Terminal Airspace in Support of Dynamic Airspace Configuration, 31 st Digital Avionics Systems Conference, Williamsburge, Virginia.
+
+
+
+	
+		Identification of Robust Terminal-Area Routes in Convective Weather
+		
+			DMichalek-Pfeil
+		
+		
+			HBalakrishnan
+		
+	
+	
+		Transpotation Science
+		
+			46
+			1
+			
+			2012
+		
+	
+	Michalek-Pfeil, D. and H. Balakrishnan, 2012, Identification of Robust Terminal-Area Routes in Convective Weather, Transpotation Science, Vol. 46, No. 1, pp. 65-73.
+
+
+
+	
+		Modeling and Optimization of Terminal Area Utilization by Assigning Arrival and Departure Fixes
+		
+			BosungKim
+		
+		
+			John-PaulClarke
+		
+		10.2514/6.2013-5256
+	
+	
+		AIAA Guidance, Navigation, and Control (GNC) Conference
+		
+			American Institute of Aeronautics and Astronautics
+			2013
+		
+	
+	Kim, B. and J. P. Clarke, 2013, Modeling and Optimization of Terminal Area Utilization by Assigning Arrival and Departure Fixes, AIAA Guidance, Navigation, and Control (GNC)
+
+
+
+	
+		
+		
+			Conference
+		
+		
+			Boston, Masachusetts
+		
+	
+	Conference, Boston, Masachusetts.
+
+
+
+	
+		An examination of selected datacom options for the near-term implementation of trajectory based operations
+		
+			WalterWJohnson
+		
+		
+			SummerLBrandt
+		
+		
+			JoelLachter
+		
+		
+			VernolBattiste
+		
+		
+			VeranikaLim
+		
+		
+			RobertKoteskey
+		
+		
+			Arik-Quang V.Dao
+		
+		
+			SarahVLigda
+		
+		
+			Shu-ChiehWu
+		
+		10.1109/dasc.2011.6096233
+	
+	
+		2011 IEEE/AIAA 30th Digital Avionics Systems Conference
+		Villasimius, Sardinia
+		
+			IEEE
+			2012
+		
+	
+	Johnson, W., H. Latcher, S. Brandt, R. Koteskey, A. Dao, J. Kraut, S. Ligda, and V. Battiste, 2012, Evaluation of Controller and Pilot Performance, Workload, and Acceptability Under A NextGen Concept for Dynamic Weather Adapted Arrival Routing, 30 th European Association for Aviation Psychology (EAAP) Conference, Villasimius, Sardinia.
+
+
+
+	
+		
+			RZhang
+		
+		
+			RKincaid
+		
+		Robust Optimization Model for Runway Configurations Management, 11 th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Virginia Beach, Virginia
+		
+			2011
+		
+	
+	Zhang, R. and R. Kincaid, 2011, Robust Optimization Model for Runway Configurations Management, 11 th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Virginia Beach, Virginia.
+
+
+
+	
+		Tactical airport configuration management
+		
+			ChristopherAProvan
+		
+		
+			StephenCAtkins
+		
+		10.1109/icnsurv.2011.5935346
+	
+	
+		2011 Integrated Communications, Navigation, and Surveillance Conference Proceedings
+		
+			IEEE
+			2011
+		
+	
+	Integrated
+	Provan, C. and S. Atkins, 2011, Tactical Airport Configuration Management, Integrated
+
+
+
+	
+		Integrated communications navigation and surveillance (ICNS) conference
+		
+			RichardJehlen
+		
+		10.1109/icnsurv.2013.6548683
+	
+	
+		2013 Integrated Communications, Navigation and Surveillance Conference (ICNS)
+		Herndon, Virginia
+		
+			IEEE
+			
+		
+	
+	Communications, Navigation, and Surveilance (ICNS) Conference, Herndon, Virginia.
+
+
+
+	
+		Optimal Selection of Airport Runway Configurations
+		
+			DimitrisBertsimas
+		
+		
+			MichaelFrankovich
+		
+		
+			AmedeoOdoni
+		
+		10.1287/opre.1110.0956
+	
+	
+		Operations Research
+		Operations Research
+		0030-364X
+		1526-5463
+		
+			59
+			6
+			
+			2011
+			Institute for Operations Research and the Management Sciences (INFORMS)
+		
+	
+	Bertsimas, D., M. Frankovich, and A. Odioni, 2011, Optimal Selection of Airport Runway Configurations, Operations Research, Vol. 59, No. 6, pp. 1407-1419.
+
+
+
+	
+		Heuristic Search for Tactical Runway Configuration Management
+		
+			JenniferThorne
+		
+		
+			RexKincaid
+		
+		10.2514/6.2012-5499
+	
+	
+		12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference and 14th AIAA/ISSMO Multidisciplinary Analysis and Optimization Conference
+		Indianapolis, Indiana
+		
+			American Institute of Aeronautics and Astronautics
+			2012
+		
+	
+	Thorne, J. and R. Kincaid, 2012, Heuristic Search for Tactical Runway Configuration Management, 12 th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Indianapolis, Indiana.
+
+
+
+	
+		Decision Support for Optimal Runway Reconfiguration
+		
+			XiaoliBai
+		
+		
+			PadmanabhanKMenon
+		
+		10.2514/6.2013-4397
+	
+	
+		2013 Aviation Technology, Integration, and Operations Conference
+		Los Angeles, California
+		
+			American Institute of Aeronautics and Astronautics
+			2013
+		
+	
+	Bai, X. and P. K. Menon, 2013, Decision Support for Optimal Runway Reconfiguration, 13 th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Los Angeles, California.
+
+
+
+	
+		Benefits Assessment for Tactical Runway Configuration Management Tool
+		
+			RosaMOseguera-Lohr
+		
+		
+			NipaPhojanamongkolkij
+		
+		
+			GaryWLohr
+		
+		
+			JamesWFenbert
+		
+		10.2514/6.2013-4395
+	
+	
+		2013 Aviation Technology, Integration, and Operations Conference
+		Los Angeles, California
+		
+			American Institute of Aeronautics and Astronautics
+			2013
+		
+	
+	Oseguera-Lohr, R., N. Phojanamongkolkij, and G. Lohr, 2013, Benefits Assessment for Tactical Runway Configuration Management Tool, 13 th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Los Angeles, California.
+
+
+
+	
+		Framework for High-Density-Area Departure and Arrival Traffic Management
+		
+			ChristineTaylor
+		
+		
+			TudorMasek
+		
+		
+			HiltonBateman
+		
+		10.2514/1.57273
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		Journal of Guidance, Control, and Dynamics
+		0731-5090
+		1533-3884
+		
+			36
+			4
+			
+			2013
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Taylor, C., T. Masek, and H. Bateman, 2013, Framewok for High-Density-Area Departure and Arrival Traffic Management, Journal of Guidance, Control, and Dynamics, Vol. 36, No. 4, pp. 1134- 1149, DOI: 10.2514/1.57273.
+
+
+
+	
+		Dynamic Weather Routes: Two Years of Operational Testing at American Airlines
+		
+			DavidMcnally
+		
+		
+			KapilSheth
+		
+		
+			ChesterGong
+		
+		
+			MikeSterenchuk
+		
+		
+			ScottSahlman
+		
+		
+			SusanHinton
+		
+		
+			ChuHanLee
+		
+		
+			Fu-TaiShih
+		
+		10.2514/atcq.23.1.55
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			23
+			1
+			
+			2013
+			American Institute of Aeronautics and Astronautics (AIAA)
+			Chicago, Illinois
+		
+		
+			Tenth USA/Europe Air Traffic Management Research and Development Seminar
+		
+	
+	McNally, D., K. Sheth, C. Gong, P. Borchers, J. Osborne, D. Keany, B. Scott, S. Smith, S. Sahlman, C. Lee, and J. Cheng, 2013, Operational Evaluation of Dynamic Weather Routes at American Airlines, Tenth USA/Europe Air Traffic Management Research and Development Seminar, Chicago, Illinois.
+
+
+
+	
+		A Mixed Integer Linear Program for Solving a Multiple Route Taxi Scheduling Problem
+		
+			JustinMontoya
+		
+		
+			ZacharyWood
+		
+		
+			SivakumarRathinam
+		
+		
+			WaqarMalik
+		
+		10.2514/6.2010-7692
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		Boston, Masachusetts
+		
+			American Institute of Aeronautics and Astronautics
+			2010
+		
+	
+	Montoya, J., Z. Wood, S. Rathinam, and W. Malik, 2010, A Mixed Integer Linear Program for Solving a Multiple Route Taxi Scheduling Problem, AIAA Guidance, Navigation, and Control (GNC) Conference, Boston, Masachusetts.
+
+
+
+	
+		Generation of Optimized Routes and Schedules for Surface Movement of Aircraft on Taxiways
+		
+			PrateekGupta
+		
+		
+			HarishwarSubramanian
+		
+		
+			RajkumarPant
+		
+		10.2514/6.2010-9211
+	
+	
+		10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Fort Worth, Texas
+		
+			American Institute of Aeronautics and Astronautics
+			2010
+		
+	
+	Gupta, P., H. Subramanian, and R. Pant, 2010, Generation of Optimized Route and Schedules for Surface Movement of Aircraft on Taxiways, 10 th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Fort Worth, Texas.
+
+
+
+	
+		Optimization of Taxiway Routing and Runway Scheduling
+		
+			Clare
+		
+		
+			G
+		
+		
+			ARichards
+		
+		10.1109/TITS.2011.2131650
+	
+	
+		IEEE Transactions on Intelligent Transportation Systems
+		
+			12
+			4
+			
+			2011
+		
+	
+	Clare, G. and A. Richards, 2011, Optimization of Taxiway Routing and Runway Scheduling, IEEE Transactions on Intelligent Transportation Systems, Vol. 12, No. 4, pp. 1000-1013, DOI: 10.1109/TITS.2011.2131650.
+
+
+
+	
+		A Collaborative Optimization Model for Ground Taxi Based on Aircraft Priority
+		
+			YuJiang
+		
+		
+			ZhihuaLiao
+			0000-0001-9618-3208
+		
+		
+			HonghaiZhang
+		
+		10.1155/2013/854364
+	
+	
+		Mathematical Problems in Engineering
+		Mathematical Problems in Engineering
+		1024-123X
+		1563-5147
+		
+			2013
+			
+			2013
+			Hindawi Limited
+		
+	
+	Jiang, Y., Z. Liao, and H. Zhang, 2013, A Collaborative Optimization Model for Ground Taxi Based on Aircraft Priority, Mathematical Problems in Engineering, DOI: 10.1155/2013/854364.
+
+
+
+	
+		An Algorithm for Managing Aircraft Movement on an Airport Surface
+		
+			UrbanoTancredi
+		
+		
+			DomenicoAccardo
+		
+		
+			GiancarmineFasano
+		
+		
+			AlfredoRenga
+		
+		
+			GiancarloRufino
+		
+		
+			GiuseppeMaresca
+		
+		10.3390/a6030494
+	
+	
+		Algorithms
+		Algorithms
+		1999-4893
+		
+			6
+			3
+			
+			2013
+			MDPI AG
+		
+	
+	Tancredi, U., D. Accardo, G. Fasano, A. Renga, G. Rufino, and G. Maresca, 2013, An Algorithm for Managing Aircraft Movement on an Airport Surface, Algorithms, No. 6, pp. 494-511, DOI: 10.3390/a6030494.
+
+
+
+	
+		Arrival Management Architecture and Performance Analysis with Advanced Automation and Avionics Capabilities
+		
+			AslaugHaraldsdottir
+		
+		
+			JulienScharl
+		
+		
+			JanetKing
+		
+		
+			MatthewBerge
+		
+		10.2514/6.2009-7006
+	
+	
+		9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO)
+		Hilton Head, South Carolina
+		
+			American Institute of Aeronautics and Astronautics
+			2009
+		
+	
+	Haraldsdottir, A., J. Scharl, J. King, and M. Berge, 2009, Arrival Management Architecture management Architecture and Performance Analysis with Advanced Automation and Avionics Capabilities, 9 th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Hilton Head, South Carolina.
+
+
+
+	
+		Design considerations for shortcut path-based time recovery
+		
+			ShannonZelinski
+		
+		10.1109/dasc.2013.6719601
+	
+	
+		2013 IEEE/AIAA 32nd Digital Avionics Systems Conference (DASC)
+		Syracuse, New York
+		
+			IEEE
+			2013
+		
+	
+	Zelinski, S., 2013, Design Considerations for Shortcut Path-Based Time Recovery, 32 st Digital Avionics Systems Conference, Syracuse, New York.
+
+
+
+	
+		Precision Arrival Scheduling for Tactical Reconfiguration
+		
+			ShannonZelinski
+		
+		10.2514/6.2014-3152
+	
+	
+		14th AIAA Aviation Technology, Integration, and Operations Conference
+		Atlanta, Georgia
+		
+			American Institute of Aeronautics and Astronautics
+			2014
+		
+	
+	Zelinski, S., 2014, Precision Arrival Scheduling for Tactical Reconfiguration, 14 th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Atlanta, Georgia.
+
+
+
+	
+		Investigating the impact of off-nominal events on high-density &#x2018;green&#x2019; arrivals
+		
+			ToddJCallantine
+		
+		
+			ChristopherCabrall
+		
+		
+			MichaelKupfer
+		
+		
+			LynneMartin
+		
+		
+			JoeyMercer
+		
+		
+			EverettAPalmer
+		
+		10.1109/dasc.2011.6096195
+	
+	
+		2011 IEEE/AIAA 30th Digital Avionics Systems Conference
+		Seattle, Washingon
+		
+			IEEE
+			2011
+		
+	
+	Callantine, T., C. Cabrall, M. Kupfer, L. Martin, J. Mercer, and E. Palmer, 2011, Investigating the Impact of off-Nominal Events on High-Density 'Green' Arrivals, 30 th Digital Avionics Systems Conference, Seattle, Washingon.
+
+
+
+	
+		Autonomous System for Air Traffic Control in Terminal Airspace
+		
+			AnastasiosNikoleris
+		
+		
+			HeinzErzberger
+		
+		10.2514/6.2014-2861
+	
+	
+		14th AIAA Aviation Technology, Integration, and Operations Conference
+		Atlanta, Georgia
+		
+			American Institute of Aeronautics and Astronautics
+			2014
+		
+	
+	Nikoleris, T., H. Erzberger, R. Paielli, and Y. Chu, 2014, Autonomous System for Air Traffic Control in Terminal Airspace, 14th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Atlanta, Georgia.
+
+
+
+	
+		Development of a route crossing tool for shared airspace environments
+		
+			DaphneRein-Weston
+		
+		
+			EricChevalley
+		
+		10.1109/dasc.2014.6979655
+	
+	
+		2014 IEEE/AIAA 33rd Digital Avionics Systems Conference (DASC)
+		Colorado Springs, Colorado
+		
+			IEEE
+			2014
+		
+	
+	Rein-Weston, D., E. Chevalley, A. Globus, R. Jacoby, and E. Palmer, 2014, Development of Route Crossing Tool for Shared Airspace Environments, 33 rd Digital Avionics Systems Conference, Colorado Springs, Colorado.
+
+
+
+	
+		Optimal Integration of Departures and Arrivals in Terminal Airspace
+		
+			MinXue
+		
+		
+			ShannonZelinski
+		
+		10.2514/1.60489
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		Journal of Guidance, Control, and Dynamics
+		0731-5090
+		1533-3884
+		
+			37
+			1
+			
+			2014
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Xue, M. and S. Zelinski, 2014, Optimal Integration of Departures and Arrivals in Terminal Airspace, Journal of Guidance, Control, and Dynamics, Vol. 37, No. 1, pp. 207-213, DOI: 10.2514/1.60489.
+
+
+
+	
+		The Design and Optimization of a Combined Arrival-Departure Scheduler
+		
+			AnkitTyagi
+		
+		
+			FrederickWieland
+		
+		10.2514/6.2012-5697
+	
+	
+		12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference and 14th AIAA/ISSMO Multidisciplinary Analysis and Optimization Conference
+		Indianapolis, Indiana
+		
+			American Institute of Aeronautics and Astronautics
+			2012
+		
+	
+	Tyagi, A. and F. Wieland, 2012, The Design and Optimization of a Combined Arrival-Departure Scheduler, 12 th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Indianapolis, Indiana.
+
+
+
+	
+		
+			SChandrasekar
+		
+		
+			IHwang
+		
+		Optimal Arrival and Departure Sequencing on a Runway System, AIAA Guidance, Navigation, and Control (GNC) Conference
+		Boston, Masachusetts
+		
+			2013
+		
+	
+	Chandrasekar, S. and I. Hwang, 2013, Optimal Arrival and Departure Sequencing on a Runway System, AIAA Guidance, Navigation, and Control (GNC) Conference, Boston, Masachusetts.
+
+
+
+	
+		Calculating capacity of dependent runway configurations: A discrete-event simulation approach for analysing the effect of aircraft sequencing
+		
+			JoeyKlugt
+		
+		
+			PaulCRoling
+		
+		
+			RobTenHove
+		
+		
+			RichardCurran
+		
+		10.2514/6.2013-4353
+	
+	
+		2013 Aviation Technology, Integration, and Operations Conference
+		Los Angeles, California
+		
+			American Institute of Aeronautics and Astronautics
+			2013
+		
+	
+	Klugt, J., P. Roling, R. Curran, R. Hove, 2013, Calculating Capacity of Dependent Runway Configurations: A Discrete-Event Simulation Approach for Analysing the Effect of Aircraft Sequencing, 13 th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Los Angeles, California.
+
+
+
+	
+		Runway Operations Optimization in the Presence of Uncertainties
+		
+			GustafSolveling
+		
+		
+			SenaySolak
+		
+		
+			John-PaulClarke
+		
+		
+			EllisJohnson
+		
+		10.2514/1.52481
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		Journal of Guidance, Control, and Dynamics
+		0731-5090
+		1533-3884
+		
+			34
+			5
+			
+			2010
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Solveling, G., S. Solak, J. P. Clarke, and E. Johnson, 2010, Runway Operations Optimization in the Presence of Uncertainties, Journal of Guidance, Control, and Dynamics, Vol. 34, No. 5, pp. 1373- 1382, DOI: 10.2514/1.52481.
+
+
+
+	
+		An approach to optimization of airport taxiway scheduling and traversal under uncertainty
+		
+			RossAnderson
+		
+		
+			DejanMilutinović
+		
+		10.1177/0954410011433238
+	
+	
+		Proceedings of the Institution of Mechanical Engineers, Part G: Journal of Aerospace Engineering
+		Proceedings of the Institution of Mechanical Engineers, Part G: Journal of Aerospace Engineering
+		0954-4100
+		2041-3025
+		
+			227
+			2
+			
+			2011
+			SAGE Publications
+		
+	
+	Anderson, R. and D. Milutinovic, 2011, An Approch to Optimization of Airport Taxiway Scheduling and Traversal Under Uncertainty, Proceedings of the Institution of Mechanical Engineers, part G: Journal of Aerospace Engineering, Vol. 227, No. 2, pp. 273-284.
+
+
+
+	
+		Optimizing integrated terminal airspace operations under uncertainty
+		
+			ChristabelleBosson
+		
+		
+			MinXue
+		
+		
+			ShannonZelinski
+		
+		10.1109/dasc.2014.6979545
+	
+	
+		2014 IEEE/AIAA 33rd Digital Avionics Systems Conference (DASC)
+		Colorado Springs, Colorado
+		
+			IEEE
+			2014
+		
+	
+	Bosson, C., M. Xue, and S. Zelinski, 2014, Optimizing Integrated Terminal Airspace Operations Under Uncertainty, 33 rd Digital Avionics Systems Conference, Colorado Springs, Colorado.
+
+
+
+	
+		Dynamic stochastic scheduler for integrated arrivals and departures
+		
+			MinXue
+		
+		
+			ShannonZelinski
+		
+		10.1109/dasc.2014.6979399
+	
+	
+		2014 IEEE/AIAA 33rd Digital Avionics Systems Conference (DASC)
+		Colorado Springs, Colorado
+		
+			IEEE
+			2014
+		
+	
+	Xue, M. and S. Zelinski, 2014, Dynamic Stochastic Scheduler for Integrated Arrivals and Departures, 33 rd Digital Avionics Systems Conference, Colorado Springs, Colorado.
+
+
+
+	
+		Ration by Schedule for airport arrival and departure planning and scheduling
+		
+			ChrisBrinton
+		
+		
+			StephenAtkins
+		
+		
+			LaraCook
+		
+		
+			StevenLent
+		
+		
+			TomPrevost
+		
+		10.1109/icnsurv.2010.5503239
+	
+	
+		2010 Integrated Communications, Navigation, and Surveillance Conference Proceedings
+		Herndon, Virginia
+		
+			IEEE
+			2010
+		
+	
+	Brinton, C., S. Atkins, L. Cook, S. Lent, and T. Prevost, 2010, Ration by Schedule for Airport Arrival and Departure Planning and Scheduling, Integrated Communications Navigation and Surveillance (ICNS) Conference, Herndon, Virginia.
+
+
+
+	
+		A Collaborative Optimization Model for Ground Taxi Based on Aircraft Priority
+		
+			YuJiang
+		
+		
+			ZhihuaLiao
+			0000-0001-9618-3208
+		
+		
+			HonghaiZhang
+		
+		10.1155/2013/854364
+	
+	
+		Mathematical Problems in Engineering
+		Mathematical Problems in Engineering
+		1024-123X
+		1563-5147
+		
+			2013
+			
+			2013
+			Hindawi Limited
+		
+	
+	Jiang, Y., Z. Liao, and H. Zhang, 2013, A Collaborative Optimization Model for Ground Taxi Based on Aircraft Priority, Mathematical Problems in Engineering, DOI: 10.1155/2013/854364.
+
+
+
+	
+		Scheduling aircraft landings using airlines’ preferences
+		
+			MJSoomer
+		
+		
+			GJFranx
+		
+		10.1016/j.ejor.2007.06.017
+	
+	
+		European Journal of Operational Research
+		European Journal of Operational Research
+		0377-2217
+		
+			190
+			1
+			
+			2008
+			Elsevier BV
+		
+	
+	Soomer, M. and G. Franx, 2008, Scheduling Aircraft Landings Using Airlines' Preferences, European Journal of Operational Research, Vol. 190, No. 1, pp.277-291.
+
+
+
+	
+		Nextgen operations in a simulated NY area airspace
+		
+			NancyMSmith
+		
+		
+			BonnyParke
+		
+		
+			PaulLee
+		
+		
+			JeffHomola
+		
+		
+			ConnieBrasil
+		
+		
+			NathanBuckley
+		
+		
+			ChrisCabrall
+		
+		
+			EricChevalley
+		
+		
+			CindyLin
+		
+		
+			SusanMorey
+		
+		
+			FaisalOmar
+		
+		
+			DaphneRein-Weston
+		
+		
+			Hyo-Sang Yoo
+		
+		10.1109/dasc.2013.6712607
+	
+	
+		2013 IEEE/AIAA 32nd Digital Avionics Systems Conference (DASC)
+		Syracuse, New York
+		
+			IEEE
+			2013
+		
+	
+	Smith, N., B. Parke, P. Lee, J. Homola, C. Brasil, N. Buckley, C. Cabrall, S. Morey, F. Omar, D. Rein-Weston, and H. Yoo, 2013, NextGen Operations in a Simulated NY Area Airspace, 32 nd Digital Avionics Systems Conference, Syracuse, New York.
+
+
+
+	
+		Considerations for Interval Management Operations in a Mixed-Equipage Environment
+		
+			LesleyWeitz
+		
+		
+			JonathanHammer
+		
+		
+			RandallBone
+		
+		
+			WilliamPenhallegon
+		
+		
+			PeterMoertl
+		
+		10.2514/6.2012-5616
+	
+	
+		12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference and 14th AIAA/ISSMO Multidisciplinary Analysis and Optimization Conference
+		Indianapolis, Indiana
+		
+			American Institute of Aeronautics and Astronautics
+			2012
+		
+	
+	Weitz, L., R. Katkin, P. Moertl, W. Penhallegon, J. Hammer, R. Bone, and T. Peterson, 2012, Considerations for Interval Management Operations in a Mixed-Equipage Environment, 12 th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Indianapolis, Indiana.
+
+
+
+	
+		Initial Investigations of Controller Tools and Procedures for Schedule-Based Arrival Operations with Mixed Flight-Deck Interval Management Equipage
+		
+			ToddCallantine
+		
+		
+			ChristopherCabrall
+		
+		
+			MichaelKupfer
+		
+		
+			JoeyMercer
+		
+		
+			ThomasPrevot
+		
+		10.2514/6.2012-5673
+	
+	
+		12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference and 14th AIAA/ISSMO Multidisciplinary Analysis and Optimization Conference
+		Chicago, Illinois
+		
+			American Institute of Aeronautics and Astronautics
+			2013
+		
+		
+			Tenth USA/Europe Air Traffic Management Research and Development Seminar
+		
+	
+	Callantine, T., M. Kupfer, L. Martin, and T. Prevot, 2013, Simulations of Continuous Decent Operations with Arrival-Management Automation and Mixed Flight-Deck Interval Management Equipage, Tenth USA/Europe Air Traffic Management Research and Development Seminar, Chicago, Illinois.
+
+
+
+	
+		Flight Deck Surface Trajectory-Based Operations (STBO): Simulation Results and ConOps Implications
+		
+			DFoyle
+		
+		
+			BHooey
+		
+		
+			DBakowski
+		
+		
+			JWilliams
+		
+		
+			CKunkle
+		
+		
+			2011
+			Berlin, Germany
+		
+		
+			Ninth USA/Europe Air Traffic Management Research and Development Seminar
+		
+	
+	Foyle, D., B. Hooey, D. Bakowski, J. Williams, and C. Kunkle, 2011, Flight Deck Surface Trajectory-Based Operations (STBO): Simulation Results and ConOps Implications, Ninth USA/Europe Air Traffic Management Research and Development Seminar, Berlin, Germany.
+
+
+
+	
+		Air-Ground Integrated Concept for Surface Conflict Detection and Resolution
+		
+			VeeraVaddi
+		
+		
+			VictorCheng
+		
+		
+			JasonKwan
+		
+		
+			SandyWiraatmadja
+		
+		
+			SandraLozito
+		
+		
+			YoonJung
+		
+		10.2514/6.2012-5645
+	
+	
+		12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference and 14th AIAA/ISSMO Multidisciplinary Analysis and Optimization Conference
+		Indianapolis, Indiana
+		
+			American Institute of Aeronautics and Astronautics
+			2012
+		
+	
+	Vaddi, S., V. Cheng, J. Kwan, and S. Wiraadmatja, 2012, Air-Ground Integrated Concept for Surface Conflict Detection and Resolution, 12 th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, Indianapolis, Indiana.
+
+
+
+	
+		Flight deck robustness/conformance testing with a surface management system
+		
+			DavidCFoyle
+		
+		
+			DeborahLBakowski
+		
+		
+			BeckyLHooey
+		
+		
+			LaraW SCheng
+		
+		
+			CynthiaAWolter
+		
+		10.1145/2669592.2669687
+		
+	
+	
+		Proceedings of the International Conference on Human-Computer Interaction in Aerospace
+		the International Conference on Human-Computer Interaction in AerospaceSanta Clara, California
+		
+			ACM
+			2014
+		
+	
+	Foyle. D, D. Bakowski, B. Hooey, L. Cheng, and C. Wolter, 2014, Flight Deck Robustness/Conformance Testing with a Surface Managmeent System: An Integrated Pilot-Controller Human-in-the-loop Surface Operations Simulation, International Conference on Human-Computer Interaction in Aerospace (HCI-Aero), Santa Clara, California. Email Address Shannon.j.zelinski@nasa.gov
+
+
+				
+			
+		
+	

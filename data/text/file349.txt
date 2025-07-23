@@ -1,0 +1,531 @@
+
+	
+	
+		
+INTRODUCTIONDelays in airport surface operations negatively impact other areas in the air traffic system, even those far from the airport.Such delays not only affect the ability of aircraft to meet scheduled arrival times at destination airports, but also add uncertainty and complexity in controlling aircraft, resulting in economic and environmental cost due to increased fuel usage and emissions.Such inefficiencies also add to the direct operational cost of the airlines, and increase passenger discomfort.In the United States, airport inefficiencies result in excess delay in queues that can be traced back to the allocation of aircraft control.Most of the major airlines in the United States control the ramp area (or non-movement area) and the FAA Air Traffic Control Tower (or simply "Tower") controls traffic on taxiways and runways (or movement area).Typically, airlines push back an aircraft from its gate as soon as the aircraft is ready, partly due to the scheduled gate-push back being a performance metric [1].Often times these movements are uncoordinated and during busy times, result in taxiway congestion and large runway queues [2][3][4].To address the inefficiencies of surface movement, the Air Traffic Management (ATM) research community in the United States has developed various concepts and procedures to reduce taxi delay.Much of this research has focused on concepts that include optimized surface planning.Such optimized surface planning for aircraft between gates and runways has been shown to reduce delays, maintain or increase throughput and increase surface traffic efficiency [2][3][4][5].Similar optimization concepts for taxiway and runway operations have also been explored for use by the European surface ATM research community [6,7].However, previous research has primarily focused on offline evaluation.Various papers show reduction in taxi delay by solving large optimization problems using commercially available software packages [4,8], where the reduction is tested over small, isolated scenarios.Various components within the optimization framework of surface operations have also been integrated with fast-time simulation tools to evaluate the overall system performance for a longer period of time (e.g., up to 24 hours) [9].In both the cases, the human aspects (controllers and pilots) have not been involved, and the questions of information relay and realizable benefits have not been tested.This paper describes the concept and evaluation of the Spot and Runway Departure Advisor (SARDA), where realtime optimized advisories for managing surface traffic were tested in a human-in-the-loop (HITL) environment.The concept of optimized surface operations used by SARDA is presented first.Following this, the technical approach used for building this tool is briefly described in Section III.In Section IV, a brief description of the HITL simulation conducted in April 2010 is presented, followed by detailed results from this simulation in Section V. Results reported in this paper will focus on the changes in delay, the number of aircraft stops, quantification of fuel consumption, and aircraft engine emissions.Other aspects of the experiment, including human factors findings, are presented in a separate paper (submitted at the same venue) 1 .Concluding remarks are discussed in Section VI.II.CONCEPT OF OPTIMIZED SURFACE OPERATIONS SARDA controls aircraft using the same concept introduced by previous studies of airport operations.It is based on a queuing model approach where aircraft can be scheduled at control points with an objective of reducing observed delays [10,11].In this model, control points were identified at the spots2 , runways, and runway crossing lines.Gate management and time control were not included in either this tool or the HITL experiment since the scope of the study was limited to the control functions of today's Tower controllers.A goal of SARDA is to provide an optimal departure schedule for aircraft by metering them at the spots.This allows only an optimal number of sequenced aircraft in the movement area, thus improving movement area efficiency too.The mechanism addresses efficiency and throughput as well as reduces environmental impact.This concept of metering aircraft at the spot is effectively shifting delay from the runway queue to the spot area.This may lead to large queues at a spot during high departure demand; this can be resolved by assigning gate push back times instead of holding aircraft at the spots.Further, communicating spot release times with airline dispatchers before aircraft are pushed back will also reduce such queues.The motivation to produce separate guidance from SARDA for the Ground and Local controllers is based on analyzing the functional allocation of aircraft control duties between the Ground and Local controller.Fig. 1 illustrates these two roles.The Ground controller's primary responsibility is to maintain separation and a smooth flow of aircraft on taxiways.For each departure aircraft, the Ground controller issues a taxi clearance that includes both runway and taxi routes to the runway.The Ground controller considers aircraft type, departure route, and constraints due to traffic management initiatives (e.g., miles-in-trail restrictions) when issuing a taxi clearance in order to achieve efficient surface traffic movement.The Local controller is responsible for safe and efficient runway operations, including take-off, landing, and runway crossings.The same flight information is used for the Local controller's decisions.Typically at DFW, the Ground controller releases aircraft from into taxiways without holding them even if there are aircraft already taxiing or there is a long queue of aircraft near the departure runway.Based on how traffic is managed today, two separate decision support functions were identified for SARDA.For each identified decision support function, an optimization algorithm was specified as shown in Table I.These two functions (or algorithms) are the Spot Release Planner (SRP) and the Runway Scheduler (RS).The SRP provides an optimal schedule for releasing departure aircraft from spots with objectives to maximize runway throughput and minimize taxi delay.The RS provides an optimal sequence for take-offs and runway crossings with an objective of maximizing runway usage.By following the spot release schedule, taxiway congestion will be reduced, and therefore, reduction in taxi delay as well as fuel savings can be achieved, while runway throughput is still maintained.The RS is a complementary function to SRP.It evaluates dynamic situations of traffic in the runway queue and crossing areas and provides an optimal sequence of aircraft for take-off and runway crossing.In general, the RS becomes more useful for airports that have a large runway queue area with multiple queue lanes.Depending on the runway queue structure, runway operations can be efficiently managed with the aid of the RS.
+A. Spot Release Planner (SRP)The SRP calculates for an optimal spot release schedule in two stages [3].In the first stage, an optimal departure schedule at the runway for a set of incoming flights is generated with an objective of maximizing runway throughput: (1) where t i is the calculated take-off time for flight i, and F denotes all flights.For each flight, an estimated time of arrival (ETA) at its assigned spot and an estimated taxi time between spot and assigned runway via one of standard taxi routes are the main inputs to the algorithm.In addition, constraints, including wake separation criteria and other time/distance constraints, such as a miles-in-trail restriction over a common departure fix and Estimated Departure Clearance Time (EDCT) due to a Ground Delay Program (GDP), are applied.The optimization problem of this first stage can be formulated either as a mixed integer linear program (MILP) or a dynamic programming (DP).Both formulations were evaluated, but the DP was a preferred approach mainly due to its availability over commercial optimization solvers.The second stage of the SRP is to determine optimal times to release aircraft from assigned spots to meet departure schedules.Depending on the complexity of the taxiway geometry and the decision whether to incorporate variable taxi speeds or arrival traffic, the problem can be formulated as either a reduced MILP or a linear program (LP).For surface traffic at DFW, all of three standard departure taxi routes (i.e., K-EF, K-EG, L-EH shown in Fig. 2) have a very simple taxi route structure with almost equal taxiway lengths.Therefore, spot release times for each aircraft can be calculated simply by subtracting the estimated taxi time from its scheduled take-off time.()2where T i is the spot release time and is the estimated taxi time of i th flight.An additional constraint due to uncertainties of operation is to have a small number of aircraft in the departure queue (e.g., runway queue size < 6) to ensure that there were no gaps in the actual departure schedule.Key design parameters considered for the SRP algorithm are:• Planning horizon -the future planning time interval for the algorithm• Freeze sequence -number of aircraft for which the spot release sequence is fixed across consecutive calls of the algorithm (e.g., first three aircraft in the sequence)• Equity -a parameter to be used to prevent a particular aircraft or type of aircraft from being penalized in subsequent optimization cycles• Priority aircraft -specifies priority in take-off sequence (e.g., an aircraft in an emergency situation)• Maximum spot delay or spot queue size -a parameter to be used by the algorithm to prevent a queue from forming at a certain spot• Runway queue size -a parameter that specifies the number of aircraft allowed in the runway queue at any time• Airport operating points -Airport Departure Rate (ADR) that will affect the optimization of departure scheduleUncertainties in taxi speed, pilot response to controller taxi clearances, and interaction among taxiing aircraft is mitigated by executing the algorithm periodically to generate new optimization solutions.In the simulation, the SRP algorithm was executed every 40 seconds with a rolling planning horizon of 15 minutes.
+B. Runway Scheduler (RS)The motivation for and design of the RS were based on an evaluation of the role of the Local controller.The Local controller strives for efficient runway operations by sequencing take-offs, considering various factors such as aircraft weight class, departure route, departure fix constraints, RNAV (Area Navigation) procedures, and others.The Local controller is also responsible for managing crossing operations of arrival aircraft.With multiple runway queue lanes and multiple crossing points at DFW, as shown in Fig. 2, the sequence decision made by the human controller may be far from optimal due to complexity.A previous study showed that the average stopped time of aircraft at DFW in crossing queues during busy traffic times was over 2 minutes, which turned out to be the most significant contribution to the taxi delay of arrival aircraft at DFW [12].Therefore, the objective of the RS is to provide an optimal sequence for take-offs and runway crossings of arrival aircraft.Previous optimization approaches were developed and tested for various configurations of runway queue structure [5,8,13].Rathinam et al. [13] developed a generalized dynamic programming formulation and successfully solved the departure scheduling problem of a single runway with multiple queue lanes.Optimal solutions to schedule 40 aircraft for an hour were obtained in less than a tenth of second of computational time.For SARDA, this algorithm was extended to include constraints for runway crossings.In order to incorporate runway crossing constraints, the algorithm requires estimated arrival times of aircraft at hold lines for crossing, as well as travel times for crossing at different speeds.The requirement for estimated crossing times and travel times necessitate a trajectory prediction function, which should include the capability to predict the runway exit an aircraft would use.In order to make the problem simple, runway exits were assigned by the Local controller before aircraft landed on the runway.The algorithm also allows multiple crossings at the same time.The inputs to the RS algorithm include ETAs of departure aircraft at their assigned queue lanes (i.e., EF, EG, or EH as shown in Fig. 2), aircraft type, and wake vortex separation criteria.Under the current procedures of DFW, the queue lane is determined by an assigned taxi route that is included in a taxi clearance issued by the Ground controller.Therefore, the algorithm receives the queue lane information from the controller input.Other constraints such as Traffic Management Initiatives (TMIs) applied to the aircraft, departure route, EDCT, and RNAV equipage were not incorporated into the algorithm at the time of simulation.The dynamic program used the pareto optimal solution of both throughput and departure delay; throughput and departure delay are defined below in expressions (3) and (4) respectively:(3) (4) where t i is the calculated take-off time and α i is the earliest release time for flight i (i∈F).Similar to the SRP algorithm, key design parameters to consider for the RS were identified as follows:• Planning horizon -the future planning time interval for the algorithm (e.g., 15 minutes)• Maximum departure delay and maximum arrival crossing delay -parameters to be used to prevent a particular aircraft or type of aircraft from being penalized in subsequent optimization cycles• Priority aircraft -specifies priority in takeoff/crossing sequence• Crossing queue size -specifies the maximum number of aircraft allowed in each crossing queue• Maximum simultaneous crossings -specifies the number of crossings allowed simultaneously from a single crossing queue• Similar to the SRP, the RS needs to be executed frequently to generate new solutions in order to accommodate uncertainties.In the simulation, the RS algorithm was executed every 40 seconds with a rolling planning horizon of 15 minutes.IV. HUMAN-IN-THE-LOOP SIMULATION This section briefly describes the HITL simulation conducted in April 2010 at Ames Research Center of the National Aeronautics and Space Administration (NASA).Detailed information regarding the simulation, such as system integration, user interfaces, test scenarios can be found in reference [14], and the human factors findings are presented in a separate paper at the same venue 3 .
+A. System ArchitectureThe Surface Management System (SMS) was used as the basis for the simulation.SMS was originally developed by NASA in coordination with the Federal Aviation Administration (FAA) as a prototype decision support tool to assist Tower controllers, managers and airlines in managing surface traffic [15].For this simulation, SMS exchanged flight information and scheduling solutions with the optimization algorithms over the network.Existing SMS user interfaces were modified to provide advisories to the Ground and Local controller positions.The Airspace Traffic Generator (ATG) system was used to generate motions of aircraft either on the surface or in the airspace near the airport, and sent position data to SMS for display [16].The Ground Pilot Stations (GPSs), components of ATG, were used by the pseudo-pilots manually taxiing aircraft following taxi clearances issued by the controllers via voice.
+B. User Interface 1) Controller DisplaysDisplays for both Ground and Local controllers were provided for the HITL simulation.The basic display for the Ground controller is composed of an existing SMS map display that shows spots and taxiways under the controller's responsibility.The basic display for the Local controller consists of a surface map of the responsible area (i.e., runway queue and crossing queues) and a map of terminal airspace that covers portions of final approach and initial climb paths.Taxiing and airborne aircraft are shown on the map displays with a data tag attached to the aircraft icon.Information shown on a data tag varies depending on flight status (i.e., arrival/departure, in ramp, taxi out/in, in queue, final, departed).For example, the data tag of a taxiing departure aircraft includes aircraft callsign, aircraft type, assigned runway, destination airport, and departure fix.
+2) Controller AdvisoriesTwo types of advisory formats were created for the Ground and Local controllers: 'data-tag' and 'timeline.'Fig. 3 shows examples of the advisories for the Ground controller.The data-tag format displays both spot release sequence and countdown time in the data-tag attached to the aircraft icon, whereas the timeline format displays the same information in the timeline.Similarly, the data-tag format for the Local controller advisory displays the take-off and crossing sequence in the data-tag next to the aircraft icon, whereas the timeline format displays the same information in a stack of aircraft callsigns.
+data-tag timeline
+C. ScenariosScenarios were generated such that departure traffic begins at the gates upon activation in the simulation and arrival aircraft appear about 10 nmi from the runway threshold.After a departure aircraft pushes back from the gate, it maneuvers in an automation mode towards its assigned spot and stops before it, unless the Ground controller issues the pilot a taxi clearance while the aircraft is still moving.Scenario data for a departure aircraft contains callsign, aircraft type, flight plan route, departure fix, activation time (push back or first track hit), initial position, gate, spot, and runway.Both normal and heavy traffic scenarios for east DFW operations with a south flow configuration were generated based on actual traffic data.Normal traffic scenarios represent operations of current day DFW traffic, and were created from the surface surveillance data in year 2008.Heavy traffic scenarios represent a traffic density approximately 1.5 times higher than that of normal traffic.There were two scenarios for each traffic density, each with a slightly different distribution of push back times, touchdown times, and fleet mix.A normal traffic scenario had 45 departures and 44 arrivals in 45 minutes, utilizing the gates in east terminals (i.e., Terminals A, C, or E as shown in Fig. 2).A heavy traffic scenario had 68 departures and 65 arrivals per 45 minutes.A small portion of flights that left from east terminals departed from runways in the west of the airport.Similarly, a small portion of arrivals landed on the runways in the west of the airport and taxied into the gates in the east terminals.Fig. 4 shows the runway configuration and traffic pattern of east DFW used for the experiment.Controllers were responsible for managing traffic on primary runways 17R and 17C, as well as associated taxiways.Traffic from the west side of the airport (via taxiways A and Y) and arrivals landing on runway 17L were automated.These aircraft were handed off to pseudo-pilots at designated locations.Aircraft going to the west were handed off to automated sectors on taxiways B and Z. Directions of automated traffic are shown in dotted lines.A total of 56 runs were completed over two weeks, with each run lasting about 45 minutes.Each scenario was run with four different advisory options: baseline 1, baseline 2, data-tag format (D), and timeline format (T).In 'baseline 1' (B1), both Ground and Local controllers were asked to conduct the current procedures and the advisories were not shown.In 'baseline 2' (B2), the controllers were asked to try to meet the objective of the SARDA tool, again with no advisories displayed on their screens.More specifically, the controllers were asked to maintain the runway queue size at less than 6 at all times by holding aircraft at spots.This 'simulated' advisory option was evaluated only in heavy traffic scenarios since the departure queue size in normal traffic situations was always less than 6.Baseline 2 was run to evaluate the controller understanding and acceptance of the concept of delayed spot release; the goal was to see if controllers would be able to simulate the desired effect in the absence of advisories.As will be seen in the following results, there was not much difference in the system characteristics of delays, stop-and-go situations and fuel consumption between B2, D and T.However, as described in the complementary paper on SARDA simulation, controllers stated a preference for the advisory when asked to hold aircraft at spot4 .Metrics were defined to evaluate performance of the algorithms in various traffic situations.The performance metrics were divided into three categories: delay, number of stops and stop time, and fuel consumption and engine emissions.
+A. Average DelayDelay is defined as the difference between actual taxi time minus unimpeded taxi time (in seconds).Unimpeded taxi times were obtained in advance from simulated data from ATG runs.Delay metrics were divided into the following categories:• Ramp area delay -average delay in the ramp area between gate push back and spot release• Taxi delay -average delay on the taxiway between spot release and entry into the runway queue• Queue area delay -average delay in the runway queue between entering the queue and crossing the runway hold short line• Crossing delay -average delay between exiting the runway and crossing the runway hold short line• Total movement area delay -average delay between spot release and take-off (for departures) or between runway exit and arrival at the spot (for arrivals)Figs. 567shows the mean and standard deviation in average taxi delay, average departure queue delay, and the total departure delay per aircraft in the movement area (taxiway + departure queue), respectively.The left column of each figure shows the metrics from runs out of normal traffic scenarios, and the right column shows the results from heavy traffic scenarios.(Note: for some plots, scales between normal and heavy traffic results are not the same.)The horizontal axis represents the different runs under different advisory settings, and the vertical axis denotes the delay.It should be noted that only the aircraft departing from 17R were included, and out of those, only the aircraft with 'complete' trajectories (those aircraft that pushed back from the gate and took-off within simulation time) were included.Fig. 5 shows that there is little difference in departure taxi delay between advisory and non-advisory runs.However, Fig. 6 shows that in advisory runs (D and T) with heavy traffic scenarios, there was a 65% reduction in queue area departure delay compared with the results from non-advisory runs (B1).Fig. 7 shows the difference in delays in the movement area, which is composed of both taxi delay and queue area delay.As is evident from the figure, the majority of the departure delay in the movement area was due to congestion in the queue area, and a large reduction was achieved through optimal sequence for spot releases and take-offs in heavy traffic scenario runs.The tool effectively assisted the controllers in managing a small number of aircraft taxiing in the movement area, resulting in very efficient surface traffic.However, in normal traffic scenario runs there was little difference in delay regardless of advisory option due to low traffic volume.It is also noted that the controllers could achieve a similar delay reduction in the runs with 'simulated' advisory option (B2), with slightly lower average delays but slightly larger standard deviations.A potential reason for this could be that the Ground controllers were concerned about the queue size, and thus became too conservative in releasing aircraft from spots to taxiways.Further investigation is needed to determine the effects of this option on the performance of the algorithms in detail.Figs. 8 and9 show the average delay of departure aircraft in the ramp area and total delay (i.e., from push back to runway entry), respectively.As expected, in normal traffic scenario runs, there was little difference in total departure delay among runs across advisory options although there was a slight increase in ramp area delay when the advisories were used.In heavy traffic scenario runs, there were large increases in ramp area delay when advisories (D and T) or 'simulated' advisory were used (B2).Note that the simulation design did not include any tool for effectively managing the ramp area; the advisories were provided only to the Ground and Local controllers for spot release and runway usage, respectively.With the use of SRP in the absence of ramp management, it is possible that delay in the ramp area could have increased drastically.Because of this, overall departure delay for heavy traffic scenario cases was about the same regardless of advisory options.This indicates that, in heavy traffic situations, SARDA has effectively shifted delay from the queue area to the ramp area.Fig. 10 shows the mean total delay of arrival aircraft (i.e., from exiting runway to gate arrival) for both normal and heavy traffic situations.There is little difference in delay in normal traffic situations, whereas there is a 20% reduction in total arrival delay in heavy traffic conditions, mostly due to a reduction in runway crossing time (results not shown in this paper) when the controllers used advisories (D and T) or the controllers made efforts to achieve the goal of the tool (B2).Although the main focus of SARDA is on reducing departure delay by providing optimal spot release and take-off sequences, a slight improvement in reducing arrival traffic delay has also been achieved by following optimal schedules generated by SRP and RS algorithms.
+B. Average Stops and Stop TimeThis section details the average number of stops per departure aircraft, including ramp area, taxiway, and departure queue obtained from the HITL simulation.Average stop time per departure aircraft in the queue area is also mentioned briefly.The stop-and-go situations are the main contributor to inefficient fuel usage, and the number of stops and time while stopped directly address this inefficiency of surface operation.The main objective of SARDA tool is to minimize these metrics.Both the average number of stops and standard deviation per aircraft in the ramp area, taxiway, and the departure queue for both normal and heavy traffic situations are shown in Figs.11121314.In heavy traffic scenario runs, there is a decrease in the total number of stops per departure aircraft with the use of advisories, both timeline and data-tag (Fig. 14).The 'simulated' advisory runs (B2) also show a decrease in total number of stops, almost identical to the timeline and data-tag cases.The decrease is non-trivial, with an average reduction of about 3 stops.However, there is little change in the number of stop and go situations in the normal scenarios in the baseline 1 (B1) and advisory cases (D and T).A potential reason could be lower traffic in the normal scenarios; lower traffic density would probably result in fewer stop and go inducing congested situations, with an expectation for improvement through advisories.In the advisory runs for heavy scenarios, there is a small increase in the number of departure stops in the ramp area (Fig. 11).There is little change in the number of stops for the normal scenarios between the baseline and advisory cases.With the use of SRP in the absence of ramp management, it is possible that the number of stops could have increased with the use of advisories.Fig. 12 shows the departure stops on the taxiways.As is evident from the figures, in all the cases there were almost no stops on the taxiways.In all cases, 97% or more aircraft had no stops on the taxiways.One possible reason is the exclusion of the bridge traffic from the analysis; given the grid-like geometry of the DFW taxiway layout, there are only a few nodes where potential conflicts can arise due to merging traffic streams, and the nodes where traffic from the west side of DFW merges with east side is one such possibility.In this analysis, stops for aircraft from the west side are not included.Furthermore, with the emphasis on operations for the east terminals, it is possible that controllers resolved conflicts at such merge points by prioritizing east side aircraft, causing most of the taxiway stops to be in the west side aircraft, which are not accounted here.The reduction of stop situations on the taxiways and departure queues was one of the motivations for the algorithms implemented in the experiment, and hence it is important to analyze the number of stops and total time stopped in the departure queue.Fig. 13 shows the average number of departure queue stops in each scenario run with various advisory settings.There is a large reduction in the number of stops in the departure queue for heavy traffic scenarios, with an average reduction of about 69% (from 5.7 stops to 1.8 stops).Although not shown in the figure, the average stop time per aircraft in the queue area was also reduced by 65% (from 322.6 seconds to 112.6 seconds) in heavy traffic situations between non-advisory (B1) and advisory cases (D and T), which is the major contribution to delay reduction in the movement area as shown in Fig. 5.Total number of stops per departure aircraft, including ramp area stops, was reduced by 35% (Fig. 14).
+C. Fuel Consumption and Engine EmissionsThe total and average fuel consumption and engine emissions were calculated based on the fuel flow and emissions model developed by Nikoleris et al. [17].In their model, the kinematic state of a taxiing aircraft is divided into four types: ground idle, taxi at constant speed, accelerating from stop, and turn.Then, for each kinematic state, an engine thrust level was assumed as percentage of rated take-off thrust.Table II shows the estimated engine thrust level for each kinematic state.Finally, for each engine thrust level, fuel flow (kg/sec) and emission indices (gram of pollutant emitted per kilogram of fuel burnt) were estimated by using ICAO Databank's engine performance and emissions data [18].Position data of individual aircraft obtained from the simulation was divided into the four kinematic states mentioned above, and fuel flow rate and emission indices were applied to each kinematic state to compute fuel consumption and emissions.Idle Thrust 4%Taxi at constant speed or brake thrust 5%Breakaway Thrust 9%Perpendicular Turn Thrust 7%Fig. 15 shows the computed average and standard deviation of fuel spent per aircraft in the movement area for both normal and heavy traffic scenario runs.For baseline cases (B1), the computed average fuel spent per aircraft in the movement area was 168kg in heavy traffic situations, whereas only 75kg of fuel was spent in normal traffic situations.Therefore, a modeled 93kg of extra jet fuel was spent per aircraft due to stop and go or slower traffic situations.In heavy traffic situations, it was computed that more than 60kg (or 38%) of fuel per aircraft could be saved in the movement area by using advisories.The results from heavy traffic scenario runs are included in this paper.As is evident from the table, there are reductions in emissions in all of three categories between baseline 1 (B1) and advisory options, including the 'simulated' advisory (D, T, and B2) (i.e., 38.8%, 38.9%, 37.7% for HC, CO, and NO x , respectively) VI.CONCLUDING REMARKS The experimental trial of surface optimization algorithms in a human-in-the-loop environment show promising results in taxi delays, stop, and fuel/emissions in heavy traffic situations.Average delay of departure aircraft in the movement area was reduced by 64%, and the average number of stops was reduced by 68% in heavy traffic situations when compared between advisory and nonadvisory conditions.Both estimated fuel consumption and engine emissions generated by taxiing aircraft in the movement area were also reduced in heavy traffic situations by 38%.The heavy scenario results also showed that there was a slight improvement in taxi performance of arrival aircraft.For normal traffic scenario runs, however, there was little change observed in any of these performance metrics mainly due to low traffic volume.Further, the similarity of baseline 2 and advisory results point to the controller ability to do spot holding themselves, albeit at the expense of increased workload as shown in the complementary paper.The results showed that there was a large increase in departure delay in the ramp area in heavy traffic situations.This was due to the fact that, by design, the tool assisted the controllers by metering departure traffic at spots in heavy traffic situations, thus shifting delay from the queue area to the ramp area.Future research will extend this concept and will produce algorithms to include ramp area operations, so that efficiency of the entire airport surface operation can be improved.Future research will also include evaluation of the SARDA concept and algorithms at other airports that have different airport layouts and control procedures.Since the main objective of the experiment was to evaluate performance of the algorithms and basic usability of the tool, the user interfaces have not been highly developed.No out-the-window view of the airport was integrated to the system, and as a result, the controllers used surface map displays for identifying aircraft and issuing clearances.Future research is planned to design suitable user interfaces for controller advisories.Figure 1 .1Figure 1.An Example of Responsible Areas of Ground and Local controllers
+Figure 3 .3Figure 3. Advisories for the Ground Controller
+Figure 4 .4Figure 4. Traffic Pattern of DFW East Operations used for the Experiment V. RESULTS This section describes the detailed results from the HITL experiment conducted for two weeks in April 2010 at NASA.Two retired controllers with over 20 years of experience at DFW participated as tower controllers, along with 6 pseudo pilots.
+Figure 5 .Figure 6 .Figure 7 .567Figure 5. Mean Taxiway Departure Delay (left: normal traffic; right: heavy traffic)
+Figure 8 .Figure 9 .89Figure 8. Mean Ramp Area Departure Delay (left: normal traffic scenarios; right: heavy traffic scenarios)
+Figure 10 .10Figure 10.Mean Total Arrival Delay (left: normal traffic; right: heavy traffic)
+Figure 11 .Figure 12 .Figure 13 .Figure 14 .11121314Figure 11.Mean Number of Ramp Area Departure Stops (left: normal traffic; right: heavy traffic)
+Figure 15 .15Figure 15.Mean Fuel Consumption by Departure Aircraft in the Movement Area (left: normal traffic; right: heavy traffic) Fig. 16 shows the modeled average and standard deviation of pollutants generated from engine emissions of departure aircraft in the movement area.The pollutants included in ICAO Databank are Hydrocarbon (HC), Carbon Monoxide (CO) and Nitrogen oxides (NOx), in kilograms.The results from heavy traffic scenario runs are included in this paper.As is evident from the table, there are reductions in emissions in all of three categories between baseline 1 (B1) and advisory options, including the 'simulated' advisory (D,
+Fig. 16 .16Fig. 16.Mean Emissions of Departure Aircraft in the Movement Area for heavy traffic
+
+TABLE I .ICONTROL DECISION AND DECISION SUPPORT FUNCTIONFOR TOWER CONTROLLERS
+TABLE II .II[17]NE THRUST LEVELS[17]
+			Hoang, T. et al. "Tower Controllers' Assessment of the Spot and Runway Departure Advisor (SARDA) Concept"
+			"Spot" is the hand-off point between the airline ramp control and Tower control, marked on the pavement with a number.
+			Hoang, T. et al. "Tower Controllers' Assessment of the Spot and Runway Departure Advisor (SARDA) Concept"Figure 2. Departure Taxi Routes, Departure Runway Queue, and Runway Crossing Structures of East DFW
+			Hoang, T. et al. "Tower Controllers' Assessment of the Spot and Runway Departure Advisor (SARDA) Concept"
+		
+		
+
+			
+ACKNOWLEDGMENTSThe authors would like to thank the software development team (especially Easter Wang, Cynthia Freedman and Kenneth Ray), the human factors researchers and the staff at FutureFlight Central, NASA Ames Research Center for their efforts and participation throughout the simulation.The authors also would like to thank Mark Penn for his contributions as a subject matter expert.
+			
+
+			
+AUTHOR BIOGRAPHYDr. Yoon Jung			
+			
+
+				
+
+
+	
+		Practice for Application of Federal Aviation Administration (FAA) Federal Aviation Regulations Part 21 Requirements to Unmanned Aircraft Systems (UAS)
+		
+			Faa
+		
+		10.1520/f2505
+		
+		
+			2009. 2011
+			ASTM International
+		
+	
+	FAA. Operational Data Reporting Requirements: Federal Aviation Administration, 2009. http://www.faa.gov/documentLibrary/media/Order/7210.55F.pdf (cited on 4/8/2011)
+
+
+
+	
+		A Framework for Coordinated Surface Operations Planning at Dallas-Fort Worth International Airport
+		
+			HamsaBalakrishnan
+		
+		
+			YoonJung
+		
+		10.2514/6.2007-6553
+	
+	
+		AIAA Guidance, Navigation and Control Conference and Exhibit
+		Hilton Head, SC, United states
+		
+			American Institute of Aeronautics and Astronautics
+			2007
+			3
+			
+		
+	
+	Balakrishnan, H., and Jung, Y. "A framework for coordinated surface operations planning at dallas-fort worth international airport," AIAA Guidance, Navigation, and Control Conference. Vol. 3, American Institute of Aeronautics and Astronautics Inc., Hilton Head, SC, United states, 2007, pp. 2382-2400.
+
+
+
+	
+		Managing departure aircraft release for efficient airport surface operations
+		
+			WaqarMalik
+		
+		
+			GautamGupta
+		
+		
+			YoonJung
+		
+		10.2514/6.2010-7696
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		Toronto, Canada
+		
+			American Institute of Aeronautics and Astronautics
+			2010
+		
+	
+	Malik, W. A., Gupta, G., and Jung, Y. "Managing departure aircraft release for efficient airport surface operations," AIAA Guidance, Navigation, and Control Conference. American Institute of Aeronautics and Astronautics, Toronto, Canada, 2010.
+
+
+
+	
+		An Optimization Model for Reducing Aircraft Taxi Times at the Dallas Fort Worth International Airport
+		
+			SRathinam
+		
+		
+			JMontoya
+		
+		
+			YJung
+		
+	
+	
+		26th International Congress of the Aeronautical Sciences (ICAS)
+		Anchorage, Alaska
+		
+			2008
+			
+		
+	
+	Rathinam, S., Montoya, J., and Jung, Y. "An Optimization Model for Reducing Aircraft Taxi Times at the Dallas Fort Worth International Airport," 26th International Congress of the Aeronautical Sciences (ICAS). Anchorage, Alaska, 2008, pp. 14-19.
+
+
+
+	
+		Incorporating Active Runway Crossings in Airport Departure Scheduling
+		
+			GautamGupta
+		
+		
+			WaqarMalik
+		
+		
+			YoonJung
+		
+		10.2514/6.2010-7695
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		Toronto, Canada
+		
+			American Institute of Aeronautics and Astronautics
+			2010
+		
+	
+	Gupta, G., Malik, W., and Jung, Y. "Incorporating Active Runway Crossings in Airport Departure Scheduling," AIAA Guidance, Navigation and Control Conference. American Institue of Aeronautics and Astronautics, Toronto, Canada, 2010.
+
+
+
+	
+		An Optimisation Model for Airport Taxi Scheduling
+		
+			JSmeltink
+		
+		
+			MSoomer
+		
+		
+			PDe Waal
+		
+		
+			Van Der
+		
+		
+			RMei
+		
+	
+	
+		Thirtieth Conference on the Mathematics of Operations Research
+		Lunteren, The Netherlands
+		
+			2005
+		
+	
+	Smeltink, J., Soomer, M., de Waal, P., and Van Der Mei, R. "An Optimisation Model for Airport Taxi Scheduling," Thirtieth Conference on the Mathematics of Operations Research. Lunteren, The Netherlands, 2005.
+
+
+
+	
+		Optimal Airport Surface Traffic Planning Using Mixed Integer Linear Programming
+		
+			HendrikusVisser
+		
+		
+			PaulRoling
+		
+		10.2514/6.2003-6797
+	
+	
+		AIAA's 3rd Annual Aviation Technology, Integration, and Operations (ATIO) Forum
+		Denver, Colorado
+		
+			American Institute of Aeronautics and Astronautics
+			2003
+		
+	
+	AIAAs 3rd Annual Aviation Technology, Integration, and Operations (ATIO) Forum
+	Visser, H., and Roling, P. "Optimal airport surface traffic planning using mixed integer linear programming," AIAAs 3rd Annual Aviation Technology, Integration, and Operations (ATIO) Forum. AIAA, Denver, Colorado, 2003.
+
+
+
+	
+		A Mixed Integer Linear Program for Airport Departure Scheduling
+		
+			GautamGupta
+		
+		
+			WaqarMalik
+		
+		
+			YoonJung
+		
+		10.2514/6.2009-6933
+	
+	
+		9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO)
+		
+			American Institute of Aeronautics and Astronautics
+			2009
+		
+	
+	Gupta, G., Malik, W., and Jung, Y. C. "A Mixed Integer Linear Program for Airport Departure Scheduling," 9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO). AIAA, Hilton Head, South Carolina, 2009.
+
+
+
+	
+		Evaluating Surface Optimization Techniques Using a Fast-time Airport Surface Simulation
+		
+			KatyGriffin
+		
+		
+			PeterYu
+		
+		
+			DavidRappaport
+		
+		
+			John-PaulClarke
+		
+		10.2514/6.2010-9286
+	
+	
+		10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Texas, USA
+		
+			American Institute of Aeronautics and Astronautics
+			2010
+		
+	
+	Griffin, K., Yu, P., Rappaport, D., and Clarke, J.-P. "Evaluating Surface Optimization Techniques Using a Fast-time Airport Surface Simulation " 10th AIAA Aviation Technology, Integration, and Operations Conference (ATIO). AIAA, For Worth, Texas, USA, 2010.
+
+
+
+	
+		A conceptual design of a departure planner decision aid
+		
+			IAnagnostakis
+		
+		
+			HIdris
+		
+		
+			JClarke
+		
+		
+			EFeron
+		
+		
+			RHansman
+		
+		
+			AOdoni
+		
+		
+			WHall
+		
+		ATM-2000
+	
+	
+		Eurocontrol International Air Traffic Management R & D seminar
+		
+			2000
+			Naples, Italy
+		
+	
+	3rd FAA/
+	Anagnostakis, I., Idris, H., Clarke, J., Feron, E., Hansman, R., Odoni, A., and Hall, W. "A conceptual design of a departure planner decision aid," 3rd FAA/Eurocontrol International Air Traffic Management R & D seminar, ATM-2000. Naples, Italy, 2000.
+
+
+
+	
+		Identification of flow constraint and control points in departure operations at airport systems
+		
+			HusniIdris
+		
+		
+			BertrandDelcaire
+		
+		
+			IoannisAnagnostakis
+		
+		
+			WilliamHall
+		
+		
+			NicolasPujet
+		
+		
+			EricFeron
+		
+		
+			RHansman
+		
+		
+			John-PaulClarke
+		
+		
+			AmedeoOdoni
+		
+		10.2514/6.1998-4291
+	
+	
+		Guidance, Navigation, and Control Conference and Exhibit
+		
+			American Institute of Aeronautics and Astronautics
+			2000
+			7
+		
+	
+	Idris, H., Delcaire, B., Anagnostakis, I., Hall, W., Pujet, N., Feron, E., Hansman, R., Clarke, J., and Odoni, A. "Identification of flow constraint and control points in departure operations at airport systems," Air Traffic Control Quarterly Vol. 7, No. 4, 2000,
+
+
+
+	
+		Analysis of Environmental Impact of Eliminating Arrival Hold Short Operations for Runway Crossings at Dallas/Ft. Worth Airport
+		
+			GilenaMonroe
+		
+		
+			LeonardTobias
+		
+		
+			YoonJung
+		
+		10.2514/6.2008-6826
+	
+	
+		AIAA Guidance, Navigation and Control Conference and Exhibit
+		Honolulu, HI, United states
+		
+			American Institute of Aeronautics and Astronautics
+			August 18, 2008 -August 21. 2008. 2008
+		
+	
+	Monroe, G. A., Jung, Y. C., and Tobias, L. "Analysis of environmental impact of eliminating arrival hold short operations for runway crossings at Dallas/ft. Worth Airport," AIAA Guidance, Navigation and Control Conference and Exhibit, August 18, 2008 - August 21, 2008. American Institute of Aeronautics and Astronautics Inc., Honolulu, HI, United states, 2008.
+
+
+
+	
+		A Generalized Dynamic Programming Approach for a Departure Scheduling Problem
+		
+			SivakumarRathinam
+		
+		
+			ZacharyWood
+		
+		
+			BanavarSridhar
+		
+		
+			YoonJung
+		
+		10.2514/6.2009-6250
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		Chicago, Illinois
+		
+			American Institute of Aeronautics and Astronautics
+			2009
+		
+	
+	Rathinam, S., Wood, Z., Sridhar, B., and Jung, Y. C. "A Generalized Dynamic Programming Approach for a Departure Scheduling Problem," AIAA Guidance, Navigation, and Control Conference. Chicago, Illinois, 2009.
+
+
+
+	
+		A Concept and Implementation of Optimized Operations of Airport Surface Traffic
+		
+			YoonJung
+		
+		
+			TyHoang
+		
+		
+			JustinMontoya
+		
+		
+			GautamGupta
+		
+		
+			WaqarMalik
+		
+		
+			LeonardTobias
+		
+		10.2514/6.2010-9213
+	
+	
+		10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Texas, USA
+		
+			American Institute of Aeronautics and Astronautics
+			2010
+		
+	
+	Jung, Y., Hoang, T., Montoya, J., Gupta, G., Malik, W., and Tobias, L. "A Concept and Implementation of Optimized Operations of Airport Surface Traffic " 10th AIAA Aviation Technology, Integration, and Operations Conference (ATIO). AIAA, For Worth, Texas, USA, 2010.
+
+
+
+	
+		Surface Management System Field Trial Results
+		
+			StephenAtkins
+		
+		
+			YoonJung
+		
+		
+			ChristopherBrinton
+		
+		
+			LStell
+		
+		
+			TCarniol
+		
+		
+			SRogowski
+		
+		10.2514/6.2004-6241
+	
+	
+		AIAA 4th Aviation Technology, Integration and Operations (ATIO) Forum
+		Chicago, IL, United states
+		
+			American Institute of Aeronautics and Astronautics
+			2004
+			1
+			
+		
+	
+	Atkins, S., Jung, Y., Brinton, C., Stell, L., Carniol, T., and Rogowski, S. "Surface management system field trial results," AIAA 4th Aviation Technology, Integration, and Operations Forum. Vol. 1, American Institute of Aeronautics and Astronautics Inc., Chicago, IL, United states, 2004, pp. 147-159.
+
+
+
+	
+		Impact of Air Traffic Management on Airspace User Economic Performance
+		
+			Saic
+		
+		10.2514/5.9781600866630.0103.0114
+	
+	
+		Air Transportation Systems Engineering
+		
+			American Institute of Aeronautics and Astronautics
+			2006
+			
+		
+	
+	SAIC. "Airspace Traffic Generator: User's Manual Supplement, Revision 2.6." 2006.
+
+
+
+	
+		Detailed estimation of fuel consumption and emissions during aircraft taxi operations at Dallas/Fort Worth International Airport
+		
+			TasosNikoleris
+		
+		
+			GautamGupta
+		
+		
+			MatthewKistler
+		
+		10.1016/j.trd.2011.01.007
+	
+	
+		Transportation Research Part D: Transport and Environment
+		Transportation Research Part D: Transport and Environment
+		1361-9209
+		
+			16
+			4
+			
+			January 2011
+			Elsevier BV
+		
+	
+	Nikoleris, A., Gupta, G., and Kistler, M. S. "Detailed Estimation of Fuel Consumption and Emissions during Aircraft Taxi Operations at Dallas/Fort Worth International Airport," Transport Research Part D: Transport and Environment, Draft accepted January 2011,
+
+
+
+	
+		International Civil Aviation Organization
+		
+			Icao
+		
+		
+			1995
+			Montreal, Canada
+		
+	
+	Exhaust Emissions Data Bank
+	ICAO. "Exhaust Emissions Data Bank." International Civil Aviation Organization, Montreal, Canada, 1995.
+
+
+				
+			
+		
+	

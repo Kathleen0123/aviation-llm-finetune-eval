@@ -1,0 +1,469 @@
+
+	
+	
+		
+I. IntroductionT here are two main ways of predicting future losses of required separation, or simply a 'loss', between aircraft.Geometric prediction schemes take two predicted trajectories and compare points that are coincident in time to determine if they are within some defined spatial region.Probabilistic methods attempt to estimate the probability that two aircraft are within a certain region of one another, and the probabilistic detection system has a cutoff probability value above which the aircraft are deemed to be in conflict (i.e. that the two aircraft are predicted to violate a required spatial separation at some point in the future).Trajectory prediction errors which are present in any prediction system complicate the conflict detection process.Geometric methods generally deal with trajectory prediction errors by limiting the look ahead time for conflicts to a defined cutoff time and by protecting larger regions in space than are strictly required. 1But, a constant, limited look-ahead time does not take into account the fact that, even with errors, some conflicts are easier to predict earlier than other conflicts.For example, it is easier to predict that aircraft will be within 5 nmi of each other if they are on a collision course than if they are on a course that takes them 4.9 nmi from each other.Another limitation of this type of detection is that it is difficult to determine what the optimal values of this time cutoff and these spatial buffers should be.Ideally, to have the best performance, any time an improvement is made to the underlying trajectory prediction accuracy this should be reflected in the settings of the detection system.Geometric detection schemes only indicate that there is a conflict or that there is not one.They do not provide additional information about how likely they are to be in conflict in the future.One methodology for handling this is to wait to declare an actual conflict until there have been multiple successive positive predictions. 2robabilistic methods of conflict detection, of which the formulation in this paper is an example, are based on the understanding that trajectory predictions contain errors. 3,4 hese methods rely on mathematical representations of the prediction errors.Since conflicts are identified when the conflict probability exceeds a cutoff value, there is no defined time at which a conflict will be identified.This allows for later detection for less severe conflicts and earlier detection for more severe ones.This should allow for more accurate predictions.The methods of probabilistic conflict detection presented in the literature either rely on a Gaussian representation of error 3,5,6,7 or depend on random sampling to determine the conflict probability. 8he method of probabilistic detection presented in this paper does not rely on an analytic formulation of the trajectory prediction errors, and numerical integration allows for the errors to be in a non-Gaussian form.The basis for the computations is a high-fidelity trajectory prediction in that the probability calculation is repeated for each point in this trajectory instead of being based on the current states.In proposed Monte-Carlo approaches, 8 multiple trajectory predictions are required for each aircraft each conflict detection cycle, and this may be computationally prohibative with a high-fidelity trajectory-prediction system.This paper presents the performance of this conflict detection system in a large scale simulation including random trajectory prediction errors.Also, the probabilistic detection system is paired with a conflict resolution system where the information on conflict probability is used in the resolution process to help choose more robust resolution maneuvers.
+II. Inference of Conflict ProbabilityThe goal of the conflict probability calculation is to determine the probability that any two aircraft will be in conflict in the future.The two inputs to the probabilistic detection system formulated in this paper are the predicted trajectories for the aircraft and the pre-calculated, estimated error distributions for the trajectory prediction system.These two pieces of information are combined through numerical integration to form a single probability of conflict (Figure 1) for those two trajectories.!"#$%$&'&()*+ ,#-.&*/+ 01/1*)#-+ !"#$%$&'&/2+ #3+,#-.&*/+ !"14&*/14+ 5"%61*/#"&1(+ 7899+5"%61*/#"2+ !"14&*/#"+ :""#"(+ Figure 1.A block diagram representing the inputs and output from the conflict probability prediction system.
+A. Inference ProcedureThe first step of the computation is to assign a probability density function (PDF) that describes the probability that the aircraft is located at any point in three-dimensional space around each point in the predicted trajectories.These conditional PDFs can be functions of any number of factors including how far in the future the point is, the distance of the point from top of descent, the aircraft type, the proximity of the point to a route change.These PDFs should be based on an analysis of the performance of the trajectory predictor used by the detection system.These distributions are not restricted to an analytical formulation, such as a normal distribution, and they can even be represented in a tabular form.Once these probabilities have been assigned, the probability calculation proceeds as follows.For each point at the same time, a 1 and a 2 , in the first and second predicted trajectories respectively we can compute the probability that there is a loss, P LOS , byP LOS = x∈R 3 p(pos(A 1 ) = x | a 1 ) • p(|| pos(A 2 ) -x|| H < H ∧ || pos(A 2 ) -x|| V < V | a 2 )dx(1)where p(•) denotes a PDF, H is the required horizontal separation, V is the required vertical separation, A
+B. Specific ImplementationThe specific implementation of the trajectory position PDFs used for the remainder of the paper is shown in Figure 3.In this case the PDF of the position of the aircraft is decomposed into horizontal and vertical components, soP (pos(A) = x) = P H (pos(A) H = x H ) • P V (pos(A) V = x V ),(2)where P H (•) is the horizontal probability, P V (•) is the vertical probability, pos(•) H and pos(•) V are functions returning horizontal and vertical positions, and x H and x V are the horizontal and vertical components of x.In Figure 3(a) the horizontal position is distributed as a two dimensional normal random variable with one principal axis coincident with the aircraft heading.So, the position of the aircraft in the horizontal plane is given by pos(A) H ∼ N (µ(t, ψ), Σ(t, ψ) 2 ),(3)where N (•) is the normal distribution with mean µ and standard deviation Σ, t is the time into the future and ψ is the heading of the aircraft.Decomposing the normal distribution by using the principal axes and assuming that there is no bias to the mean givespos(A) H ∼ N 0 0 , σ 2 AT 0 0 σ 2 CT ,(4)where σ CT is the cross-track standard deviation and σ AT is the along-track standard deviation.In this approximation, σ CT is a constant because the cross-track position of the aircraft is controlled by the flight management system and so the error will not increase with time.A possible exception to this could be to increase the cross-track errors near a commanded maneuver.Since along-track-position errors accumulate with time, σ AT is a function of time into the future.For this analysis it is assumed that σ AT is a linear function of time,σ AT = σ AT0 + αt,(5)where α describes how the along-track uncertainty grows with with prediction time and has units of nautical miles per minute.Vertical errors in trajectory predictions are generally functions of whether the aircraft is climbing or descending during that point of the trajectory and the distance from top of climb or descent. 9,10 uring the climb, the actual vertical rate is a function of the weight of the aircraft and the airline-specific thrust characteristics, so the position uncertainty increases in time during the climb.Similarly, the precise point of the top of descent is generally fairly uncertain, so as the predicted trajectory approaches the predicted top of descent, the vertical position can become more uncertain.The area around the top-of-descent point illustrates that the vertical uncertainty may not be captured well by a Gaussian distribution because as the aircraft approaches the TOD there is some likelihood that the aircraft will descend early but almost zero chance that the plane will climb significantly.Figure 3(b) shows how these characteristics can be represented using uniform distributions.The vertical position of the aircraft is represented by a uniform distribution,pos(A) V ∼ U (a(T OD p , ḣ), b(T OD p , ḣ)),(6)where U (•) is a uniform distribution and the upper and lower bounds, b and a, are functions of the vertical rate, ḣ, and the position of the predicted top-of-descent point, T OD p .
+C. Numerical CalculationUsing the representations of the horizontal and vertical positions of the aircraft presented in the previous section, the probability of loss for two time coincident points, a 1 (t) and a 2 (t), given in Equation 1 is transformed toP LOS = b1 a1 p U1 (h 1 ) h1+V h1-V p U2 (h 2 )dh 2 dh 1 • ∞ -∞ ∞ -∞ p NAT 1 (x 1 )p NCT 1 (y 1 ) C(x2,y2,H) p NAT 2 (x 2 )p NCT 2 (y 2 )dx 2 dy 2 dx 1 dy 1 .(7)In this equation, p U1 (•) and p U2 (•) are the PDFs associated with the uniform distribution of the vertical probability of the first and second aircraft respectively, b 1 and a 1 are the upper and lower bounds of the uniform distribution of the first aircraft, and V is the vertical separation requirement.The functions p NAT (•) and p NCT (•) are the values of the PDFs associated with the along-track and cross-track dimensions respectively.The double integral is over a circular area, C(•), with a center at the point (x 1 , y 1 ) and with radius H.Since the altitude and horizontal probabilities are independent in Equation 7, these two values can be computed independently.The inner integral in the altitude probability can be solved analytically as a function of h 1 , so the computation of the altitude probability reduces to a numerical integration problem over the range h 1 ∈ (a 1 , b 1 ).This can be solved relatively efficiently using adaptive quadrature or a similar method.Because probability values are between zero and one, if there is a minimum probability threshold, P CO , and the altitude probability is less that that value, then there is no need to compute the horizontal probability.This can reduce the computation time and remove the need to compute the more complex horizontal probability.The horizontal probability requires the numerical computation of an integral over four independent dimensions.A simplifying assumption that is not used here would be to change the region of integration for the inner integrals from a circular region to a square region with sides of length H.This simplification reduces the numerical integration of the horizontal probability from four dimensions to two because the inner integral can be solved analytically using error functions.This simplification was not used because it overestimates the probability of two aircraft being in conflict and is particularly bad when the two aircraft are close to each other.The integral over the circular region can also be reduced to a numerical integration over one dimension and an analytical solution over one dimension using an appropriate variable substitution and the error function.Since error distributions can take non-Gaussian forms, a method for calculating the integral of the intersection of a circle and any two dimensional distribution was formulated.For the forthcoming discussion, the horizontal position probability will be expressed as a Gaussian distribution, but this is easily generalized to any distribution, even a tabular representation of errors.There are many possible ways to integrate a two-dimensional Gaussian distribution over a circular region including using sampling, but for this solution, a mesh was created and then Trapezoidal rule calculations are performed over the two dimensions of the mesh.The goal of the mesh is to cover the variation of the underlying function and to correctly represent the boundary of the region.The algorithm to determine the mesh uses the radius of the circle and its center coordinates with respect to the mean value of the Gaussian.It also uses the two standard deviation values.Taking 5σ as the maximum extent of the Gaussian defines a box around the possible non-zero coordinates of the Gaussian.The intersection of a box surrounding the circle and a box surrounding the possible Gaussian values is used as the starting region for the grid.This region is then divided into evenly spaced grid cells.This initial grid is shown by the green points in Figures 4(a) and 4(c).The underlying Gaussian is smooth and predictable, so this initial grid would be sufficient to integrate it.But, the grid also needs to capture the boundary, so an additional step of refinement is performed.The grid is refined in two dimensions.First, all intersections with the circle and the x components of the mesh are added to the y component of the mesh.This is then repeated with the other dimension.The final mesh used is both the green and black points in Figures 4(a   Now that the inner integral over the circular area in Equation 7 can be calculated as a function of the center of the circle (x 2 , y 2 ), the total integral for the horizontal position can be calculated using repeated Gaussian quadrature over x 2 and y 2 .This value is multiplied by the previously calculated altitude probability and this process is repeated for each pair of points in the two trajectories.In this formulation, the inputs are the position probabilities defined in Equations 4, 5 and 6.In this paper, the maximum probability over all of the pairs of points is used as the probability of a loss occurring.
+III. Simulating Trajectory ErrorsTo evaluate the performance of the probabilistic conflict detection algorithm, a set of 4800 aircraft were simulated using the Airspace Concept Evaluation System (ACES). 11An important feature of ACES for this research is that in every conflict detection cycle two trajectories can be created for each aircraft.One trajectory, which is used as a baseline of truth, does not contain errors.The other trajectory, which is available to the automation and is used for conflict detection and resolution, contains errors when compared with what the simulated aircraft will fly.Every conflict detection cycle, the baseline can be used to determine if the conflict detection containing the errors was accurate or not.ACES is capable of simulating many different types of trajectory prediction errors including cruisespeed, top-of-descent, climb-and descent-speed-profile, and weight errors as described in Lauderdale et al. 12 Examples of some of these types of errors are shown in Figure 5.In the following sections when there is uncertainty present the predicted top-of-descent point can vary from the actual top of descent by up to 10 nmi in either direction and the other errors are selected randomly from uniform distributions that range from -10% to 10% of the nominal values.These errors represent the types of prediction errors found in current operations, 13 but for this analysis it is not important that they are an exact characterization of the errors found in the fielded systems.The important aspect of these errors is that they are similar types to those found in the field and that the procedures used to characterize them are applicable to these fielded trajectory prediction systems.!"#$$$% !&#$$$% &$#$$$% &'#$$$% $% !$% &$%
+IV. Conflict Detection ResultsUsing the ACES simulation tool, each time a conflict prediction is made an unperturbed trajectory is generated that provides the base truth about the conflict geometry to compare with the decisions made by the conflict detection system based on the trajectory containing errors.Erzberger et al. 5 showed using an analytical formulation that two important aspects of the probability that a conflict will occur are the minimum separations of the actual conflict and the angle of incidence as depicted in Figure 6(a).To explore this using numerical simulations, a metric of the severity of the conflict, S, is defined byS = 1 - (V min /V ) 2 + (H min /H) 2 2 (8)where V and H are the required vertical and horizontal separations and V min and H min are the minimum vertical and horizontal separations in the loss.The severity, S is one minus the normalized length of the vector connecting a collision and the point of minimum horizontal and vertical separation as shown in Figure 6(b).If the minimum separation is zero in both dimensions (i.e. a collision occurs) the value of the severity metric is one, and if there is no loss the value of the metric is zero.It is important to note that, to serve as a conflict detection system, the information about the probability of a conflict must be used to decide when to declare that a conflict between two aircraft has been detected.One way to do this is to select a probability above which aircraft pairs will be considered in conflict.This probability threshold can be referred to as a probability cutoff, and a higher probability cutoff generally results in fewer false alerts but more missed alerts and a lower time to loss when the conflict is detected.θ (a) ! "#$ % & "#$ % V H (b)To look at the dependence of the calculated conflict probability on the time to loss, the severity, and the angle of incidence, two simulations were run.In one simulation, trajectories with no errors were used, and in the other the errors described in the previous section where used.In both simulations an α of 0.5 nmi/min describing the along-track time growth of the trajectory uncertainty was used.Also, the vertical uncertainty bounds, a and b, were set to constant values of -5 nmi and 5 nmi, and the cross-track uncertainty, σ CT , was 0.1 nmi.Since the probability of loss is being explored as a function of three different characteristics, these cannot be all shown on a single plot.Instead, figures 7(a) and 7(b) show the probability of conflict as a function of time to loss with color coding for the severity of the loss and the angle of incidence respectively.Each of the over 175,000 points on the plot is a single detection of an actual conflict using the unperturbed trajectories, and both plots contain the same set of points just shaded according to that conflicts severity or angle of incidence.For Figure 7(a), the color of each point is determined by the severity of the actual loss.The conflict probability, on the other hand, is based on the perturbed prediction.In Figure 7(a) it can be seen that as the time to first loss decreases the conflict probability increases.It can also be seen that conflicts with a higher severity generally have a higher probability and would thus be declared a conflict sooner for any given probability threshold.With this setup and the large numerical simulation, some losses only approach a 50% chance of occurring if the severity of loss is low.This result coincides with the results presented in the analytical study performed in Paielli and Erzberger.The impact of the angle of incidence can be seen for the zero uncertainty case in Figure 7(b).This figure shows that conflicts with a lower angle of incidence tend to have a higher conflict probability especially in the range of 2 to 15 minutes before loss.Again, this echoes the results found in the previous analytical study. 5hen trajectory prediction errors are included in the simulation, these trends are still present, but they are somewhat less clear.It can still be seen in Figure 8(a) that the conflict probability is a function of severity of the loss with higher severity losses generally having a higher conflict probability.The angle of incidence may even be more of a factor when including errors as shown in Figure 8(b).Conflicts with a higher angle of incidence tend to have a much lower conflict probability.This is especially clear when looking at the region of the plots where the conflict probability is less than 0.2 and the time to loss is less than 10 minutes.In that region of the severity plot (Figure 8(a)) there is a mixture of different severity levels, but in that region of the angle plot (Figure 8(b)) it is highly dominated by high angle-of-incidence conflicts.Combining the two plots it appears that conflicts with the lowest severity and the highest angle of incidence are the most difficult to predict (i.e. have the lowest conflict probability as time to loss decreases to zero).!" #!" $!" %!" !" !&'" #" ()*+",-".-//"0*)12,+/3"4-15)6," 78-9:9);),<" =+>+8),<"  A comparison of missed and false alerts between a simple geometric conflict detection scheme using an 8 minute time horizon and a 6 nmi horizontal separation requirement and the probabilistic detection discussed in this paper is shown in Figure 9. Neither detection systems used buffers in the vertical dimension, but this is the subject of related work by Cone et al. 14 Both detection systems made conflict predictions based on the trajectories with errors and these predictions were compared against losses detected using the unperturbed trajectories and the required separation values.Three different values of the time dependent component of σ AT , α, from Equation 5 and a range or probability cutoff values from about 0.35 to about 0.55 are shown in Figure 9.The center black dot represents the performance of the geometric system and the performance of the probabilistic system is normalized with respect to this performance.Each line shows how the missed and false alerts vary from the geometric case for a single value of α as functions of the probability cutoff used.!"#$%&'%()*+''%(),-%$.')/01)!"#$%&'%() 2&-'%),-%$.') /01) 3%45%.$+#)67'.%5) 89):;<) 89):;=) 89):;>) !"#$%&'+"?) @$4A&A+-+.7) BC.4D) /*,1 ?%45 ) /2,1 ?%45 ) E) E) E) E) E) E) E)Figure 9. False alerts versus missed alerts for the probabilistic detection as compared to a simple geometric detection system for three different values of α, in nmi/min, which is the time-dependent component of σAT in Equation 5.It can be seen from Figure 9 that there are values of the probability cutoff where there is a decrease in both missed alerts and false alerts as compared to the geometric detection scheme for α = 0.7 nmi/min and α = 0.5 nmi/min.The optimal probability cutoff for these values is somewhere in the range (0.4, 0.5).With α = 0.7 nmi/min it is possible to have about 25% fewer false alerts with the same number of missed alerts or about 10% fewer missed alerts with the same number of false alerts.There are many schemes that can be used to improve both the geometric 2 and probabilistic detection results, but this figure shows that the probabilistic results can be at least as good as a geometric detection system.
+V. Using Conflict Probability Data in ResolutionsTo explore the interactions of the probabilistic detection system with a conflict resolution system, simulations were performed using the probabilistic detection system, ACES and the Advances Airspace Concept (AAC) 15 Autoresolver. 16The Autoresolver provides strategic separation assurance in the 20 to 2 minutes to loss time frame.When resolving conflicts, the Autoresolver creates many different resolutions with over 10 possible successful resolutions to choose from.In the current implementation, the chosen resolution is the one with the least total delay.One benefit of the probabilistic conflict detection system is that it provides a probability of a conflict occurring for a trajectory against any other trajectory.If a proposed resolution trajectory is compared against all other trajectories in the simulation then the probability of the primary conflict recurring is computed as well as the probability that the resolution results in a secondary conflict.Taking the maximum of these probabilities gives conflict probabilities for any possible resolution that the Autoresolver is evaluating.So, in addition to ranking possible resolutions based on their imposed aircraft delay, the resolutions can also be ranked based on their probability of a primary or secondary conflict occurring.A cost function combining delay and the probability of a conflict occurring can also be minimized, and for subsequent analyses the cost functionC = D + 10P,(9)will be used, where D is the delay in minutes and P is the reported probability of a conflict.This function basically equates 1 minute of delay with a 10% increase in conflict probability.The best ratio to balance additional delay with additional conflict probability is an area for further study.Four separate simulations were performed using approximately 4800 aircraft across the United States; the experiment matrix is presented in Table 1.The first simulation had no trajectory prediction error and used a geometric detection system.This served as a baseline case.The other three simulations were all performed with the trajectory prediction errors described previously.The second simulation used the geometric conflict detection system and chose resolutions based on delay.The third simulation used the probabilistic detection system to detect conflicts but still picked the preferred resolution based on minimizing delay.The final simulation used probabilistic detection and ranked possible resolutions based on minimizing the cost function in Equation 9.For the geometric detection simulations, a conflict was indicated if the aircraft were within 6 nmi of each other with a time to loss less than 8 minutes.For a resolution to be successful, it required the aircraft to remain at least 7 nmi away from each other and be free of conflicts for at least 12 minutes.For the probabilistic simulations an α of 0.7 nmi/min was used, and a conflict was declared if the probability that the aircraft would be within 6 nmi of each other was greater than 0.4.A successful resolution required a conflict probability less than 0.2.Neither system used a vertical buffer even though there were significant trajectory-prediction errors in this dimension and they are known to be a significant problem. 12Combining this research with the vertical buffers discussed in Cone et al 14 is an area for future research.
+Simulation Number Trajectory Error Detection TypeFigure 10 shows a summary of some of the statistics from these simulations.The baseline case with no errors required around 4000 resolutions to maintain safety, and the geometric system with errors required over 7000 resolutions.Using the probabilistic detection with optimization based on delay reduced the number of resolutions implemented to about 5000 (Figure 10 The total number of losses calculated using the flown trajectories after the conflict resolutions are applied are shown in 10(b).For reference, in the detection simulations with the same demand set but no resolutions executed, there were 2,060 losses.For the baseline, no-error, resolution simulation there are 4 losses, and these are due to simulation artifacts having to do with aircraft entering the simulation in a loss.Both probabilistic simulations have fewer losses than the geometric simulation with errors; reducing the total losses by about 8%.As was explored in Lauderdale et al 12 many of the remaining losses are due to unpredicted altitude changes, and reducing this number is a subject of future work.The reduction in the number of resolutions required, combined with the overall drop in the number of losses, indicates that more robust resolutions were selected by the probabilistic resolution system.Also, making resolution selections including information about the probability that a conflict will recur improves the robustness of the selected resolution.An example of a situation where this increased robustness in the probabilistic detection system using the cost function is evident is shown in Figure 11.This figure shows a situation from simulations where, using the delay-based selection criterion a resolution that is twice as likely to result in another loss would be chosen because the total delay is 25 seconds less.The cost-function based selection methodology would favor the lower probability resolution.Selecting the lower probability resolution is also generally in line with anecdotal evidence that shows that air-traffic controllers favor resolving conflicts by turning an aircraft behind the other aircraft instead of in front of it.The cost of selecting more robust resolutions is shown in Figure 12(a).The average delays per resolution for the probabilistic simulations are more than double the average delays for the geometric simulations.Examining the total delay (Figure 12(b)) shows that the increase in the average delay is partially offset by the reduction in number of resolutions for the geometric simulations, but the probabilistic simulations still have almost twice as much total delay as the geometric simulations.Interestingly, when resolutions are selected based on the cost function, the total delay is less than when they are selected only based on delay.This indicates that, even though in a specific instance a resolution with larger delay may be selected if it has a lower chance of recurrence, overall the increased robustness of the resolutions provides a benefit because fewer resolutions are required.!"#$"%&'() *#)+&&#&) !"#$"%&'() ,'%-)+&&#&).&#/0/'1'23() 4"105)6#&%).&#/0/'1'23() 7#2%)6#&%)89"&0:") 4"105);"&) <"2#1=3#>) ?2"(#>@2A)To explore the reason behind the increased delay between the geometric detection system and the probabilistic detection system, the percentages of horizontal, speed, and altitude resolutions selected are shown in Figure 13 for the geometric and probabilistic delay-based simulations with trajectory prediction errors (simulations 2 and 3).It can be seen in Figure 13(a) that about 30% of the resolutions in the geometric simulation are speed resolutions.In the probabilistic run (Figure 13(b)) these speed maneuvers are replaced almost entirely by horizontal resolutions.This is most likely because a significant amount of trajectory prediction uncertainty is in the along-track direction.Since speed maneuvers only impact the along-track position, these maneuvers tend to stay within the uncertain regions.This is especially true for conflicts between arrival aircraft which tend to have a low angle of incidence.Figure 7(b) shows that lower angle of incidence conflicts result in higher probabilities of loss.
+VI. ConclusionsThis paper has presented a new methodology to determine the probability of conflict between two aircraft.The probabilistic calculations take as inputs two trajectories of any fidelity from a trajectory prediction system and a characterization of that fidelity.These trajectory predictions and the characteristics of their errors are combined numerically to determine a probability that those two aircraft will have a loss in the future.Comparisons of the probabilistic detection system and a geometric system showed that the probabilistic system allowed for possible reductions in missed alerts and false alerts.These reductions were predicated on the correct selection of both a conflict-probability cutoff and along-track time varying uncertainty.Simulations combining the probabilistic detection system and a conflict resolution system were performed and compared to similar simulations using a geometric system.The results showed that the probabilistic detection system reduced the number of losses and the number of resolutions required to provide the desired separation.This indicates that the resolutions selected were more robust to trajectory prediction errors especially when the information about the possibility of a conflict occurring on that resolution trajectory was used to select the desired resolution.The drawback to using the probabilistic detection system was that it increased both the average and total delay required to resolve the conflicts.This increase in delay was at least partially due to a shift away from using speed resolutions toward using horizontal resolutions.Future work would look at how to minimize this extra delay by selecting optimal probability cutoff values as well as how to more accurately model the vertical trajectory prediction errors in the probability calculation.1 and A 22refer to the first and second aircraft respectively, the pos(•) function returns the three-dimensional position of the aircraft.In this equation, || • || H is a norm of the position on the horizontal plane and || • || V is a norm of the position on the vertical plane.To calculate the integral in Equation1, the probability that the first aircraft is at position x is determined from the error PDFs (Figure2(a)).Then the probability that the second aircraft is within H horizontally and V vertically of x is calculated (Figure2(b)).These two quantities are multiplied together and numerically integrated over all x in R 3 .
+Figure 2 .2Figure 2. The probability calculation involves (a) calculating the probability that one aircraft is located at a point in space and (b) the probability that the other aircraft is within a certain range of that point.
+Figure 3 .3Figure 3. (a) The horizontal probability is given by a two-dimensional Gaussian distribution, and (b) the vertical probability density functions is given by a uniform distribution from a to b.
+) and 4(c).Finally, all points inside the circle are assigned the value of the Gaussian distribution and all points outside the circle are assigned a value of zero (Figures 4(b) and 4(d)).
+Figure 4 .4Figure 4.The probability that the second aircraft is with V of any point in space must be calculated using a refined grid as shown in (a) and (c).The resulting discrete functions which are numerically integrated are shown in (b) and (d).
+Figure 5 .5Figure 5. Examples of (a) vertical predicted and actual trajectories and (b) along-track distances which show some of the errors present in the simulation.
+Figure 6 .6Figure 6.(a) A schematic representation of the angle of incidence and (b) the distance of the minimum separation from zero separation which is used in the severity definition.
+55
+Figure 7 .7Figure 7.For the no trajectory-prediction error case, each point represents a single detection of a loss that will occur.The conflict probabilities as functions of time to loss with the points color coded by (a) the severity of the loss and (b) the angle of incidence are shown.
++",-".-//"0*)12,+/3
+Figure 8 .8Figure 8.For the case with trajectory-prediction error, each point represents a single detection of a loss of separation that will actually occur.Figure (a) shows the dependence on the loss severity and (b) shows the dependence on angle of incidence.
+Figure 10 .10Figure10shows a summary of some of the statistics from these simulations.The baseline case with no errors required around 4000 resolutions to maintain safety, and the geometric system with errors required over 7000 resolutions.Using the probabilistic detection with optimization based on delay reduced the number of resolutions implemented to about 5000 (Figure10(a)) with the cost-function resolution selection reducing the number of resolutions beyond that.
+Figure 11 .11Figure 11.A diagram of a conflict and two resolutions where one resolution has a delay of 65 seconds and a conflict probability of 0.1 and the other resolution has a delay of 40 seconds and a conflict probability of 0.2.
+Figure 12 .12Figure 12.The average delay (a) and the total delay (b) for the four resolution simulations.
+Figure 13 .13Figure 13.The percentages of speed, altitude and horizontal resolutions implemented in (a) the geometric, delay-based simulation with trajectory prediction errors and (b) the probabilistic, delay-based simulation.
+Table 1 .1The experiment matrix for the resolution simulations.Resolution Selection
+			of 12 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 17, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5643
+			of 12 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 17, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5643
+			of 12 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 17, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5643
+			of 12 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 17, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5643
+			of 12 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 17, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5643
+			of 12 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 17, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5643
+			of 12 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 17, 2013 | http://arc.aiaa.org| DOI:
+			10.2514/6.2012-5643
+			Downloaded by NASA AMES RESEARCH CENTRE on April 17, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5643
+			of
+			American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 17, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5643
+			of 12 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 17, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5643
+		
+		
+
+			
+AcknowledgmentsThe author would like to thank Tony Wang of the University-Affiliated Research Center for providing invaluable software development and support for this experiment as well as many helpful internal NASA reviewers.
+			
+
+			
+
+				
+
+
+	
+		Required Ranges for Conflict Resolutions in Air Traffic Management
+		
+			VincentHKuo
+		
+		
+			YiyuanJZhao
+		
+		10.2514/2.4734
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		Journal of Guidance, Control, and Dynamics
+		0731-5090
+		1533-3884
+		
+			24
+			2
+			
+			2001
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Kuo, V. H. and Zhao, Y. J., "Required Ranges for Conflict Resolutions in Air Traffic Management," Journal of Guidance, Control, and Dynamics, Vol. 24, No. 2, 2001, pp. 237-245.
+
+
+
+	
+		Accuracy Comparison of an Operational and Experimental Strategic Conflict Probe
+		
+			ConfesorSantiago
+		
+		
+			JeffreyLehman
+		
+		
+			AndrewCrowell
+		
+		10.2514/6.2010-8162
+		AIAA-2010-8162
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		Toronto, Canada
+		
+			American Institute of Aeronautics and Astronautics
+			2010
+		
+	
+	Santiago, C., Lehman, J., and Crowell, A., "Accuracy Comparison of an Operational and Experimental Strategic Conflict Probe," AIAA Guidance, Navigation and Control Conference, No. AIAA-2010-8162, Toronto, Canada, 2010.
+
+
+
+	
+		Conflict Detection and Resolution in the Presence of Prediction Error
+		
+			HErzberger
+		
+		
+			RAPaielli
+		
+		
+			DRIsaacson
+		
+		
+			MMEshow
+		
+	
+	
+		1st USA/Europe Air Traffic Management R&D Seminar
+		
+			1997
+			Saclay, France
+		
+	
+	Erzberger, H., Paielli, R. A., Isaacson, D. R., and Eshow, M. M., "Conflict Detection and Resolution in the Presence of Prediction Error," 1st USA/Europe Air Traffic Management R&D Seminar , Saclay, France, 1997.
+
+
+
+	
+		Probabilistic Approaches Toward Conflict Prediction
+		
+			GJBakker
+		
+		
+			HJKremer
+		
+		
+			HA PBlom
+		
+		10.2514/5.9781600866630.0677.0694
+		NLR-TP-2001-634
+	
+	
+		Air Transportation Systems Engineering
+		
+			American Institute of Aeronautics and Astronautics
+			2001
+			
+		
+	
+	Tech. Rep.
+	Bakker, G. J., Kremer, H. J., and Blom, H. A. P., "Probabilistic approaches towards conflict prediction," Tech. Rep. NLR-TP-2001-634, 2001.
+
+
+
+	
+		Conflict Probability Estimation Generalized to Non-Level Flight
+		
+			RussellAPaielli
+		
+		
+			HeinzErzberger
+		
+		10.2514/atcq.7.3.195
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			7
+			3
+			
+			
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Paielli, R. A. and Erzberger, H., "Conflict Probability Estimation Generalized to Non-Level Flight," Air Traffic Control Quarterly, Vol. 7, No. 3, pp. 195-222.
+
+
+
+	
+		Space Vehicle Conflict-Avoidance Analysis
+		
+			RussellPPatera
+		
+		10.2514/1.24067
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		Journal of Guidance, Control, and Dynamics
+		0731-5090
+		1533-3884
+		
+			30
+			2
+			
+			
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Patera, R., "Space Vehicle Conflict Avoidance Analysis," Journal of Guidance, Control, and Dynamics, Vol. 30, No. 2, pp. 492-498.
+
+
+
+	
+		Probabilistic Safety Assessment of Unmanned Aerial System Operations
+		
+			Hak-TaeLee
+		
+		
+			LarryAMeyn
+		
+		
+			SoyoungKim
+		
+		10.2514/1.57572
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		Journal of Guidance, Control, and Dynamics
+		0731-5090
+		1533-3884
+		
+			36
+			2
+			
+			
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Accepted for Publication
+	Lee, H., Meyn, L. A., and Kim, S., "Safety Assessment of Unmaned Aerial System Operations Over the Grand Forks Air Force Base Area," Journal of Guidance, Control, and Dynamics, Accepted for Publication.
+
+
+
+	
+		A Real-Time Monte Carlo Implementation for Computing Probability of Conflict
+		
+			LeeYang
+		
+		
+			JiHyunYang
+		
+		
+			JamesKuchar
+		
+		
+			EricFeron
+		
+		10.2514/6.2004-4876
+		AIAA-2004-4876
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		Providence, Rhode Island
+		
+			American Institute of Aeronautics and Astronautics
+			2004
+		
+	
+	Yang, L., Yang, J. H., Kuchar, J., and Feron, E., "A Real-Time Monte Carlo Implementation for Computing Probability of Conflict," AIAA Guidance, Navigation and Control Conference, No. AIAA-2004-4876, Providence, Rhode Island, 2004.
+
+
+
+	
+		Analysis of Climb Trajectory Modeling for Separation Assurance Automation
+		
+			DavidThipphavong
+		
+		10.2514/6.2008-7407
+	
+	
+		AIAA Guidance, Navigation and Control Conference and Exhibit
+		
+			American Institute of Aeronautics and Astronautics
+			2008-7407, 2008
+		
+	
+	Thipphavong, D., "Analysis of Climb Trajectory Modeling for Separation Assurance Automation," AIAA Guidance, Navigation, and Control Conference, No. AIAA 2008-7407, 2008.
+
+
+
+	
+		Predictability of Top of Descent Location for Operational Idle-Thrust Descents
+		
+			LaurelLStell
+		
+		10.2514/6.2010-9116
+	
+	
+		10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		Fort Worth, Texas
+		
+			American Institute of Aeronautics and Astronautics
+			2010
+		
+	
+	Stell, L. L., "Predictability of Top of Descent Location for Operational Idle-Thrust Descent," AIAA Aviation Technology, Integration, and Operations Conference, Fort Worth, Texas, 2010.
+
+
+
+	
+		Build 8 of the Airspace Concept Evaluation System
+		
+			SapaGeorge
+		
+		
+			GoutamSatapathy
+		
+		
+			VikramManikonda
+		
+		
+			KeePalopo
+		
+		
+			LarryMeyn
+		
+		
+			ToddLauderdale
+		
+		
+			MichaelDowns
+		
+		
+			MohamadRefai
+		
+		
+			RichardDupee
+		
+		10.2514/6.2011-6373
+		AIAA-2011-6373
+	
+	
+		AIAA Modeling and Simulation Technologies Conference
+		Portland, Oregon
+		
+			American Institute of Aeronautics and Astronautics
+			2011
+		
+	
+	George, S., Satapathy, G., Manikonda, V., Palopo, K., Meyn, L., Lauderdale, T. A., Downs, M., Refai, M., and Dupee, R., "Build 8 of the Airspace Concept Evaluation System," AIAA Modeling and Simulation Technologies Conference, No. AIAA-2011-6373, Portland, Oregon, 2011.
+
+
+
+	
+		Automated Separation Assurance with Weather and Uncertainty
+		
+			TALauderdale
+		
+		
+			HErzberger
+		
+		10.1007/978-4-431-54475-3_3
+	
+	
+		Lecture Notes in Electrical Engineering
+		9th USA/Europe Air Traffic Management R&D Seminar
+		Berlin, Germany
+		
+			Springer Japan
+			2011
+			
+		
+	
+	Lauderdale, T. A., Cone, A. C., and Bowe, A. R., "Relative Significance of Trajectory Prediction Error on an Automated Separation Assurance Algorithm," 9th USA/Europe Air Traffic Management R&D Seminar , Berlin, Germany, 2011. 13
+
+
+
+	
+		Trajectory Modeling Accuracy for Air Traffic Management Decision Support Tools
+		
+			SMondoloni
+		
+		
+			MPaglione
+		
+		
+			SGreen
+		
+		
+			2002
+		
+	
+	The 23th Congress of the International Council of the Aeronautical Sciences (ICAS
+	Mondoloni, S., Paglione, M., and Green, S., "Trajectory Modeling Accuracy for Air Traffic Management Decision Support Tools," The 23th Congress of the International Council of the Aeronautical Sciences (ICAS), 2002.
+
+
+
+	
+		Robust Conflict Detection and Resolution around Top of Descent
+		
+			AndrewCone
+		
+		
+			AishaBowe
+		
+		
+			ToddLauderdale
+		
+		10.2514/6.2012-5644
+		Appear. 15
+	
+	
+		12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference and 14th AIAA/ISSMO Multidisciplinary Analysis and Optimization Conference
+		Indianapolis, Indiana
+		
+			American Institute of Aeronautics and Astronautics
+			2012
+		
+	
+	Cone, A. C., Bowe, A. R., and Lauderdale, T. A., "Robust Conflict Detection and Resolution around Top of Descent," AIAA Aviation Technology, Integration, and Operations Conference, Indianapolis, Indiana, 2012, To Appear. 15
+
+
+
+	
+		Automated Conflict Resolution for Air Traffic Control
+		
+			HErzberger
+		
+		
+			2006
+		
+	
+	25th Iternational Congress of the Aeronautical Sciences
+	Erzberger, H., "Automated Conflict Resolution for Air Traffic Control," 25th Iternational Congress of the Aeronautical Sciences, 2006.
+
+
+
+	
+		Automated conflict resolution, arrival management, and weather avoidance for air traffic management
+		
+			HErzberger
+		
+		
+			TALauderdale
+		
+		
+			Y-CChu
+		
+		10.1177/0954410011417347
+	
+	
+		Proceedings of the Institution of Mechanical Engineers, Part G: Journal of Aerospace Engineering
+		Proceedings of the Institution of Mechanical Engineers, Part G: Journal of Aerospace Engineering
+		0954-4100
+		2041-3025
+		
+			226
+			8
+			
+			2010
+			SAGE Publications
+			Nice, France
+		
+	
+	Erzberger, H., Lauderdale, T. A., and Cheng, Y., "Automated Conflict Resolution, Arrival Management and Weather Avoidance for ATM," 27th Iternational Congress of the Aeronautical Sciences, Nice, France, 2010.
+
+
+				
+			
+		
+	

@@ -1,0 +1,606 @@
+
+	
+	
+		
+I. INTRODUCTIONConcepts and technologies to manage arrival, departure, and surface operations have been under development by NASA, the Federal Aviation Administration (FAA), and industry to improve the flow of traffic into and out of the nation's busiest airports.Whereas trajectory-based concepts and technologies have been developed for specific phases of flight, their integration across surface and airspace domains to increase efficiency of the traffic flows remains a considerable challenge [1].To address this challenge, NASA is conducting the Airspace Technology Demonstration-2 (ATD-2) to evaluate an Integrated Arrival, Departure, and Surface (IADS) traffic management system [2], [3].The IADS concept extends traffic sequencing for the entire life-cycle of a flight from departure gate to arrival gate within multi-airport, metroplex environments.The IADS concept builds on and integrates previous NASA research such as the Terminal Sequencing and Spacing (TSAS) [4], the Precision Departure Release Capability (PDRC) [5], and the Spot and Runway Departure Advisor (SARDA) [6], [7] which each focused on individual airspace domains.The IADS concept was initially developed based on the Surface Collaborative Decision Making (S-CDM) ConOps [8] and refined over time.The IADS concept and system was then tested in Human-In-The-Loop (HITL) simulations [9].The IADS system was deployed to Charlotte Douglas International Airport (CLT) for a three-year field evaluation.The Phase 1 field evaluation began in September 2017 and ended September 2018.During this time the IADS system was evaluated for three key capabilities 1) data exchange and integration, 2) tactical surface metering, and 3) departure scheduling and electronic negotiation of release time of controlled flights for overhead stream insertion.The IADS scheduler provides the tactical surface metering and departure scheduling capabilities on top of the foundation of data exchange and integration.The purpose of this paper is to describe how data from the Phase 1 field evaluation helped identify scheduler improvements and guided the implementation of refinements.The improvements in the IADS scheduler are incorporated into the IADS Phase 2 scheduler enabling strategic Surface Metering Programs (SMPs) and will be evaluated during the field demonstration.This paper is organized as follows.Section II begins with background information on surface management concepts.Section III provides a high level summary of the surface modeler and scheduler, which are two core components of the IADS system.Section IV describes the arrival scheduling methodology shows the accuracy of the arrival predictions.Section V and Section VI describe how the departure scheduling methodology and the tactical metering trigger logic evolved throughout the Phase 1 field evaluation.Section VII shows the compliance with the assigned Target Off-Block Times (TOBT) and Target Movement Area entry Time (TMAT) and discusses different approaches that can help improve TMAT compliance.Section VIII contains concluding remarks.
+II. BACKGROUDBoth EUROCONTROL and the FAA have developed a collaborative decision making framework to manage airport surface operations where each concept aims to improve the efficiency of airport operations by reducing congestion on the airport surface, improving the traffic flow efficiency, and reducing uncertainties during airport operations [10].The EUROCONTROL Airport Collaborative Decision Making (A-CDM) [11] concept has been implemented across 17 airports with benefits including but not limited to taxi-out time savings, increased peak departure rates at the runway, and improved take-off time predictability [12].The A-CDM concept is flexible to allow for different scheduling approaches to be implemented at different airports.One such scheduling approach developed by the German Aerospace Center (DLR) is the Departure Management System (DMAN), including the Controller Assistance for Departure Optimization (CADEO), which provides scheduling and pre-departure sequencing by calculating off-block times to reduce runway queue and surface congestion [13].The FAA developed the Surface Collaborative Decision Making (S-CDM) [8] concept in 2012 building upon prior surface management research including the Surface Management System (SMS) [14] and Collaborative Departure Queue Management (CDQM) [15] which were field tested at Memphis International Airport.In 2015 FAA and NASA committed to the Airspace Technology Demonstration-2 to evaluate the IADS system which was developed from the S-CDM concept.During the Phase 1 field evaluation the IADS concept demonstrated benefits including but not limited to taxi time savings from tactical surface metering [16].In 2020 after completion of the IADS field evaluation the FAA will begin to install the Terminal Flight Data Manager (TFDM) with surface metering capabilities, which was built from the S-CDM ConOps, across 27 of the Nation's busiest airports [17].The tactical surface metering benefits observed in the ATD-2 Phase 1 field evaluation are enabled by the IADS scheduler [3], [18].The IADS scheduler provides the coordinated runway schedule which accounts for both arrivals and departures while honoring all known constraints including aircraft type (i.e., taxi speed, wake vortex separation), dual-use runways, converging runway operations, any Traffic Management Initiatives (TMIs), and conflicts at the runway thresholds.During time periods when demand for a runway exceeds the available capacity, the IADS scheduler triggers tactical surface metering on and departure demand is controlled by honoring gate specific pushback advisories to reduce surface congestion and taxi times.The remainder of this paper is focused on the IADS scheduler functionality that enables both the runway scheduling and surface metering.
+III. IADS SURFACE MODELER AND SCHEDULERThe logic of the IADS scheduler is described in Fig. 1  and implementation can be found in supporting documents [3], [18].The scheduler interacts with a surface modeler [3] which tracks, updates, and disseminates information on key surface events.Actual surface event data (e.g., Actual OUT information) is used in conjunction with derived data and model processing logic to produce a single cohesive view of airport operations.At a rate of once every ten seconds, the surface modeler leverages this view of the surface operations to generate predictions of the Unimpeded TakeOff Time (UTOT) for departures.For arrivals, the surface modeler mediates between different data sources to generate the most accurate Predicted Landing Time (PLT).In addition to the UTOT and PLT, the model assigns each aircraft to a Scheduling Group which is one of the data elements used to select the next aircraft to schedule.Using UTOT, PLT, and Scheduling Groups the scheduler implements two main processing steps.The scheduler first selects the next aircraft that will be inserted into the schedule and then inserts the aircraft at the earliest feasible time such that all wake vortex constraints are satisfied.The feasibility of the scheduled time is defined as at or after the UTOT or PLT for departures and arrivals, respectively.
+A. Surface Modeler Trajectory GenerationOne of the core functions of the surface modeler is computing the three-dimensional (3D) (x,y,t) surface trajectory from the gate to the runway for departures, and from the runway to the gate for arrivals, based on the expected airport/runway configuration and gate/runway assignment.The surface modeler uses surveillance data, when available, to detect the actual surface trajectory and update the trajectory prediction.The surface modeler uses coded taxi routes defined by the adaptation using the airport resource information to select the available routes or default to the shortest path when the coded taxi routes are not available in the adaptation.For a departure aircraft, the model generates its Unimpeded Off-Block Time (UOBT), Unimpeded Taxi Time (UTT), and UTOT estimate.The off-block time refers to the time the aircraft initiates the pushback from the gate.The model is provided with an Earliest Off-Block Time (EOBT) prediction from the airlines.The UOBT is defined as max[EOBT,current time] and represents the best estimate of the time the aircraft will initiate the pushback process.For the UOBT we use max[EOBT,current time] because if the EOBT estimate is in the past, then the current time is the earliest the flight would be available to initiate the pushback process.The UTT is derived from nominal taxi speeds and the expected taxi route and is used to generate the UTOT defined as the UOBT + UTT.
+B. Surface Modeler Scheduling Group AssignmentAssigning aircraft to Scheduling Groups is a core function of the surface modeler.The Scheduling Groups are used within the Select Next Aircraft to Schedule logic block which dictates the order aircraft are inserted into the schedule.The Scheduling Groups and selection of the next aircraft to insert in the schedule are guided by a heuristic that flights with higher certainty in their UTOT predictions should have higher precedence in scheduling.The main Scheduling Groups for departure aircraft ordered from highest certainty to lowest certainty include Active, Ready, Planning, and Uncertain.For departures, assignment to the different groups is dependent upon the state of the flight and the EOBT.Any departure that has already pushed back is assigned to the Active group.Aircraft that have called ramp controllers for pushback and are put on hold are assigned to the Ready group.Assignment to the Planning group and Uncertain group is based on the flight's EOBT and has evolved throughout the Phase 1 field evaluation.Additional details about the Planning and Uncertain group assignment will be discussed in Section V-A.In addition to the assignment of departures to the different groups, the role of the different groups in the selection of the next aircraft to schedule has evolved throughout the Phase 1 field evaluation and will be described in Section V-B.
+C. IADS SchedulerArrivals are inserted into the schedule and assigned a Targeted LanDing Time (TLDT) before departures.The departures are then assigned runway usage times, which are referred to as the Target TakeOff Times (TTOTs), in order based on a selection criteria defined by the UTOT and Scheduling Group.The scheduler is modular to allow for different selection criteria to be implemented.Once a departure is selected to be inserted into the schedule, the departure is assigned a feasible TTOT such that the TTOT satisfies all known constraints, including aircraft type (i.e., taxi speed, wake vortex separation), dual-use runways, converging runway operations, any TMIs, and conflicts at the runway thresholds.The rate at which the scheduler schedules the departure operations is not explicitly defined by an Airport Departure Rate or Runway Departure Rate.Instead, each departure is dependent on other departure and arrival operations and a minimumtime separation constraint is enforced.The minimum-time separation constraints between any two operations are defined by the FAA wake vortex separation [19] constraints.Scheduling each aircraft at the earliest time such that the separation constraints are satisfied will result in a unique scheduled rate for the given traffic demand.For departures, surface metering is accomplished by generating the de-conflicted TTOTs which are used to calculate TOBTs and TMATs to provide specific advisories for pushback, movement area entry, and wheels up to the users of the system.The key idea for surface metering on a per flight basis is that the taxi time calculated by the difference TTOT -TOBT is bounded.This bound is achieved by the delay propagation formula given byT OBT = max[U OBT, T T OT -U T T -Target] (1)where the UTT is provided by the model and fit from historical data and the Target is a parameter defined in time units set by the users that influences the maximum amount of excess taxi time the aircraft will experience.The smaller the Target translates into less excess taxi time and larger gate hold times.After the TOBT is assigned the TMAT is computed asT M AT = T OBT + U RT T (2)where the URTT is the Unimpeded Ramp Transit Time from gate to taxiway spot and is given by the surface modeler.
+IV. ARRIVAL SCHEDULING
+A. Arrival Predicted Landing Time Data SourcesThe IADS system builds the picture of arrival demand by leveraging data from three external systems -the FAAs Traffic Flow Management System (TFMS), the FAAs Time Based Flow Management (TBFM) system, and NASAs research version of TBFM.All three systems provide Estimated Time of Arrival (ETA) predictions of when a flight will land at CLT independent of other arrivals.TFMS predicts an ETA for flights up to 24 hours in advance of departure based on airline schedule data.As airlines file flight plans and update their predicted pushback times with EOBT, TFMS updates its ETA predictions based on the latest data including TMIs such as a Ground Delay Program (GDP) or Airspace Flow Program (AFP).Once the flight is airborne, both TFMS and TBFM will update the ETA prediction based on the latest track data.Because TFMS has ETAs farther in advance and updates the ETA based on EOBT and TMI data in addition to the flight plan, the IADS system favors the TFMS ETAs over the TBFM ETAs.In addition to the TBFM ETA predictions, the TBFM system schedules the arrivals into CLT and generates Scheduled Time of Arrivals (STAs) leveraging internal TBFM high fidelity modeling of flight dynamics, weather, and arrival terminal route adaptation.The TBFM STAs also account for runway capacity constraints by enforcing wake vortex constraints.The FAA's operational TBFM will freeze the STAs of flights as they cross a set of freeze horizons.These freeze horizons are set to provide Air Route Traffic Control Center (ARTCC) controllers with a planned sequence that does not change.However, the planned sequences may not materialize due to operational constraints and changes in the terminal area.As a result, the frozen STA's from the FAA's TBFM system may not reflect the current situation.The NASA research TBFM system, on the other hand, does not freeze STAs and continues to update the STA all the way to the runway.The NASA research TBFM system also has updated adaptation data to improve the STA predictions.For this reason, the IADS system favors the STAs from the NASA research TBFM system over the FAA's operation TBFM system.In the following text, the TBFM STA refers to the NASA research TBFM system.The TBFM STAs are better at predicting actual ON than the TFMS ETA.Fig. 2 shows the accuracy of the TBFM STA and TFMS ETA measured as the difference actual ON -PLT as a function of lookahead prior to actual ON.The median error is shown with a solid line and the InterQuartile Range (IQR) is illustrated with a shaded region in blue and green for the TBFM STA and TFMS ETA, respectively.As can be seen in the figure, the median error for the TBFM STA is below the median error for the TFMS ETA within 75 minutes of actual ON.For predictions more than 75 minutes prior to actual ON the median error for the TBFM STA is greater than the median error of the TFMS ETA, however, the IQR for the TBFM STA is much tighter than the IQR for the TFMS ETA.The benefit of using the TBFM STA is the increased accuracy but the limitation is the availability of the data.The TBFM STA is not available until the flight is airborne.Fig. 3 shows the percentage of flights with TBFM STA (have both TBFM STA and TFMS ETA) and TFMS ETA (TFMS ETA only) as a function of time prior to actual ON.The horizontal axis represents the lookahead prior to actual ON, and the vertical axis represents the percentage of arrival flights which had a TBFM STA in blue or a TFMS ETA only in green.As can be seen in the figure, only 30% of flights 90 minutes prior to actual ON have a TBFM STA.
+B. Arrival Scheduling MethodologyTo address the accuracy and availability of the PLT the IADS system uses both the TFMS ETA and TBFM STA arrival data to build a cohesive view of arrival demand.The ETAs provide a view of demand prior to the flight departing it's upline airport, and the STAs provide a more accurate picture of demand once the flight is airborne.To leverage the increased accuracy of the TBFM data the PLT passed to the scheduler is defined as the TBFM STA whenever available, else the TFMS ETA.Given that flights actively operating in the NAS will have TBFM STAs, almost all arrivals predicted to arrive at CLT within the 30 minute tactical time frame will have a TBFM STA.Any arrivals still on the ground with only a TFMS ETA will typically have a flight time of greater than 30 minutes.By combining the TBFM STA data with the TFMS ETA data we are able to leverage the most accurate predictions in the tactical time frame while maintaining the most up to date view of traffic demand beyond the tactical time frame.To reduce the impact of inaccurate TFMS ETA arrival predictions on the departure capacity, the IADS scheduler identifies the arrivals that have a TFMS ETA without a TBFM STA and pushes these arrivals out past current time plus 30 minutes.This occurs for about 4.6% of flights and results in the IADS scheduler knowing about the overall arrival demand.However, the arrival demand in the immediate tactical time frame is only populated by airborne flights that are tracked by TBFM.For arrivals inside the 30 minute tactical time frame we assign a Target Landing Time (TLDT) equal to the STA as the TBFM STAs are already separated from each other.For arrivals outside the 30 minute time frame, the TLDT is obtained by the scheduler applying wake vortex separation between arrivals in a First Come First Served (FCFS) order with flights ordered by STA if available and otherwise ETA.This logic allows the arrival demand to account for arrivals that have not yet departed from close-in airports while also ensuring a feasible sequence of arrivals.
+V. DEPARTURE SCHEDULING FOR SURFACE METERING PROGRAM
+A. Assignment of Departures to Scheduling GroupsThe logic used to assign departures to the Scheduling Groups evolved throughout the Phase 1 field evaluation.Originally the status of EOBT with respect to current time was used to assign departure aircraft at the gate to two Scheduling Groups: Uncertain and Planning.All departures started in the Uncertain group and transitioned to the Planning group when their EOBT was within the planning horizon defined as current time plus ten minutes.This approach prioritizes aircraft with an EOBT within ten minutes of current time and ensures that these aircraft are scheduled into the available runway capacity before any aircraft whose EOBT is outside of the planning horizon.We implemented this to align with the heuristic that flights with greater certainty should take precedence in scheduling and to incentivize flight operators to provide high quality EOBTs.Although this reduces the delay for aircraft within the ten minute planning horizon, aircraft outside of the planning horizon get assigned unrealistic amounts of delay.Consider The significant difference in TTOT for aircraft in Planning vs. Uncertain makes it challenging to accurately predict the delay for the Uncertain aircraft outside of the ten minute planning horizon.This is undesirable because predictions of when surface metering will trigger are dependent upon the delay calculations of these aircraft outside the ten minute planning horizon.For tactical surface metering this is not a major problem, however, in the Phase 2 field evaluation the IADS scheduler will shift focus to strategic SMPs which rely on these predictions to inform users about the start times and the average and maximum gate hold times of future SMPs.To address the unrealistic delay assigned to aircraft outside of the ten minute planning horizon we redefined the criteria used to assign aircraft to the Planning and Uncertain groups.The updated logic assigns any aircraft with an EOBT to the Planning group.The Uncertain group is reserved for aircraft that do not provide an EOBT or do not call ready within 13 minutes of their EOBT.Because aircraft are no longer transitioning from the Uncertain group to the Planning group ten minutes prior to EOBT, the TTOTs that are assigned to aircraft at the gate with EOBT outside of the ten minute planning horizon better reflect the true delay that aircraft will experience.Since aircraft no longer transition between Uncertain and Planning, the aircraft no longer experience the jump in TTOT shown in Fig. 4.This should help increase the accuracy of SMP predictions.
+B. Role of the Scheduling Groups and Order of ConsiderationThe role of the Scheduling Groups and order of consideration changed during the field evaluation.Originally, the Scheduling Groups and UTOT of unscheduled aircraft were sorted to generate the order of consideration which defined the sequence that aircraft would be inserted into the schedule.To build the order of consideration, departures were first sorted by Scheduling Group, and then within each group, departures were sorted by UTOT for Active and Uncertain and sorted by Scheduled Off-Block Time (SOBT) + UTT for Planning.The SOBT is provided by the airline operators and is not the IADS schedule.The hierarchical structure of the order of consideration allowed the scheduler to prioritize flights for which we had higher confidence in the accuracy of the UTOT prediction.The problem, however, was that this approach created mismatches between the sequence of the UTOTs and the sequence of the TTOTs.If there is a mismatch between the sequences of UTOTs and TTOTs, then the TTOT of an aircraft transitioning between groups can jump due to the hierarchical structure of the order of consideration.Consider Fig. 5a which shows a timeline with Active departures colored in blue and Planning departures colored in red.The left hand side of the timeline is the UTOT for each departure, and the right hand side is the TTOT which would be generated under the hierarchical order of consideration.The vertical line represents the timeline and the bottom is current time.As you go up the timeline you go further into the future.Because all Active aircraft are inserted into the timeline before the Planning departures, XYZ987 is scheduled behind all the Active departures even though XYZ987 can arrive at the runway before Active departures XYZ023, XYZ067, and XYZ423 according to the predicted UTOTs.Fig. 5b shows the same timeline after XYZ987 transitions from Planning to Active.As can be seen in the figure, once the aircraft transitions and the order of consideration sorts XYZ987 with other Active aircraft according to the UTOT, the TTOT for XYZ987 jumps down the timeline.This type of jumping in the schedules causes challenges for accuracy and stability.The mismatch between UTOT sequence and TTOT sequence is also present when trying to apply the SOBT + UTT order of consideration in the Planning group.In the next Section, we will describe the problem encountered sorting by SOBT + UTT and we will introduce new approach we developed which builds schedules with consistent UTOT sequences and TTOT sequences.
+C. First Scheduled First Served for Surface Metering ProgramDuring surface metering, the S-CDM ConOps [8] recommends that runway usage times be allocated according to Ration By Schedule (RBS), an extension to First Scheduled First Served (FSFS).During the Phase 1 field evaluation we implemented FSFS by sorting departures in the Planning group by SOBT + UTT to build the order of consideration.This sorting order can create mismatches between the UTOT and TTOT sequences as described in Section V-B.More specifically, the mismatch between UTOT and TTOT for Planning departures is a problem when the delay is below the Target.When a set of departures are being inserted into the schedule according to the order of consideration sorted by SOBT + UTT, the TTOT sequence that is generated by this order of consideration might not match the UTOT sequence if the SOBT = UOBT.Because the delay is below the Target and aircraft are not being gate held, we expect aircraft to push back at UOBT and the UTOT sequence given by UOBT + UTT might not align with the TTOT sequence given by SOBT + UTT order.When the delay is above the Target, however, we can define the controlled UTOT which is defined as UT OT = TOBT + UTT.The difference between the UTOT and UT OT is the gate hold assigned for surface metering and is equal to the difference between the UOBT and the TOBT.When the delay is above the Target and all aircraft in the Planning group are experiencing gate hold, then the UT OT sequence will exactly match the TTOT sequence generated from the SOBT + UTT ordering (UT OT = TTOT-Target).If aircraft push back at TOBT then at the point in time of pushback the UOBT = TOBT and thus UTOT = UT OT which ensures we deliver aircraft to the runway according to SOBT + UTT ordering.The gate hold beyond the UOBT is what gives us the ability to control the sequence we deliver aircraft to the runway.To address the mismatch between UTOT sequence and TTOT sequence due to the Scheduling Groups and the SOBT + UTT order of consideration, we designed new logic which is applied in the Select Next Aircraft to Schedule logic block seen in Fig. 1.The key idea of this logic depends on detecting when delay is above the Target.If delay is below the Target we have no control and we assign the TTOT sequence according to a FCFS principle since aircraft will push back at UOBT and be delivered to the runway in the FCFS order.When delay goes above the Target we can identify the set of aircraft which will be assigned gate hold, and thus the set of aircraft we have control over, and assign the TTOT sequence according to the SOBT + UTT order of consideration.The new logic applied in the Select Next Aircraft to Schedule logic block is shown in Fig. 6.We start with a sorted list of aircraft based on their UT OT + a buffer.The size of the buffer is determined by the Scheduling Groups and allows us to prioritize one group over another.Using the first aircraft in this list we identify the TTOT the aircraft would be assigned if selected to be scheduled and define this as the T T OT .We don't insert this aircraft into the schedule yet, however, because if there are multiple aircraft whose delay would be above the Target if scheduled at the given T T OT then we should allocate this T T OT to the aircraft with the earliest SOBT + UTT.Given the T T OT , we identify all flights where T T OT -UT OT ≥ Target which represents the set of flights whose delay is above the Target threshold if scheduled at the T T OT .If no aircraft satisfy this criteria, the delay is below the Target and we have no control.Thus we schedule the aircraft with the earliest UT OT according the the FCFS principle.If there exists aircraft that satisfy the criteria, then we have control over these aircraft and select the aircraft with the earliest SOBT + UTT.Then the scheduler inserts this aircraft into the schedule at the T T OT .By checking if any aircraft satisfy the criteria T T OT -UT OT ≥ Target we can determine when we have control and are able to assign runway times based on the FSFS principle.When we don't have control we maintain a FCFS principle which helps increase stability and predictability of the schedule as the TTOT sequence will match our predicted UTOT sequence.
+D. Decoupling TTOT and TOBT for PredictionThe TTOTs assigned according to the logic described in Section V-C assume that we will meter if delay rises above the Target.Whereas this is true for the tactical scheduler, in Phase 2 of the field evaluation we will assess the performance of a strategic scheduler which predicts SMPs in the future and allows users to either accept or reject a proposed SMP.During time periods where an SMP is proposed, but not accepted yet by the user, we need to build a schedule that assumes we will meter to provide realistic predictions of the SMP including SMP start and average gate hold times while also generating TTOT predictions and a timeline for the users that assume metering will not be used because the SMP is not affirmed yet.To address this case, the final TTOTs which we display on the timeline are decoupled from the TOBTs that are assigned for metering during an SMP.To achieve this decoupling, we introduced a second prediction pass of the scheduler that can decouple the TTOTs from the TOBTs.The first pass of the scheduler assigns the metering times and the TOBTs and the second pass of the scheduler applies a FCFS order of consideration to the UT OT for aircraft within an affirmed SMP, else UTOT for aircraft not within an affirmed SMP.For the second prediction pass we apply the FCFS scheduling logic to the UT OT , defined by the TOBT calculated in the first pass of the scheduler, because the UT OT will automatically adjust once the SMP is affirmed to represent the controlled sequence which we want to achieve at the runway.Using this logic, we can generate predictions of delay in future SMPs in the first pass while simultaneously generating a timeline with TTOTs that automatically adjust to reflect if an SMP is affirmed or not.
+VI. TRIGGERING METERING WHEN DEMAND EXCEEDS CAPACITYThe transition from non-metering to metering at the correct point in time is important.Transitioning to metering too early poses a risk that the queue has not fully built up and the system recommends gate holds when the surface congestion does not justify metering.This can result in a slow start to traffic and the overall demand being shifted where aircraft take off at a later time in comparison to non-metered traffic.In contrast, transitioning to metering too late poses a risk that the demand taxiing towards the runway overwhelms the available runway capacity and the efficiency of surface metering is greatly reduced.In this Section we show the results from the original trigger mechanism used for tactical surface metering, describe the updates that we made to the trigger logic, and illustrate how the new logic improved the transition between non-metering and metering.
+A. Original Trigger for MeteringAt the beginning of the Phase 1 field evaluation, the scheduler relied on predictions of the demand to trigger the transition from non-metering to metering.The prediction of when the metering would trigger was based on an estimated excess taxi time (delay) for each flight.To trigger metering we required that one flight be at the gate with EOBT within 10 minutes of current time and predicted excess taxi time at or above the Target.In addition, we also required that a second aircraft assigned to the same runway be at the gate with EOBT within 10 minutes of current time and predicted excess taxi time at or above the upper threshold.When these conditions were met simultaneously, metering turned on.We found that solely relying on the predictions caused metering to turn on too early, before the traffic level justified gate holding.Early reports from the field indicated that the bank had a slow start and ramp controllers reported that the the system was recommending gate holds when there was little to no delay in the physical queue (active aircraft off the gate).This was later confirmed through data analysis.Consider Fig. 7 which illustrates the excess taxi time and gate hold for each flight operating on runway 18C in bank 2 on 2017-12-05 during the first week of metering at CLT.The vertical axis is the excess taxi time and each grey bar represents a single aircraft's excess taxi time measured as actual taxi time minus UTT.The red bar stacked on top of the grey bar represents the amount of gate hold the aircraft experienced due to surface metering.The blue horizontal line is the Target excess taxi time that controllers used on the given day.The horizontal axis represents the sequence of Actual TakeOff Times (ATOT) such that the first bar on the left is the first aircraft that took off in the bank and the last bar on the right is the last aircraft that took off in the bank.Aircraft that took off early in the bank were experiencing gate hold (red bar) even though their excess taxi time (grey bar) was well below the Target excess taxi time (blue line).Whereas these flights were not assigned a Target Off-Block Time (TOBT) that was beyond their EOBT, they were assigned a TOBT equal to their EOBT but happened to call in earlier than their EOBT.This EOBT error resulted in aircraft at the beginning of the bank being gate held against their EOBT even though the active queue had not built up enough to justify gate holds.
+B. Updated Trigger for MeteringTo address the problem of triggering metering on too early we added a requirement to the trigger logic.In addition to the requirement that the delay for aircraft at the gate must be at or above some threshold, we required that there must be an active aircraft that is off the gate with predicted excess taxi time at or above the Target excess taxi time.This allows for the active queue to naturally build up to the Target excess taxi time in the presence of the EOBT error that caused us to erroneously gate hold previously.Fig. 8 shows the same graph containing the excess taxi time and gate hold on a per flight basis for runway 18L on 2018-01-21 after we had implemented the new trigger logic.As can be seen in the figure, the first flight that was held at the gate (red bar) came after some aircraft's excess taxi times had reached the Target excess taxi time.This is the desired behavior that allows the excess taxi time to naturally build up to the Target, and once at the Target, any additional excess taxi time is transferred to the gate.By adding the active excess taxi time logic to the metering trigger we are able to properly build the queue up, effectively control the queue size, and transfer additional excess taxi time above the Target to the gate.Fig. 7 shows that by triggering too early and creating a slow start to the bank, ramp controllers over compensated by not gate holding aircraft towards the end of the bank and there are a significant amount of aircraft with excess taxi time above the Target that were not gate held.In contrast to Fig. 7, Fig. 8 shows that improving the trigger logic and better controlling the queue size, very few aircraft experience excess taxi above the queue and the red bar representing gate hold is efficiently transferring additional delay above the Target to the gate.
+VII. HONORING TOBT AND TMAT ADVISORIESAfter metering has been triggered, the performance of surface metering relies on ramp controllers honoring the TOBT and TMAT advisories given by Expressions (1) and (2), respectively.In this Section we present the results of the compliance with TOBT and TMAT observed in the Phase 1 field evaluation.We also show the empirical relationship between the TMAT compliance and the TOBT compliance and show what the optimal TMAT compliance could have been if operators were allowed to swap TMATs between their own flights.
+A. TOBT ComplianceRamp controllers were advised that when possible, the TOBT advisory should be honored within ± 2 minutes.Fig. 9 shows the TOBT compliance for 4,778 bank 2 metered flights operating between 2018-01-01 through 2018-09-30.The horizontal axis is the difference between the Actual Off-Block Time (AOBT) and the TOBT measured in minutes.The vertical axis is the frequency of flights with the given AOBT -TOBT value.As can be seen in the figure, the TOBT compliance defined by ± 2 minutes was 45.9%.Flights that were not compliant to TOBT were likely to push back earlier than the advised push back time which can be seen from the peak of the distribution centered around -2 minutes and the heavy left tail.Ramp controllers bring up a variety of reasons why aircraft might be released earlier than their TOBTs including gate conflicts, flights delayed well beyond SOBT, and other operational constraints.
+B. TMAT ComplianceThe ATD-2 concept focuses on TOBT compliance which is in contrast to the TFDM surface metering concept which focuses on TMAT compliance defined as ± 5 minutes.Whereas ATD-2 does not ask ramp controllers to comply with the TMAT times, we have assessed TMAT compliance.Fig. 10 shows the TMAT compliance in blue for the set of 4,778 aircraft contained in Fig. 9.The horizontal axis is the difference between the Actual Movement Area entry Time (AMAT) and the TMAT measured in minutes.The vertical axis is the frequency of aircraft with the given AMAT -TMAT value.In addition to the blue histogram showing the TMAT compliance for all aircraft assigned both a TOBT and TMAT, the orange histogram shows the TMAT compliance for the aircraft that were compliant with the TOBT (within the ± 2 minute TOBT compliance illustrated by the two vertical black lines in Fig. 9).As can be seen in Fig. 10, the chance of complying with the TMAT increases given the compliance with the TOBT advisory.The TMAT compliance increases to 80.6% for aircraft compliant with the TOBT compared to 65.9% compliance for any aircraft assigned both a TOBT and TMAT.If we consider the shape of the orange histogram compared to the shape of the blue histogram, we see that compliance to the TOBT advisory significantly reduces the density on the left tail of the distribution while maintaining very similar density on the right tail of the distribution.By shifting the density of the left tail into the ± 5 minute TMAT compliance window while maintaining the right tail, the TOBT compliance increases the overall TMAT compliance.
+C. TMAT Swapping for Optimal ComplianceTOBTs and TMATs are assigned to control the flow of demand towards the runway.When the scheduler assigns TOBTs and TMATs to meter the flow, the scheduler is indifferent to which specific aircraft gets delivered to the Active Movement Area (AMA) at the assigned TMAT time.This creates an opportunity for operators to swap TMAT times to improve TMAT compliance, while simultaneously maintaining the metered flow of traffic towards the AMA.We view this as a win-win for the operators who improve TMAT compliance and for the predictability of the system where an aircraft is delivered to the AMA within the expected compliance window.In order to measure the opportunity to improve the TMAT compliance we solved an optimization problem which assigns TMAT times in such a way that we maximize the TMAT compliance.For the optimal TMAT compliance, a TMAT swap is constrained to only be feasible for aircraft from the same flight operator, assigned a TMAT from the same SMP, and departing off the same runway.Fig. 11 illustrates the actual TMAT compliance in blue and the optimal TMAT compliance in green for the set of 4,778 flights shown in blue in Fig. 9 and Fig. 10.As can be seen in the figure, the opportunity to increase TMAT compliance and deliver aircraft to the AMA when the system expects increases to 83.6% percent with TMAT swapping compared to 65.9% without TMAT swapping.In practice, achieving the optimal TMAT compliance might be challenging in real-time.The optimal TMAT compliance is computed in post-analysis where we have perfect information about every aircraft's TMAT and AMAT.In real-time, an operator would know the set of TMATs that have been assigned, but without knowing the AMATs the swapping would rely on a predicted AMAT instead of an actual AMAT.Due to these limitations, the optimal compliance seen in Fig. 11 should be viewed as an upper bound of what is possible in real-time.
+VIII. CONCLUSIONIn this paper, we described the IADS scheduler functionality that enables both the runway scheduling and surface metering.We used operational data to identify scheduler improvements and guide the implementation of refinements.The improvements described in this paper have been incorporated into the IADS Phase 2 scheduler enabling strategic SMPs.Future research will evaluate the performance of the IADS scheduler during a SMP.The functionality that we will be testing in the Phase 2 field evaluation include SMP predictions, freezing of TOBT and TMAT in advance, and updated logic for inserting controlled flights into the overhead stream.Fig. 2 .2Fig. 2. Median of error illustrated with solid line and IQR illustrated with shaded region.
+Fig. 3 .3Fig. 3. Percentage of arrival flights with TBFM STA (blue) and TFMS ETA (green) as a function of lookahead time prior to actual ON.
+Fig. 4 .4Fig. 4. The difference in the TTOT as aircraft transition from the Uncertain group to the Planning group measured as TTOT(Planning) -TTOT(Uncertain).
+Fig. 44which illustrates the difference in the TTOT as the aircraft transitions from the Uncertain group to the Planning group.This figure contains all bank 2 departures between 2018-06-01 through 2018-06-30 totaling 2,346 flights.As can be seen in the figure, when aircraft transition from Uncertain to Planning the mean difference in TTOT after the transition is 2.1 minutes earlier.
+Fig. 5 .5Fig. 5. a) Example of a schedule composed of Active (blue) and Planning (red) flights.Flight XYZ987 was scheduled with a later TTOT than flight XYZ067 even though XYZ987's UTOT is earlier than XYZ067's UTOT.b) Example of a schedule after XYZ987 transitions from Planning to Active which causes the TTOT to jump down the timeline.
+Fig. 6 .6Fig. 6.Updated logic used in the Select Next Flight to Schedule logic block which is shown in Fig. 1.
+Fig. 7 .7Fig. 7. Excess taxi time (grey) and gate hold (red) illustrated as a function of takeoff sequence.The horizontal blue line is the Target excess taxi time selected by the users.Flights in the circled region were assigned gate hold even though the excess taxi time was well below the Target.
+Fig. 8 .8Fig. 8. Excess taxi time (grey) and gate hold (red) illustrated as a function of takeoff sequence.The horizontal blue line is the Target excess queue time selected by the users.Flights are only assigned gate hold after the excess taxi time has built above the Target.
+Fig. 9 .9Fig. 9. Compliance for all aircraft assigned a TOBT during surface metering illustrated in blue.TOBT compliance is measured as AOBT -TOBT and controllers were trained with a TOBT compliance window of ± 2 minutes illustrated by the vertical dashed black lines.
+Fig. 10 .10Fig. 10.Compliance for all aircraft assigned a TMAT during surface metering illustrated in blue.The compliance for aircraft assigned a TMAT that were compliant to the TOBT advisory are shown in orange.
+Fig. 11 .11Fig.11.Compliance for all aircraft assigned a TMAT during surface metering illustrated in blue.The optimal compliance which allows for aircraft to swap TMAT times is shown in green.
+at a high level.A more detailed description of the scheduler designModeler OutputScheduler OutputUnimpededTargetTakeOff Time PredictedSelect Next Aircraft to ScheduleSchedule at RunwayMoreFalseTakeOff Time TargetLanding TimeLanDing TimeScheduling GroupsWake VortexTrueFig. 1. High level design of the IADS scheduler.
+		
+		
+			
+AUTHOR BIOGRAPHIESDr. William Jeremy Coupe is an aerospace engineer at NASA Ames Research Center.He received his BS degree in mathematics from the University of San Francisco and both MS degree in applied mathematics and statistics and Ph.D. degree in computer engineering from the University of California, Santa Cruz.Dr. Hanbong Lee is an aerospace engineer at NASA Ames Research Center.He received his BS degree in mechanical and aerospace engineering from Seoul National University, Korea, and both MS and Ph.D. degrees in aeronautics and astronautics from Massachusetts Institute of Technology.Dr. Yoon Jung is an aerospace engineer at NASA Ames Research Center, specialized in surface traffic management research.He received his BS and MS degrees in mechanical engineering from Seoul National University, Korea, and Ph.D. degree in mechanical engineering from the University of California, Davis.Mr. Liang Chen is a software engineer at Moffett Technologies Inc.He received his BEng degree in Electronics and Information Engineering from Imperial College London, UK.Mr. Isaac Robeson is an analyst at Mosaic ATM.He received his BS and MS degrees in Aerospace Engineering from the Georgia Institute of Technology.			
+			
+
+				
+
+
+	
+		Benefit opportunities for integrated surface and airspace departure scheduling: A study of operations at Charlotte-Douglas International Airport
+		
+			RichCoppenbarger
+		
+		
+			YoonJung
+		
+		
+			TomKozon
+		
+		
+			AmirFarrahi
+		
+		
+			WaqarMalik
+		
+		
+			HanbongLee
+		
+		
+			EricChevalley
+		
+		
+			MattKistler
+		
+		10.1109/dasc.2016.7778084
+	
+	
+		2016 IEEE/AIAA 35th Digital Avionics Systems Conference (DASC)
+		
+			IEEE
+			2016
+		
+	
+	Coppenbarger, R., Jung, Y., Kozon, T., Farrahi, A., Malik, W., Lee, H., Chevalley, E., and Kistler, M., "Benefit opportunities for integrated surface and airspace departure scheduling: a study of operations at Charlotte-Douglas International Airport," Digital Avionics Systems Con- ference (DASC), 2016.
+
+
+
+	
+		Airspace Technology Demonstration 2 (ATD-2) phase 1 Concept of Use (ConUse)
+		
+			YJung
+		
+		
+			SEngelland
+		
+		
+			ACapps
+		
+		
+			RCoppenbarger
+		
+		
+			BHooey
+		
+		
+			SSharma
+		
+		
+			LStevens
+		
+		
+			SVerma
+		
+		
+			2018
+		
+	
+	Jung, Y., Engelland, S., Capps, A., Coppenbarger, R., Hooey, B., Sharma, S., Stevens, L., and Verma, S., "Airspace Technology Demonstration 2 (ATD-2) phase 1 Concept of Use (ConUse)," 2018.
+
+
+
+	
+		
+		
+			AGing
+		
+		
+			SEngelland
+		
+		
+			ACapps
+		
+		
+			MEshow
+		
+		
+			YJung
+		
+		
+			SSharma
+		
+		
+			ETalebi
+		
+		
+			MDowns
+		
+		
+			CFreedman
+		
+		
+			TNgo
+		
+		
+			HSielski
+		
+		
+			EWang
+		
+		
+			JBurke
+		
+		
+			SGorman
+		
+		
+			BPhipps
+		
+		
+			MorganRuszkowski
+		
+		
+			L
+		
+	
+	
+		Airspace Technology Demonstration
+		
+			2
+			2
+			2018
+		
+	
+	Technology Description Document (TDD
+	Ging, A., Engelland, S., Capps, A., Eshow, M., Jung, Y., Sharma, S., Talebi, E., Downs, M., Freedman, C., Ngo, T., Sielski, H., Wang, E., Burke, J., Gorman, S., Phipps, B., and Morgan Ruszkowski, L., "Airspace Technology Demonstration 2 (ATD-2) Technology Descrip- tion Document (TDD)," 2018.
+
+
+
+	
+		Evaluation of the Terminal Sequencing and Spacing system for Performance-Based Navigation arrivals
+		
+			JaneThipphavong
+		
+		
+			JaewooJung
+		
+		
+			HarrySwenson
+		
+		
+			LynneMartin
+		
+		
+			MelodyLin
+		
+		
+			JimmyNguyen
+		
+		10.1109/dasc.2013.6712503
+	
+	
+		2013 IEEE/AIAA 32nd Digital Avionics Systems Conference (DASC)
+		
+			IEEE
+			
+		
+		
+			11th USA/Europe Air Traffic Management Research and Development Seminar
+		
+	
+	Thipphavong, J., Jung, J., Swenson, H. N., Witzberger, K. E., Lin, M. I., Nguyen, J., Martin, L., Downs, M. B., and Smith, T. A., "Evaluation of the controller-managed spacing tools, flight-deck interval manage- ment, and terminal area metering capabilities for the ATM Technology Demonstration 1," 11th USA/Europe Air Traffic Management Research and Development Seminar.
+
+
+
+	
+		
+			SAEngelland
+		
+		
+			RCapps
+		
+		
+			KBDay
+		
+		
+			MSKistler
+		
+		
+			FGaither
+		
+		
+			GJuro
+		
+		Precision Departure Release Capability (PDRC) Final Report
+		
+			2013
+		
+	
+	Engelland, S. A., Capps, R., Day, K. B., Kistler, M. S., Gaither, F., and Juro, G., "Precision Departure Release Capability (PDRC) Final Report," 2013.
+
+
+
+	
+		Performance Evaluation of SARDA: An Individual Aircraft-based Advisory Concept for Surface Management
+		
+			YoonJung
+		
+		
+			TyHoang
+		
+		
+			MiwaHayashi
+		
+		
+			WaqarMalik
+		
+		
+			LeonardTobias
+		
+		
+			GautamGupta
+		
+		10.2514/atcq.22.3.195
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			22
+			3
+			
+			2014
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Jung, Y., Malik, W., Tobias, L., Gupta, G., Hoang, T., and Hayashi, M., "Performance evaluation of SARDA: an individual aircraft-based advi- sory concept for surface management," Air Traffic Control Quarterly, Vol. 22, No. 3, 2014, pp. 195-221.
+
+
+
+	
+		Evaluation of pushback decision-support tool concept for Charlotte Douglas International Airport ramp operations
+		
+			MHayashi
+		
+		
+			THoang
+		
+		
+			YCJung
+		
+		
+			WMalik
+		
+		
+			HLee
+		
+		
+			VLDulchinos
+		
+		
+		
+			11th USA/Europe Air Traffic Management Research and Development Seminar
+		
+	
+	Hayashi, M., Hoang, T., Jung, Y. C., Malik, W., Lee, H., and Dulchinos, V. L., "Evaluation of pushback decision-support tool concept for Char- lotte Douglas International Airport ramp operations," 11th USA/Europe Air Traffic Management Research and Development Seminar.
+
+
+
+	
+		An Integrated Collaborative Decision Making and Tactical Advisory Concept for Airport Surface Operations Management
+		
+			GautamGupta
+		
+		
+			WaqarMalik
+		
+		
+			YoonJung
+		
+		10.2514/6.2012-5651
+	
+	
+		12th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference and 14th AIAA/ISSMO Multidisciplinary Analysis and Optimization Conference
+		
+			American Institute of Aeronautics and Astronautics
+			2014
+		
+	
+	FAA Air Traffic Organization Surface Operations Office
+	FAA Air Traffic Organization Surface Operations Office, "U.S. airport Surface Collaborative Decision Making (CDM) Concept of Operations (ConOps) in the near-term: application of the surface concept at United States airports," 2014.
+
+
+
+	
+		Evaluation of a tactical surface metering tool for Charlotte Douglas international airport via human-in-the-loop simulation
+		
+			SavitaVerma
+		
+		
+			HanbongLee
+		
+		
+			LynneMartin
+		
+		
+			LindsayStevens
+		
+		
+			YoonJung
+		
+		
+			VictoriaDulchinos
+		
+		
+			EricChevalley
+		
+		
+			KimJobe
+		
+		
+			BonnyParke
+		
+		10.1109/dasc.2017.8102046
+	
+	
+		2017 IEEE/AIAA 36th Digital Avionics Systems Conference (DASC)
+		
+			IEEE
+			2017
+		
+	
+	Verma, S., Lee, H., Martin, L., Stevens, L., Jung, Y., Dulchinos, V., Chevalley, E., Jobe, K., and Parke, B., "Evaluation of a tactical surface metering tool for Charlotte Douglas International Airport via human- in-the-loop simulation," Digital Avionics Systems Conference (DASC), 2017.
+
+
+
+	
+		Opportunities and challenges when implementing trajectory-based taxi operations at European and U.S. CDM airports
+		
+			NikolaiOkuniek
+		
+		
+			LukasSparenberg
+		
+		10.1109/dasc.2017.8102045
+	
+	
+		2017 IEEE/AIAA 36th Digital Avionics Systems Conference (DASC)
+		
+			IEEE
+			2017
+		
+	
+	Okuniek, N. and Sparenberg, L., "Opportunities and challenges when implementing trajectory-based taxi operations at European and US CDM airports," Digital Avionics Systems Conference (DASC), 2017.
+
+
+
+	
+		Airport CDM implementation-the manual
+		
+			CdmEurocontrol Airport
+		
+		
+			Team
+		
+		
+		
+			2017
+		
+	
+	EUROCONTROL Airport CDM Team, "Airport CDM implementation-the manual," https://www.eurocontrol.int/publications/ airport-cdm-implementation-manual, 2017.
+
+
+
+	
+		A-CDM impact assessment
+		
+			Eurocontrol
+		
+		
+		
+			2016
+		
+	
+	EUROCONTROL, "A-CDM impact assessment," https: //www.eurocontrol.int/sites/default/files/publication/files/ a-cdm-impact-assessment-2016.pdf, 2016.
+
+
+
+	
+		Operational improvements in the context of DMAN, A-SMGCS and A-CDM
+		
+			MSchaper
+		
+	
+	
+		CEAS (Council of European Aerospace Societies) Air & Space Conference
+		Manchester, UK
+		
+			2009
+		
+	
+	Schaper, M., "Operational improvements in the context of DMAN, A- SMGCS and A-CDM," CEAS (Council of European Aerospace Soci- eties) Air & Space Conference, Manchester, UK, 2009.
+
+
+
+	
+		Surface Management System Field Trial Results
+		
+			StephenAtkins
+		
+		
+			YoonJung
+		
+		
+			ChristopherBrinton
+		
+		
+			LStell
+		
+		
+			TCarniol
+		
+		
+			SRogowski
+		
+		10.2514/6.2004-6241
+	
+	
+		AIAA 4th Aviation Technology, Integration and Operations (ATIO) Forum
+		
+			American Institute of Aeronautics and Astronautics
+			2004
+		
+	
+	Atkins, S., Jung, Y., Brinton, C., Stell, L., Carniol, T., and Rogowski, S., "Surface Management System field trial results," AIAA 4th Aviation Technology, Integration and Operations (ATIO) Forum, 2004.
+
+
+
+	
+		Field test results of Collaborative Departure Queue Management
+		
+			ChrisBrinton
+		
+		
+			SteveLent
+		
+		
+			ChrisProvan
+		
+		10.1109/dasc.2010.5655527
+	
+	
+		29th Digital Avionics Systems Conference
+		
+			IEEE
+			2011
+		
+	
+	Brinton, C., Provan, C., Lent, S., Prevost, T., and Passmore, S., "Collab- orative Departure Queue Management," Ninth USA/Europe Air Traffic Management Research and Development Seminar (ATM2011), 2011.
+
+
+
+	
+		Field evaluation of the baseline integrated arrival, departure, surface capabilities at Charlotte Douglas Interntional Airport
+		
+			YJung
+		
+		
+			WCoupe
+		
+		
+			ACapps
+		
+		
+			SEngelland
+		
+		
+			SSharma
+		
+	
+	
+		Thirteenth USA/Europe Air Traffic Management Research and Development Seminar (ATM2019)
+		
+			2019
+		
+	
+	unpublished
+	Jung, Y., Coupe, W., Capps, A., Engelland, S., and Sharma, S., "Field evaluation of the baseline integrated arrival, departure, sur- face capabilities at Charlotte Douglas Interntional Airport," Thirteenth USA/Europe Air Traffic Management Research and Development Semi- nar (ATM2019), 2019 (unpublished).
+
+
+
+	
+		Cognitive Workload and Visual Attention Analyses of the Air Traffic Control Tower Flight Data Manager (TFDM) Prototype Demonstration
+		
+			KiranLokhande
+		
+		
+			HayleyJ DavisonReynolds
+		
+		10.1037/e572172013-023
+		
+		
+			
+			American Psychological Association (APA)
+			
+		
+	
+	"Terminal Flight Data Manager (TFDM)," https://www.faa.gov/air traffic/technology/tfdm, Accessed: 2019-02-12.
+
+
+
+	
+		A Data Driven Analysis of a Tactical Surface Scheduler
+		
+			JeremyCoupe
+		
+		
+			LeonardBagasol
+		
+		
+			LiangChen
+		
+		
+			HanbongLee
+		
+		
+			YoonCJung
+		
+		10.2514/6.2018-3666
+	
+	
+		2018 Aviation Technology, Integration, and Operations Conference
+		
+			American Institute of Aeronautics and Astronautics
+			2018
+		
+	
+	Coupe, W. J., Bagasol, L., Chen, L., Lee, H., and Jung, Y., "A data driven analysis of a tactical surface scheduler," AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, 2018.
+
+
+
+	
+		Mitigating Wake Turbulence Risk During Final Approach Via Plate Lines
+		10.2514/6.2020-2835.vid
+		
+		
+			2019-02-08
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	"Wake turbulence recategorization," https://www.faa.gov/ documentLibrary/media/Order/Final Wake Recat Order.pdf, Accessed: 2019-02-08.
+
+
+				
+			
+		
+	

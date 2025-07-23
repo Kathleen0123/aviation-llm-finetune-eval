@@ -1,0 +1,375 @@
+
+	
+	
+		
+I. IntroductionThere are numerous constraints to consider when scheduling departure times from an airport.These constraints include wake separation constraints for successive departures, miles-in-trail separation for aircraft bound for the same departure fixes, and time-window or prioritization constraints for individual flights.Further, emissions and fuel consumption are additional criteria that need to be addressed during scheduling.Runways have been identified as the main source of system-wide delay in existing literature 1 .Thus, addressing all the above constraints in a single framework while effectively using airport geometry for scheduling departures has been identified as a part of the Next Generation Air Transport System (NextGen) 2 concepts.A lot of the prior literature on scheduling at runways has been devoted to scheduling arrival aircraft.The aircraft landing problem has been treated as an example of the generic job-shop scheduling problem; a dynamic programming algorithm for single machine scheduling was developed and applied to aircraft landing 3 .Other papers also address the aircraft landing problem as a job-shop scheduling problem 4,5,6 using a mixed integer formulation.A shortcoming of this previous work is that scheduling between successive aircraft is based on a constant separation time rather than separation based on weight class.Constraint Position Shifting (CPS) has been proposed for the dynamic scheduling of arrival aircraft, along with heuristics to solve it 7 .The idea of CPS was further incorporated into a dynamic programming approach for scheduling aircraft landings 8 and was later extended to departure scheduling 9 .CPS reduces the solution space by limiting the number of positions an aircraft can occupy in the sequence, and thus would lead to sub-optimal solutions.The dynamic programming approach in Ref. 3 has been extended into a generalized dynamic program for solving the departure scheduling problem 10 .This method determines pareto-optimal solutions for multiple objectives, but does not assign aircraft to available "queues" (when the taxiway area next to a departure runway is operated as queues).The decision factors behind such pre-determined queues are not explicit, and could potentially be based on a subjective controller input.Although there is evidence of use of a first-come-first-serve rule being used at other parts of an airport 11 , there is no evidence to suggest a uniform rule for assigning aircraft to departure queues.Thus, determining runway queues for individual aircraft and scheduling departures within the same framework would potentially improve efficiency and throughput of overall surface operations at busy airports.This paper presents a mixed integer linear program (MILP) for the deterministic departure scheduling problem.The model is generic and can address various scenarios of departure queue handling.Constraints for wake vortex separation and departure fix restrictions are explicitly considered, and an optional prioritization scheme is defined for relevant aircraft.Multiple objectives relating to throughput, efficiency and equality are considered, and the consequent "loss" in other elements while targeting one objective alone is explored.Improvements to the basic MILP are also provided for increased computational efficiency and the effect of such improvements is examined.The rest of the paper is organized as follows: the following section details the approach used in scheduling departures, illustrating the use of departure queues using Dallas-Fort Worth International Airport (DFW) as an example.The basic mathematical formulation is then presented, with a description of the notation and the interpretation of the expressions.This is followed by a results section split into three parts; the first part discusses the potential benefits from using such a scheme.The second part shows the relative effect of using one objective over others.The third part presents computational improvements for the model as well as results from computational tests.The paper concludes with directions for future research.
+II. ApproachDepending on the airport layout, controller preferences and runway configuration, the staging area or taxiways leading to the departure runway are either managed as first-in-first-out (FIFO) queues or as a "parking" spot (where any available aircraft can take-off irrespective of its relative sequence with others).Thus, for the purpose of scheduling departures, the access to the runway can be modeled in three distinct methods as described below and illustrated in Figure 1 using runway 17R at DFW as an example:1. Multiple queues with each maintaining a FIFO structure as shown in Figure 1a.Any departure aircraft can be assigned to any queue, and aircraft cannot switch queues after this assignment.2. Multiple queues where taxi route dictates queue choice.In other words, the queue assignment for certain aircraft is an input constraint.An example of this is given in Figure 1b.The queues still follow a FIFO structure, and again aircraft cannot switch queues.3.There are no queues with FIFO structure; any aircraft can use the runway at any time.For example, if the access area is comprised of three queuing lanes, this could be achieved by aligning the aircraft in the outer two lanes and the inner lane being kept vacant, as shown in Figure 1c.Any aircraft cleared for departure would then move to inner lane irrespective of its position in the outer lanes.The departure scheduling MILP developed here addresses all the above models, and thus the queuing structure is an input.The MILP further takes as input the incoming sequence of aircraft for departure for a runway, along with DFW their earliest take-off times and an optional prioritization scheme based on a time-window for take-off.The program then assigns these aircraft to the available departure queues (wherever applicable) and schedules runway departure times.Thus, departure scheduling is modeled as a double assignment problem: aircraft expected to depart within the planning horizon are assigned to a departure queue and are then assigned a departure time based on various separation constraints.The approach is generalized and can be used in a variety of situations and allows for aircraft prioritization based on operational considerations.Besides the above three cases for modeling, scheduling can be directed towards three basic objectives (or any combination thereof): throughput, system delay and maximum delay.Throughput is linked to the capacity of the runway and for scheduling purposes can be defined as the assigned take-off time for the last aircraft being scheduled.System delay is linked to efficiency and is the total time spent by all aircraft while waiting to take-off.Maximum delay is linked to equity and is the maximum waiting time for any aircraft while waiting to take-off.The MILP can address each of these three objectives as described in the next section.
+III. Mathematical Details
+A. Basic Mathematical FormulationThis section details the basic mathematical formulation for the MILP.The formulation is detailed for the case when aircraft are assigned to departure queues, and the take-off times are assigned subsequently, as shown in Figure 1a.Following this, modifications to address the other two cases in Figure 1b and 1c are presented.Consider a set of flights , which represents the aircraft expected to be at the departure queue area within the planning horizon to use the pertinent departure runway.Each member of the set will have an aircraft type and destination departure fix, which would govern the separation between preceding and succeeding aircraft.Each aircraft will have a time of earliest take-off based on when it enters the queuing area (un-impeded, or assuming no other aircraft is present).Let this time be for flight , and let the set be sorted in ascending order of .In other words, if then implies .Each aircraft may have a window of departure, and let us denote this with .This time window could be strict or a "hard constraint" (that the aircraft has to depart before ), in which case smaller values of could lead to infeasibility; the window could be lenient too, with a cost of violation.Here we present the formulation where the time window is modeled as a strict constraint, and the alteration to address "soft" time windows is presented at the end of this section .These windows can be used as a means of prioritizing some aircraft over the other, even when the queue entry times are far apart.Of course, this is optional, and the windows could be sufficiently large to avoid any prioritization.Let denote the set of positions these aircraft can occupy in the "departure sequence" from the runway.Thus, , or the number of such positions in the output sequence are equal to the input number of aircraft.Below, we first give a description of the notation, summarizing the above set of parameters and describing the variables.This is followed by the complete mathematical formulation of the MILP and an explanation of all the expressions.
+Parametersis the set of incoming flights, sorted in ascending order of earliest un-impeded departure time is the set of positions that flights can take in the departure sequence on the runway, is the set of all departure queues that the aircraft can be assigned to is the earliest un-impeded departure time for flight is the time window of departure for flight is the minimum separation in departure times of flight and , if flight follows flight .This depends on the weight class or type of aircraft for flight and , and also the departure fix for both the flights, and is the maximum of all the required minimum separation criteria between the pair.
+Variablesis a binary variables, and is 1 if flight occupies position , zero otherwise is a binary variable, and is 1 if flight is assigned to queue , zero otherwise is the departure time of aircraft assigned to position Mathematical Formulation(1)(2)(3)such that (4)(5) (6) (7) (8) (9) (10)As stated before, each aircraft is assigned a departure queue, and then a departure time.The departure time is determined by first assigning each aircraft a position in the output departure sequence, and then maintaining the separation between consecutive positions.The expressions (1) to (10) can be interpreted as follows:Equations ( 1), ( 2) and (3) are the three objective functions labeled according to the pertinent objective.(1) is the system delay objective, and minimizes the total time spent by each aircraft in departure queue area beyond the earliest, unimpeded departure time.( 2) is the throughput objective that minimizes the take-off time of the last position, .is the maximum delay objective, which minimizes the maximum time spent by any aircraft in the queue area.Equation ( 4) guarantees that each aircraft will occupy just one position in the output sequence.( 5) is similar to (4), and represents the fact that each position in the output sequence must be occupied by just one aircraft.In a similar vein, (6) ensures that each aircraft can occupy just one queue.Constraints (7) and (8) ensure that if aircraft is assigned to position , then the departure time for position is within the time window of aircraft .(9) then ensures that the departure times for consecutive departure positions are sufficiently spaced out to ensure the separation criteria flights assigned to the positions.If flight is assigned to position and flight is assigned to position , then , otherwise the constraint is "inactive", or dominated by the constraint for the pair of aircraft that are assigned to these positions.Constraint (10) ensures the FIFO structure of each queue.The two terms on the left hand side of the inequality give the difference in the position of aircraft and .If both aircraft are assigned to the same queue , then the difference in the positions should be at least one, with occupying a position later than since entered the queue later than .The above formulation is valid if the separation between aircraft pairs follows the triangle inequality, i.e., if A follows B and B follows C, then the minimum required separation between A-C would be less than the sum of separation between A-B and B-C.This would not hold in the presence of additional flow constraints such as milesin-trail (MIT) restriction, where certain aircraft pairs have additional separation requirements since they take the same flight path to the en-route airspace.In such cases, additional constraints on and can be written in a manner similar to that in constraint (9).Besides the number of queues, the airport structure could limit the size of each queue.To address this, an additional constraint can be imposed to denote the maximum number of aircraft that can occupy a particular queue as follows: (11)   It should be noted that any limitation on queue size should be time based: the number of aircraft in the queue cannot exceed the limit at any time.The above constraint, at best, serves as a approximation for this limit.This constraint needs to examined further in the future research for scheduling over larger time periods while addressing uncertainty in the time aircraft arrive at the departure queue.To address scenarios with pre-determined queues (Figure 1b), additional constraints can be included in the problem, such as for the relevant queue and flight.The rest of the formulation remains the same.In fact, for these scenarios, is no longer a variable but an input parameter, and thus the problem size is reduced.For scenarios with no FIFO queues (Figure 1c), essentially there is no queuing structure.This can be modeled by eliminating the queuing variables and related constraints ( 6) and ( 10) from the formulation.The reduced problem has fewer variables and constraints, and it is possible that the reduced problem is computationally more efficient.However, this is dependent on the characteristics of the problem and needs to be studied more.As stated before, the above formulation models the time window as a strict constraint.This formulation can be changed to accommodate "soft" time-windows by defining an additional linear variable and adding constraints and .Then can be multiplied by an appropriate cost of violating time windows, and added to the objective function.
+B. Computational ImprovementsFor implementation in a decision support tool for controllers, the departure scheduling method should be computationally efficient and be capable of solving problems of reasonable size in seconds.The computational performance of the basic MILP in the previous section is not sufficient in this regard.To address this, certain methods to improve computational performance are presented in this section.This includes re-formulating some of the constraints as well as adding constraints that are not necessary but result in better bounds and faster solutions.As a first step, two of the constraints in the basic MILP are re-formulated.Constraint (10) maintains the FIFO structure of each queue, and can be re-formulated as: (12)   The above constraint states that if both aircraft and are assigned to the same queue and , then for any position either takes the position or greater than , or takes the position or a position less than .Since the above constraint does not include non-unitary coefficients for the binary variables, it gives better bounds than constraint (10).Constraint (9) can also be re-formulated as:(13)The above constraint is an aggregated form of constraint (9), and reduces the large number of separation constraints while retaining the same bounds.In addition to the above reformulation, various additional constraints can be defined for better computational performance.One such constraint is given below in inequality (14), which says that successive positions for take-off must always be separated by the minimum required separation.
+(14)Another such constraint for better lower bounds can be based on the "best" sequence if all aircraft are available for scheduling at the beginning of the planning horizon itself: Consider the case when .In the absence of any MIT, separation criteria in Table 1 states that the best sequence would be to first clear all the small aircraft, then all the large, then the B-757s and all the heavy aircraft in the end.This can be called the "best" or earliest achievable sequence.In the presence of some MIT restrictions, the separation matrix in Table 1 could be expanded to a matrix which includes all pair-wise separation.Assuming again, the earliest achievable sequence can then be evaluated.If denotes the time of position in this earliest sequence, each can then be bounded as:(15)It should be noted that the method for evaluating presented above is simplistic in nature and does not incorporate the values during evaluation.Better "best" sequences can be built using heuristics that incorporate the values, and this is part of future work in this research.Lastly, it can easily be seen that first departures can occur only after the first arrivals into the queuing area.This can be included as:(16)Besides the above constraints, certain objective-specific constraints can also be defined.For maximizing the throughput, the take-off time for the last position is minimized.If this be the objective, then the resulting throughput will always be equivalent or better than the FCFS throughput.In other words, the take-off time for the last position in the throughput-optimal solution can be bounded by last take-off from FCFS, as shown below in constraint (17):(17) It should be noted that the above constraint works for the throughput objective only, and using it with other objectives could possibly yield sub-optimal solutions.However, even though examples can be found where optimizing for system delay would yield worse-than-FCFS throughput, tests over 240 random problem sets as presented later (in Figure 5) found no such case.Besides constraint (12), all the above modifications and additions work for any model in Figure 1.
+IV. Results
+A. Benefits: Comparison of Departure Scheduling with First-come-first-serveThis section compares the results from the above departure scheduling problem with a basic first-come-firstserve (FCFS) rule to highlight the benefits of using such a scheme.The benefits are presented in terms of improvement over FCFS for any of the three objectives listed before.For the purpose of this comparison, randomlygenerated problems of varying size (described later) were used.The MILP was solved using the ILOG CPLEX 11.0 a , a commercially available optimization software package, and the MILP was solved for an optimality gap (% gap in lower and upper bound) of 1.0%.It should be noted that out of the three models presented in Figure 1, results are provided only for the case with FIFO queues, where the queues assignment is not pre-determined (Figure 1a).The benefits in the case without FIFO queues (Figure 1c) would be more, since absence of queues would lead to more feasible sequences, leading to larger solution space and hence better objective values.The case with preassigned queues (Figure 1b) is similar to problem described in Ref. 10, where the authors present the benefits over a FCFS scheme.Based on operations at DFW, three queues are used in the analysis.To generate the problems data was collected using the Surface Operations Data Analysis and Adaptation (SODAA) tool 12 .This tool analyzes the Surface Management System 13 (SMS) generated log files, which contain data from multiple sources, including air carriers, the Enhanced Traffic Management System (ETMS), and Airport Surface Detection Equipment, Model X (ASDE-X).Four aircraft weight classes were used for which FAA mandates minimum separation criteria based on wake vortex separation 14 .This separation is given in terms of distance, and a http://ilog.com/products/cplex/was converted into time-based separation using average runway occupancy times, average horizontal and ascent speed for each aircraft weight class based on actual surface data at DFW airport.The resulting time-based separation matrix is given in Table 1.Problem sizes of scheduling 15 to 20 aircraft within 15 minutes are considered, which represents highly congested flow conditions (Table 1 shows that a runway can serve at most one departure per minute).It should be noted that although larger number of aircraft can be used in such a problem, it might be computationally prohibitive, especially if implementation in a decision-support tool is a possibility.Further, a 15 aircraft problem represents the operation of a single runway solely for departure for almost 15 to 18 minutes.Planning operations for a time horizon larger than this under taxi-time uncertainty might not yield desirable results.Addressing this uncertainty is part of the future work in this research.The values are uniformly distributed, and the aircraft type is randomly assigned using a uniform distribution (resulting in approximately 25% aircraft of each weight class).Further we consider two separate cases for each problem size: one in which there are no miles-in-trail restriction and the other where all aircraft head towards one out of four departure fixes (with departure fixes assigned based on uniform distribution), with 120 seconds required separation between aircraft going to the same departure fix.The restrictions based on departure fix and other flow criteria would vary, and this represents a test scenario.Also, the values were set to infinity to allow for maximum re-sequencing.Setting a lower value would be equivalent to providing upper bounds to the maximum delay objective since is the maximum allowed delay.Figure 2 shows the improvement in objectives over FCFS for randomized problem sets of scheduling 15 to 20 aircraft with and without MIT restrictions.Each figure has 20 different problem sets for each aircraft number (20 problems sets of 15 aircraft, 20 with 16 aircraft and so on, totaling to 120 problem sets per figure).The different graphs in the figure present the percentage improvement over FCFS for different objectives.Further, since the percentage gains alone do not show the magnitude of benefits, the maximum benefit of all cases in each objective is presented in the box in each graph.For example, Figure 1a shows that 180 seconds can be saved in serving all the aircraft in one of the cases, which means three more small aircraft can depart within the same time when using the MILP over FCFS.Similarly, Figure 1f shows that maximum waiting time for any aircraft is reduced by 421 seconds over FCFS for one of the cases.The gains in throughput are relatively small as compared to the potential reduction in system delay.The difference between FCFS schedule and MILP schedule is more pronounced when departure fix restrictions are put in.It should be noted that a small percentage of the problems (~7%) were not solved to optimality within the computational time limit of 2 minutes (the 2 minute limit was chosen since computation times beyond this questions the use of the method in real time).In such cases, though, the benefits presented below are an under-estimate of the potential benefit.The potential benefits in Figure 2 are for a uniformly distributed aircraft mix (i.e., approximately 25% each of the four classes defined in Table 1).Although it can be argued that the potential aircraft mix in the future would change, benefits on current aircraft mix need to be explored too.For this purpose, the data analysis from SODAA was used to get an approximate mix of aircraft at DFW: 2% small, 88% large, 5 % heavy and 5% B-757.Given the high proportion of large aircraft, the benefits in throughput without MIT are expected to be small since resequencing would have little effect.However, with the inclusion of MIT restrictions, the benefits in delay over FCFS are significant with uniform mix.In Figure 3, the potential benefits for the current aircraft mix with MIT restrictions are provided.Again, these are for 15 to 20 aircraft, with 20 problem sets each for each problem size.The benefits in throughput are not as high as in uniform mix, but there are significant benefits in system delay and maximum delay reduction.But even for system delay and maximum delay, the benefits are less as compared to uniform mix.This is highlighted by the presence of "gaps" in the graphs, showing cases of no benefit over FCFS.Thus, the benefits of such a scheme are dependent on aircraft mix besides depending on existing separation criteria and traffic conditions.Evidently, the benefits would be less under very light demand scenarios since little sequencing would be possible or even required.
+B. Objective Choice: Relative Effect of Choosing an ObjectiveIn the previous section, potential benefits from scheduling directed towards one objective alone were presented.However, for implementation it is necessary to understand the relative effect of using one objective on the other objectives.Scheduling using just one objective can have adverse effects in the others and the associated physical quantities.For example, if scheduling is done based on the maximizing throughput, the optimal solution could result in five aircraft being made to wait till the end to let another aircraft take-off first for slightly better throughput, resulting in large delays and reduced efficiency.In this section, the relative merit of choosing system delay versus throughput is first compared, and then the choice of max delay as an objective is discussed.These comparisons are done based on a uniform aircraft mix, since the difference would be more noticeable in the cases with higher potential for benefit.As before, random problem sets of 15 to 20 aircraft (20 problem sets totaling to 120) were generated, both with and without MIT restrictions, and the 3 FIFO queue model with non-assigned queues (Figure 1a) was used.For each problem set, the maximum throughput and minimal system delay solutions were found and compared in terms of throughput as well as system delay.Figure 4 below shows the result of this comparison.Each dot on the figure represents one problem set.The horizontal axis signifies the percentage deviation from optimal throughput while minimizing system delay and the vertical axis indicates the percentage deviation from least system delay while optimizing throughput.In Figure 4b, the points lying to the right of the vertical "outlier" line represent problems that were not solved to 1% optimality within the prescribed time limit of two minutes.There are few other points towards the left of the outlier line which were not solved to optimality, but all points beyond the outlier line are indeed outliers.The figures show very small deviation in throughput when system delay is optimized, but a very large deviation in system delay for optimal throughput.This indicates that multiple throughput-optimal solutions are present, or multiple throughput maximizing solutions exist in the close vicinity of optimal solution.Searching for the least system delay solution in this neighborhood or using system delay as the objective itself might be more relevant from the point of view of future implementation in a decision support tool.If system delay is used as the objective alone, it becomes necessary to see if there is any adverse effect on throughput.As shown in Figure 4 the throughput decreases, or in other words, there is a positive deviation from optimal throughput.However, it remains to be seen if the throughput decreases beyond the FCFS throughput.For this purpose, the difference in FCFS throughput and that obtained from optimizing system delay is presented in Figure 5 below.As can be seen from these figures, the resulting throughput is still always greater than FCFS.Plotting the results from optimizing maximum delay (shown below in Figure 6) does not show any consistent relationship with other objectives as in Figure 4.As before, each point on the plot in Figure 6 represents results from a single problem set, and there are 240 points in total (120 without MIT and 120 with MIT).The figure shows that the deviation in system delay is larger than in throughput for most of the cases, since a lot of the points lie above the red line.This leads to the conclusion that system delay is more sensitive to the use of a particular objective as compared to throughput and maximum delay.
+Figure 6: System delay and throughput deviation of least maximum delay solution from optimalIf the goal is implementation (for example, in a decision support tool), a hybrid objective as a linear combination of throughput, system delay and maximum delay might be appropriate.The choice of such an objective would involve discussion with all the stakeholders including the airlines, controllers, airport authorities and FAA.One potential objective would be to minimize system delay alone, and using a cap on the maximum delay through finite values.
+C. Computational ExaminationIn this section, the computational efficiency of the MILP was tested including the improvements presented in Section III-B.For testing the computational efficiency of the approach, the model with FIFO queues (Figure 1a) was used, since this has the most variables and constraints and would potentially have higher computational times.Further, the tests were conducted on the throughput and system delay objective only.The usefulness of the maximum delay objective is not clear due to differing perspectives between different stakeholders.Further, a cap can be put on the max delay through values itself.Finite values would yield tighter bounds on binary variables and would reduce computational times.For this reason, only system delay and throughput were considered, with set to infinity.As before, 3 queues were used, and both system delay as well as throughput objective were tested.200 random problem sets for scheduling 15 aircraft were solved, which included 100 without MIT restriction, and 100 with MIT restrictions.Figure 7 and Figure 8 present the results of the computational tests for system delay and throughput objective respectively.In both figures, part (a) is a histogram of optimality gap (percentage difference in lower bound and last good solution) at the end of 100 seconds; part (b) is a histogram of the time for 1% optimality gap.The results indicate that solving for system delay is more efficient than for throughput.While solving for system delay, more than 75% of the problems were solved to within 2% optimality in 100 seconds, compared to less than 40% for throughput.Almost 25% of the problems were solved to optimality (1% gap) in under 10 seconds with system delay as the objective.However, it should be noted that the large solution time for throughput is primarily due to time spent in proving optimality by reducing the lower bound.Analysis of the eventual 1% optimal solution for throughput shows that the solution obtained in the first 10 seconds is actually the optimal in 90% of the cases; the rest of time is spent in improving the optimality gap by improving lower bounds.
+V. ConclusionThis paper presented a mixed integer linear program (MILP) for deterministic runway departure scheduling.The model is generic and can be used for a variety of cases with different methods of handling the queuing area.The MILP explicitly considers separation criteria along with additional constraints, and includes an optional prioritization scheme for relevant aircraft.Multiple objectives can be used and tests indicate substantial benefits over a basic first-come-first-serve rule.Results show that benefits are the most in reducing system delay, and system delay is the most sensitive objective compared to throughput and maximum delay.Minimizing system delay alone provides benefits in throughput too.Computational improvements to the basic MILP are also provided, and tests indicate that system delay minimization has faster solution times than throughput.However, in almost all cases the large solution times in throughput were due to poor bounds, i.e. the optimal solution was found fairly quickly and a lot of time was spent in proving optimality for this solution by changing the lower bounds.Since the model solves the deterministic problem, the logical next step is to address uncertainty while solving for larger time periods.One way to do this would be to use rolling planning horizon methods, and the use of the above model in such a scheme needs to be studied.Further, it is common that queues of arrival aircraft are present next to the departure runway for crossing into the terminal area.Scheduling arrival crossings on the departure runway within the above framework is a relevant problem and is part of future work.Lastly, further improvement in computational times is ongoing research, to make the model more relevant for implementation in a decision support tool for controllers.Figure 1 :1Figure 1: Example for runway 17R at DFW
+Figure 2 :Figure 3 :23Figure 2: Comparison of FCFS and MILP objectives for 15 to 20 aircraft problems with uniform aircraft mix
+Figure 4 :4Figure 4: Comparing system delay and throughput objectives
+OutliersFigure 5 :5Figure 5: Difference in FCFS throughput and throughput resulting from optimizing system delay
+Figure 7 .Figure 8 .78Figure 7. Computational results as histograms for minimizing system delay using modified MILP over 200 random problem sets for scheduling 15 aircraft
+
+Table 1 : Aircraft Types and Minimum Departure Separation (in seconds)1Leading Aircraft TypeSmallLargeHeavyB-757Small5988109110Trailing Aircraft TypeLarge596110991Heavy59619091B 757596110991
+		
+		
+			
+
+				
+
+
+	
+		Identification of flow constraint and control points in departure operations at airport systems
+		
+			HusniIdris
+		
+		
+			BertrandDelcaire
+		
+		
+			IoannisAnagnostakis
+		
+		
+			WilliamHall
+		
+		
+			NicolasPujet
+		
+		
+			EricFeron
+		
+		
+			RHansman
+		
+		
+			John-PaulClarke
+		
+		
+			AmedeoOdoni
+		
+		10.2514/6.1998-4291
+	
+	
+		Guidance, Navigation, and Control Conference and Exhibit
+		Boston, MA
+		
+			American Institute of Aeronautics and Astronautics
+			Aug. 10-12, 1998
+		
+	
+	Idris, H., Delcaire, B., Anagnostakis, I., Hall, W. D., Pujet, N., Feron, E., et al. , "Identification of Flow Constraint and Control Points in Departure Operations at Airport Systems," AIAA Guidance, Navigation, and Control Conference and Exhibit, Boston, MA, Aug. 10-12, 1998.
+
+
+
+	
+		NextGen next generation air transportation system: NextGen policy issues
+		10.1109/icnsurv.2011.5935406
+		
+	
+	
+		2011 Integrated Communications, Navigation, and Surveillance Conference Proceedings
+		
+			IEEE
+			13 June 2007
+		
+	
+	Joint Planning and Development Office
+	Joint Planning and Development Office, "Concept of Operations of The Next Generation Air Transportation System Version 2.0," 13 June 2007, http://www.jpdo.gov/library/NextGen_v2.0.pdf
+
+
+
+	
+		A Dynamic Programming Approach for Sequencing Groups of Identical Jobs
+		
+			HarilaosNPsaraftis
+		
+		10.1287/opre.28.6.1347
+	
+	
+		Operations Research
+		Operations Research
+		0030-364X
+		1526-5463
+		
+			28
+			6
+			
+			1980
+			Institute for Operations Research and the Management Sciences (INFORMS)
+		
+	
+	Psaraftis, H. N, "A Dynamic Programming Approach for Sequencing Groups of Identical Jobs," Operations Research, 28, 1347-1359, 1980.
+
+
+
+	
+		A Combinatorial Optimization Approach to Aircraft Sequencing Problem
+		
+			LBianco
+		
+		
+			GRinaldi
+		
+		
+			ASassano
+		
+		10.1007/978-3-642-86726-2_20
+	
+	
+		Flow Control of Congested Networks
+		NATO ASI Series, Series F: Computer and Systems Science
+		
+			AROdoni
+		
+		
+			LBianco
+		
+		
+			GSzego¨
+		
+		Berlin
+		
+			Springer Berlin Heidelberg
+			1987
+			38
+			
+		
+	
+	Flow Control of Congested Networks
+	Bianco, L., Rinaldi, G., Sassano, A., delle Ricerche, C.N. and Manzoni, V., "A Combinatorial Optimization Approach to Aircraft Sequencing Problem," Flow Control of Congested Networks, edited by A. R. Odoni, L. Bianco, and G. Szego¨, NATO ASI Series, Series F: Computer and Systems Science 38, 323-339, Springer-Verlag, Berlin, (1987).
+
+
+
+	
+		Scheduling tasks with sequence-dependent processing times
+		
+			LucioBianco
+		
+		
+			SalvatoreRicciardelli
+		
+		
+			GiovanniRinaldi
+		
+		
+			AntonioSassano
+		
+		10.1002/1520-6750(198804)35:2<177::aid-nav3220350203>3.0.co;2-v
+	
+	
+		Naval Research Logistics
+		Naval Research Logistics
+		0894-069X
+		1520-6750
+		
+			35
+			2
+			
+			1988
+			Wiley
+		
+	
+	Bianco, L., Ricciardelli, S., Rinaldi, G. and Sassano, A., "Scheduling Tasks with Sequence-Dependent Processing Times," Naval Research Logistics, Volume 35, Number 2, 177-184 (1988).
+
+
+
+	
+		System Aspects and Optimization Models In ATC Planning
+		
+			LucioBianco
+		
+		
+			MaurizioBielli
+		
+		10.1007/978-3-642-84980-0_3
+	
+	
+		Large Scale Computation and Information Processing in Air Traffic Control
+		
+			LBianco
+		
+		
+			AROdoni
+		
+		Berlin
+		
+			Springer Berlin Heidelberg
+			1993
+			
+		
+	
+	Bianco, L. and Bielli, M., "System Aspects and Optimization Models in ATC Planning," Large Scale Computation and Information Processing in Air Traffic Control Control, edited by L. Bianco and A. R. Odoni, 47-99, Springer-Verlag, Berlin (1993).
+
+
+
+	
+		The dynamic scheduling of aircraft in high density terminal areas
+		
+			RogerGDear
+		
+		
+			YosefSSherif
+		
+		10.1016/0026-2714(89)90171-6
+	
+	
+		Microelectronics Reliability
+		Microelectronics Reliability
+		0026-2714
+		
+			29
+			5
+			
+			1989
+			Elsevier BV
+		
+	
+	Dear, R. G. and Sherif, Y. S., "The Dynamic Scheduling of Aircraft in High Density Terminal Areas," Microelectronics and Reliability, Volume 29, Number 5, 743-749 (1989).
+
+
+
+	
+		Scheduling Aircraft Landings Under Constrained Position Shifting
+		
+			HamsaBalakrishnan
+		
+		
+			BalaChandran
+		
+		10.2514/6.2006-6320
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		Keystone, Colorado
+		
+			American Institute of Aeronautics and Astronautics
+			2006
+		
+	
+	Balakrishnan, H., & Chandran, B., "Scheduling Aircraft Landings Under Constrained Position Shifting," AIAA Guidance, Navigation and Control Conference and Exhibit, Keystone, Colorado (2006).
+
+
+
+	
+		Efficient and Equitable Departure Scheduling in Real-Time: New Approaches to Old Problems
+		
+			HBalakrishnan
+		
+		
+			BChandran
+		
+		
+			2007
+			Barcelona, Spain
+		
+		
+			USA/Europe Air Traffic Management Research and Development Seminar
+		
+	
+	Balakrishnan, H., & Chandran, B, "Efficient and Equitable Departure Scheduling in Real-Time: New Approaches to Old Problems," 7th USA/Europe Air Traffic Management Research and Development Seminar, Barcelona, Spain (2007).
+
+
+
+	
+		A Generalized Dynamic Programming Approach for a Departure Scheduling Problem
+		
+			SivakumarRathinam
+		
+		
+			ZacharyWood
+		
+		
+			BanavarSridhar
+		
+		
+			YoonJung
+		
+		10.2514/6.2009-6250
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		Chicago, Illinois
+		
+			American Institute of Aeronautics and Astronautics
+			2009
+		
+	
+	Rathinam, S., Wood, Z., Sridhar, B., & Jung, Y. C., "A Generalized Dynamic Programming Approach for a Departure Scheduling Problem," AIAA Guidance, Navigation, And Control Conference, Chicago, Illinois (2009)..
+
+
+
+	
+		Microscopic Analysis of Airport Surface Sequencing (ALTERNATE PAPER)
+		
+			ChrisBrinton
+		
+		
+			BryanWood
+		
+		
+			ShawnEngelland
+		
+		10.2514/6.2008-8961
+	
+	
+		The 26th Congress of ICAS and 8th AIAA ATIO
+		Anchorage, Alaska
+		
+			American Institute of Aeronautics and Astronautics
+			Sep. 14-19, 2008
+		
+	
+	Brinton, C., Wood, B., and Engelland, S. A., "Microscopic Analysis of Airport Surface Sequencing " The 26th Congress of International Council of the Aeronautical Sciences (ICAS) including 8th AIAA Aviation Technology, Integration, and Operations, Anchorage, Alaska, Sep. 14-19, 2008.
+
+
+
+	
+		Surface Operations Data Analysis and Adaptation tool, Software Package, Ver. 1.8, Mosaic ATM
+		
+			Sodaa
+		
+		
+			2008
+			Leesburg, VA
+		
+	
+	SODAA, Surface Operations Data Analysis and Adaptation tool, Software Package, Ver. 1.8, Mosaic ATM, Leesburg, VA, 2008. 13
+
+
+
+	
+		Federal Aviation Administration human factors team report on: The interfaces between flightcrews and modern flight deck systems
+		
+			AtmsdiRaytheon
+		
+		
+			Team
+		
+		10.1037/e459962008-001
+	
+	
+		Federal Aviation Administration Aeronautical Information Manual: Official Guide to Basic Flight Information and ATC Procedures
+		
+			American Psychological Association (APA)
+			May 2004 14. 2008
+		
+	
+	SMS Final Report
+	Raytheon ATMSDI Team, "SMS Final Report," May 2004 14 FAA. (2008). "Federal Aviation Administration Aeronautical Information Manual: Official Guide to Basic Flight Information and ATC Procedures."
+
+
+				
+			
+		
+	

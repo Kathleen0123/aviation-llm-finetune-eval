@@ -1,0 +1,319 @@
+
+	
+	
+		
+I. IntroductionAn advanced air traffic management system is needed to optimize the throughput and efficiency of the national airspace system under different sources of uncertainty such as weather and airspace demand.One approach to increase the efficiency of the airspace is to generate the shortest route between airports or any origin and destination, while meeting the airspace capacity constraint in the presence of uncertainties.Grabbe 1 and Mukherjee 2 developed a sequential optimization method that integrates departure controls, pre-departure and en route reroutes, and airborne holding controls.A key component of this integrated traffic flow management system is the optimal routing algorithm that generates optimal flight paths based on the available weather forecasts and predicted airspace demand.Many shortest path algorithms that utilize forecasted weather information have been developed in recent years (Sridhar, 3 Prete, 4 Krozel 5 ).Sridhar 3 develops a rerouting algorithm that reroutes aircraft locally around sectors whose capacities are exceeded.The rerouting algorithm is designed to minimize the number of piece-wise linear route segments needed to circumvent these sectors.Prete 4 reduces the optimal routing problem to that of searching a graph for a shortest-path using the A algorithm.Krozel 5 investigates a method of dynamically generating alternative paths that reroute pre-departure flights around regions of convective weather based on the latest weather forecast.Both Prete 4 and Krozel 5 calculate optimal routes that avoid hazardous weather with a severe level suggested by the FAA Aeronautical Information manual.In order to better estimate weather impact on airspace capacity, a recent study in DeLaura 6 presents initial results of research to develop a quantitative model that would predict when a pilot will deviate around convective weather in en route airspace.By applying the quantitative convective weather avoidance model, Windhorst 7 and Love 8 develop an automated system for rerouting aircraft during the en-route segment of air traffic.In this study, an optimal flight path search algorithm is developed to support the integrated traffic flow management system currently under development at NASA Ames.The algorithm is based on dynamic programming and utilizes the convective weather avoidance model.The calculated optimal flight path is also considered as an alternative to the coded departure routes which are used by FAA to reroute pre-departure flights between airports around weather or traffic constraints.In addition to generating the optimal route, this study develops a formula that calculates the predicted probability of deviation from a given flight path.The calculated deviation probability is considered as a measure of reliability of the optimal route, which is seldom found in the optimal flight path searching literature.The predicted probability of deviation is calculated for all path candidates, which include the alternative route and the set of coded departure routes, for the purpose of optimal route selection.Routes with the best probability are selected as optimal.Section II presents a summary of the dynamic programming approach to the optimal flight path.Section III presents formulas for calculating predicted deviation probability and the expected cost of deviation using convective weather avoidance model.Section IV discusses setup of the experiments which are conducted to evaluate performance of the dynamic programming routing algorithm.Section V shows the simulation results and discusses performance of the dynamic programming routing algorithm.Finally, conclusion is given in Section VI.
+II. Optimal Flight Path via Dynamic Programming MethodMany shortest path algorithms that avoid fixed or moving obstacles have been developed during the past few decades.Popular approaches to the path-finding problem include graph searching algorithms such as the Dijkstras algorithm (Dijkstra 9 ), the A algorithm (Hart 10 ), and the D algorithm (Stentz 11 ).The Dijkstras algorithm, which finds the shortest path from a starting point to an ending point in the graph, is closely related to Dynamic Programming (DP).The A algorithm is similar to the Dijkstras algorithm but uses a heuristic estimate to guide itself and accelerates the searching process.An enhancement of A is the D algorithm, which can be used to find the shortest path in a dynamic environment.The DP method is chosen for this study.It makes use of the principle of optimality (Bellman, 12 Bertsekas 13 ), and it provides a provably global optimal solution when a feasible solution exists.DP also provides a convenient modeling environment for both problem formulation and algorithm development that many other approaches sometimes lack.The objective cost function in the DP analysis can be constructed by adding different components to represent obstacles or constraints.Each individual component can be added to or removed from the objective function depending on the application and available information.Then, the global optimal solution can be obtained by minimizing the objective function.The computation time of the DP method is very high since the optimal solution at each grid point has to be computed to provide a globally optimal solution.A new scheme for constructing the grids and grouping them into stages in the search space is proposed to reduce the computation time.It is shown that the optimal path can be obtained in O(e) computation, where e denotes the total number of links (edges).In Section II.A, formulation of the dynamic programming is outlined.The grids for the search space are defined in Section II.B
+II.A. Dynamic Programming FormulationThis study uses the DP method to search for the optimal flight path between two locations.The dynamic equation for an aircraft between the initial position with time x 0 (t 0 ) and the final position with time x f (t f ) can be specified by the following equation,x i ,j+1 (t i ,j+1 ) = x i,j (t i,j ) + u i,j (t i,j ),(1)where i, j and i are integer grid indices; i denotes an arbitrary state; j denotes an arbitrary stage; i denotes an arbitrary state at the next stage; t i,j represents the estimated arrival time at grid i, j; x i,j (t i,j ) is aircraft position; and u i,j (t i,j ) is the decision variable defined in a set of admissible controls U i,j .In the DP formulation, the minimum cost-to-go function J(x i,j (t i,j )) at any state can be calculated recursively by the following equation,J(x i,j (t i,j )) = min i [D i ,j+1,t i ,j+1 i,j,ti,j + W i ,j+1,t i ,j+1 i,j,ti,j + C i ,j+1,t i ,j+1 i,j,ti,j + J(x i ,j+1 (t i ,j+1 ))],(2)where D i ,j+1,t i ,j+1 i,j,ti,j = ||u i,j (t i,j )||/d f uel is the estimated fuel cost associated with transitioning from x i,j (t i,j ) to x i ,j+1 (t i ,j+1 ), and d f uel is a user specified conversion constant.The component W i ,j+1,t i ,j+1 i,j,ti,j is the cost of deviation due to the convective weather taking the link from x i,j (t i,j ) to x i ,j+1 (t i ,j+1 ).It can equal a user-specified constant cost K deviation , or it can be calculated based on the predicted deviation probability.More details on finding this cost component will be given in Section III.The component C i ,j+1,t i ,j+1 i,j,ti,j is the cost associated with crossing a congested region and is equal to the constant K congestion .Note that this study focuses on minimizing fuel consumption and cost of deviation due to convective weather.Each component of the cost can be included or excluded depending on the objective of the application or available information.Additional cost components associated with other constraints can also be added, if necessary.After finding the minimum cost-to-go function J(x i,j (t i,j )) at all states, the optimal flight path, which is the sequence of optimal controls u i,j (t i,j ), can be determined by minimizing the total traveling cost from the origin to the destination.
+II.B. Optimal Flight Path SearchingThis section presents the procedures for finding the optimal flight path via dynamic programming algorithm.The procedures are outlined first.Each individual step is then discussed in more detail.The procedures are summarized as the following:for each origin (or starting) and destination pair, 1. Define a set of grids x i,j for the search space.for each tentative departure time (or re-routing time), 2. Calculate t min i,j and t max i,j for all t i,j which is the estimated aircraft arrival time at x i,j .3. Define the set of admissible controls U i,j .for each stage (starting from the last stage),for each admissible state and admissible link, 4. Calculate the following link costs:• The estimated fuel cost D i ,j+1,t i ,j+1 i,j,ti,j , • The expected cost of deviation W i ,j+1,t i ,j+1 i,j,ti,j , • The congestion cost C i ,j+1,t i ,j+1i,j,ti,j , 5. Calculate the optimal cost-to-go J(x i,j (t i,j )).end for end for 6.Find the optimal path by minimizing the total cost over all stages.end for end for 1.The first step in searching for the optimal route is to apply a discretization scheme to the airspace (which occupies a region involving the starting position x 0 (t 0 ) and the destination position x f (t f )) to obtain the discrete search space.In this study, the search space is defined by Cartesian grids.The latitude and longitude of the starting and destination points are transformed into the Cartesian coordinates.When the size of the search space and the dimension of the grids are specified, the total number of admissible states and stages can be determined.The admissible states are evenly distributed on a rectangular plane formed by the start-to-end vector, which points from the starting point to the destination point, and the vector perpendicular to it.The number of states are set to be equal on both sides of the start-to-end vector.The Cartesian coordinates of the states are calculated using the two directional vectors.In general, the position x i,j can be located by going along the normalized start-to-end vector for j steps and going along the normalized perpendicular vector for i steps.For illustration purpose, a sample grids for DP method is shown in Fig. 1 .2. Once the grid has been created, the times of arrival t i,j at each state x i,j are estimated given the aircraft speeds and the initial time t 0 .Please note that the initial time can be the tentative departure time of an aircraft or the time that an aircraft is subject to tactical reroute.Each arrival time is assumed to be within a time interval defined by t min i,j and t max i,j .Although t min i,j and t max i,j can be estimated by finding the shortest path and longest path from x 0 to x i,j , approximation of arrival time at each grid is made to simplify the calculation.t min i,j is calculated by using great circle distance from x 0 to x i,j and the aircraft speed.t max i,j is assumed to be bigger than and proportional to t min i,j .It can be represented by σ • t min i,j .For simplicity, the parameter σ is assumed to be constant in this study.Although it can be time-varying and route-specified.Note that only the estimated arrival times vary, while the set of the admissible positions remains unchanged, when the initial time is changed.3. Having calculated the coordinates of the states and the corresponding estimated arrival times, the next step is to define the set of admissible controls U i,j .Here, a simple rule is adopted by assuming that an aircraft can travel from the starting point to any state defined in the first stage.Similarly, it can go directly from any state in the last stage to the destination.When an aircraft reaches the boundary of the search space, it is only allowed to travel along the boundary (x imin,j to x imin,j+1 or x imax,j to x imax,j+1 ) or fly towards the inside of the search space (x imin,j to x imin+1,j+1 or x imax,j to x imax-1,j+1 ).When an aircraft is at any intermediate state, it can travel to the nearest three states at the next stage (x i,j to x i,j+1 or x i,j to x i-1,j+1 or x i,j to x i+1,j+1 ).The computation time to solve a DP problem is very high because of the cost-to-go function at all reachable states, which is determined by the number of possible links between each state, must be computed to provide a globally optimal solution.Therefore, allowing fewer links between each state and constructing a heuristic search space that defines stages to guide the searching process toward the destination can reduce the computation time.4. The fuel cost is proportional to the traveling distance and can be estimated using a user-specified constant d f uel .The cost due to severe weather W i ,j+1,t i ,j+1 i,j,ti,j can be calculated using Eq.( 4) (which will be shown in Section III).The fuel cost can also be simply set to infinity if the link between x i,j (t i,j ) and x i ,j (t i ,j+1 ) is expected to encounter convective weather system(s) based on the weather forecasts provided by any weather products.Similarly, the congestion cost at each grids C i ,j+1,t i ,j+1 i,j,ti,j can be determined by predicting and monitoring aircraft count in the en route sectors.Each grid can be mapped to its corresponding sector if the flight altitude is known.Since the arrival time at each grid is already estimated, the congestion cost can be obtained by checking the predicted demand of the sector at the estimated arrival time interval.The congestion cost is set to infinity if the predicted sector demand exceed the maximum threshold.5. The optimal cost-to-go function at each admissible state is calculated backward by using Eq.(2).6.The optimal flight path, which is the sequence of optimal controls u i,j (t i,j ), is determined by minimizing the total cost from the origin to the destination.Then, the flight plan is specified by a sequence of latitude and longitude translated from the optimal controls.
+III. Flight Deviation Probability Using the Convective Weather Avoidance ModelThis section presents the formula for calculating the predicted probability of the deviation from a given flight path due to convective weather.The formula uses the Convective Weather Avoidance Model (CWAM), a quantitative model that integrates historical pilot decisions with Corridor Integrated Weather System (CIWS) weather forecasts to predict when a pilot will deviate around convective weather systems.CIWS and CWAM are developed by MIT Lincoln Laboratory.CIWS integrates data from national weather radars with thunderstorm forecasting technology, and provides 0-2 hour convective weather forecasts.CIWS weather depiction is composed of precipitation [Vertically Integrated Liquid (VIL)] and echo tops.CWAM calculates the fields that identify regions of airspace that pilots are likely to avoid due to the presence of convective weather.It uses CIWS vertically integrated liquid and echo top fields to predict aircraft deviations and penetrations.Each CWAM field has a probability of pilot deviation associated with it.A pilot may encounter multiple severe weather systems (multiple CWAM weather fields) in the en-route airspace.It is necessary to consider the overall possibility of deviation from the given flight plan due to multiple severe weather systems along the tentative flight trajectory.The formula uses all CWAM fields along the flight trajectory to calculate the probability of deviation from the given flight path.The deviation probability serves as a computable measure of reliability for a given route.For the purpose of optimal flight path selection, the formula calculates the deviation probability for all path candidates.The flight path with the best probability of deviation is selected as optimal.Furthermore, the formula is used to calculate the expected weather cost used in Eq.(2) Section II.A.In practice, there are several sources of uncertainty that can cause a flight to deviate from its original path.This study only considers convective weather as the cause of flight deviation.Furthermore, it is assumed that deviation will only occur at a particular set of time instants when weather forecasts are updated.The following notations are used in the analysis:t 0 :Starting time associated to the beginning of a path , t f :Stopping time associated to the ending of a path , D t k : Event that deviation occurs from the path at time t k where t 0 ≤ t k ≤ t f , Dt k : Complement of D t k , D [t0t f ] : Event that deviation occurs from the path between t 0 and t f .For a given flight path, the position of an aircraft and estimated arrival time at the destination or any points along the path can be estimated if the aircraft speed is known.Assumption 1 The sets of event Dt k are independent ∀t k .The probability of deviation can be obtained under Assumption 1 by the following equations,P (D [t0t f ] ) = P ( t k D t k ) = 1 -P ( t k Dt k ) = 1 - t k P ( Dt k ) = 1 - t k (1 -P (D t k )).(3)Note that DeMorgan's Law is used to obtain the second row of above equations.The physical implication of Assumption 1 is that knowing the non-deviation from the original path at any time instant does not affect the probability of non-deviation at any other instant.Nevertheless, the validity of Assumption 1 depends on the probability measure being used.In fact, P (D [t0t f ] ) can be computed without making Assumption 1 if the probability of non-deviation at one instant (relative to non-deviation at other instants) is known.Unfortunately, this can drastically increase the complexity of the problem when the length of flight time increases.When the predicted aircraft position and the corresponding time are known, P (D t k ) can be obtained from the output of CWAM.The probability P (D t k ) equals to zero if the aircraft does not incur any CWAM weather field between t k and t k+1 .If the aircraft incurs a CWAM weather field between t k and t k+1 , the probability P (D t k ) equals to the pilot deviation probability associate to the CWAM field.If the aircraft incurs multiple CWAM weather fields between t k and t k+1 , each CWAM field incursion is considered an independent event.The deviation probability P (D t k ) = P (D [t k t k+1 ] ) is calculated by Eq.( 3) using a smaller time increment between t k and t k+1 .The above equation can be applied to calculate the expected deviation cost due to convective weather used in the DP method in Section II.The expected deviation cost can be calculated by the following equation assuming a user-specified constant deviation cost K deviation , W i ,j+1,t i ,j+1 i,j,ti,j= E[K deviation ] = K deviation * P (D [ti,j t i ,j+1 ] ). (4)For simplicity, note that W i ,j+1,t i ,j+1 i,j,ti,j can equal a user-specified constant deviation cost (instead of calculating the expected cost).When weather forecasts are not from CWAM, the weather cost component W i ,j+1,t i ,j+1 i,j,ti,j can simply be set to infinity if the underlying link is predicted to intercept a severe weather system.
+IV. Experimental SetupThis section presents setup of the experiments which are conducted to evaluate performance of the DP routing algorithm.Section IV.A discusses how to generate and investigate optimal DP routes under various design parameters.Section IV.B provides background of optimal CDRs.It also describes the procedure of selecting optimal CDRs from a set of pre-determined CDRs and compares them with optimal route calculated from the DP routing algorithm.
+IV.A. Variation of Design ParametersThe first part of this study generates and investigates optimal DP routes under various design parameters.The optimal routes are generated using weather data from CIWS and processed data from CWAM since the weather cost in the objective function in the DP method can be updated and calculated using either.The study also investigates the effect of change in the following design parameters: (1) density of the search grid used in the algorithm and (2) the uncertainty, σ, in the estimated time of arrival at the grid point i, j.The study uses NASA's Future ATM Concepts Evaluation Tool (FACET) to generate results.
+IV.B. DP Routes Vs. Optimal CDRsThe second part of the study compares and evaluates the optimal route calculated from the DP routing algorithm and the optimal CDR selected from the set of pre-determined CDRs.FAA currently uses a database of predefined Coded Departure Routes (CDRs) to reroute flights between airports around weather or traffic constraints prior to departure.Determining the relevant and optimal CDRs manually for a given weather forecast is a difficult and possibly time-consuming task.One reason is that optimal CDRs are selected from pre-determined static CDRs therefore avoiding hazardous weather events often requires a flight to significantly deviate from the shortest route.For example, see Fig. 2, which shows a set of CDRs defined for flights from KORD to KEWR.It also shows three sets of grid for the search spaces from KORD to KEWR, KIAD and KATL.Another reason is that CDRs are defined using Navaids that impose physical constraints on the process.In the future, many aircraft will use Global Positioning System (GPS)-based equipment to navigate.This will make it possible to determine optimal routes without the Navaid constraints.Thus, an alternative approach to static CDRs is needed.This study is designed to address these concerns.It is focused on dynamically generating optimal flight routes as alternatives to static CDRs, given the tentative flight schedules and the most current weather forecasts.The optimal CDR provides the shortest distance and satisfies the minimum predicted deviation probability.Note that the predicted probability of deviation for each flight is calculated using the estimated time and position of an aircraft along the tentative flight trajectory and the forecasted convective weather events from CWAM.The flight altitude is assumed to be constant and at 35, 000 feet.The observed deviation probability of a flight is calculated from the CWAM weather contours that the simulated aircraft actually encounter in the simulation.The procedure of optimal CDR selection is the following.The CDRs between each monitoring airport are pulled from the FACET database.For each origin and destination pair, the set of CDR is sorted according to the distance of the route in ascending order.In the simulation, the predicted probability of deviation for each CDR is computed using weather forecasts from CWAM after the departure time of the monitored flight is obtained.The route with (1) the shortest distance and (2) a predicted probability of deviation that is less than or equal to the user-specified minimum deviation probability is selected as the optimal CDR.In the event that none of the CDRs satisfies the minimum predicted deviation probability, the minimum level will be incremented by a user-specified level (currently 0.01) until at least a route satisfies the criteria.The optimal DP route for each flight is then calculated under the same conditions.The next section will discuss the distances and the predicted and observed probabilities of deviation for two set of routes.Note that all optimal routes are calculated for the flights by using the weather forecasts at departure.Some of the flights will encounter convective weather in en route airspace due to uncertainties in the weather forecasts.These flights are subject to en route rerouting or airborne holding.This study focuses on pre-departure rerouting although the DP routing algorithm can be applied for en route rerouting.More details on en route routing using convective weather avoidance model can be found in Windhorst 7 and Love. 8
+V. Performance EvaluationIn this section, performance of the DP routing algorithm is evaluated.The evaluation consists of two scenarios.Section V.A presents the evaluation results for the first experiment as discussed in Section IV.A. Section V.B shows the results for the second experiment as discussed in Section IV.B.
+V.A. Variation of Design ParametersThis experiment evaluates optimal DP routes under various design parameters.The DP routes are designed with different choices of σ and grid spacing using weather forecasts from CIWS and CWAM, respectively.The first scenario used for testing is the set of flights that fly between Chicago O'Hare International Airport (KORD), John F Kennedy International Airport (KJFK), Newark Liberty International Airport (KEWR), Washington Dulles International Airport (KIAD), Jackson Atlanta International Airport (KATL), Dallas Fort Worth International Airport (KDFW) and Kansas City International Airport (KMCI).Here, only flights that depart and land between 12:00 to 18:00 UTC on June 16, 2007 are considered.On this day, the convective weather system consists of a squall line that extends by early morning from the U.S.-Canadian border into Memphis Center.The line of storms moves throughout the day in an easterly direction and impacts by mid-afternoon much of the eastern shoreline.The weather data are developed using actual and forecasted CIWS and CWAM data as shown in Fig. 3.The CIWS weather depictions are displayed by yellow-red filled polygons, which cover areas that have VIL ≥ 3. The CWAM fields are outlined in different colors, which correspond to different deviation probabilities as labeled on the color bar.There are a total of 143 scheduled flights between these city pairs.The optimal DP routes are calculated after the departure time.The size of the search grids is equal to 10 km, 20 km, 30 km, and σ is equal to 1.05, 1.1, and 1.2, respectively.There are nine different optimal routes between each city pair.The fuel conversion constant d f uel is set to be 7 dollars/km.The weather cost is set to be 10 million if any link intercepts CIWS forecasted weather contours that have VIL ≥ 3. Nine other optimal routes are solved using CWAM weather data.The flight altitude is assumed to be constant at 35, 000 feet.The weather cost in the objective cost function is calculated using Eq.( 4) in Section III with deviation cost constant K deviation set to be $40000 if any link intercepts CWAM weather fields that exceed 60 percent probability of deviation.Note that the weather cost is at least one order magnitude larger than the fuel cost in the objective cost function when a link intercepts a convective weather system (CIWS or CWAM) with a severity greater than the user specified level.The first priority of the optimal routes is to avoid the convective weather.The first row in Fig. 4 shows the distances of the optimal routes for the 143 flights calculated using CWAM (blue solid line) and CIWS (green dashed line) data.The grid size is equal to 10 km and σ is equal to 1.05.The predicted and observed probabilities of deviation are shown on the second and the third row, respectively.The CWAM routes are shorter than CIWS routes on average.The predicted and observed probabilities of deviation for CWAM and CIWS routes are well below 60% on average.Figure 5 shows the distance of the optimal routes calculated using CWAM with different design parameters.The first, second, and third columns show the distances with grid sizes equal to 10 km, 20 km, and 30 km, respectively.The first, second, and third rows show the distances with σ equal to 1.05, 1.1, and 1.2, respectively.Figure 6 shows the distance of the optimal routes calculated using CIWS with different design parameters.In general, increasing the density of the grids provides optimal routes with slightly shorter distance and increasing the value of σ slightly increases distance of the optimal routes.The routes with 30 km grid spacing are about 6 -7 nmi on average longer than the routes with 10 km grid spacing.However, a 10 km space between grids requires almost 10 times more grid points (and links) than a 30 km grid spacing.In theory, that means about 10 times more computational efforts are needed to save 6 -7 nmi or 1% distance since computational complexity of the current DP algorithm is O(e).In practice, the total computational times for rerouting  143 flights with 10 km and 30 km grid spacing are about 23 minutes and 3 minutes, respectively.The computational time is almost 8 times longer when 10 km grid spacing is used.By comparing Figure 5 and Figure 6, the CWAM routes are 8.3 -12.8 nmi on average shorter than the CIWS routes.Note that the complexity of the current routing algorithm does not change when choosing between CWAM and CIWS.It is clear that shorter routes can be obtained by using CWAM without increasing computational effort.The second scenario used for testing is the set of flights that depart and land between 12:00 to 18:00 UTC on June 16, 2007 and fly between KORD, KEWR, KATL, and KIAD.Only CWAM weather data is used for this case.The CDRs between these four airports are pulled from the FACET database.For each origin and destination pair, the optimal CDR is selected following the procedures described in Section IV.B from the set of the CDRs.The optimal DP route is calculated with search grid spacing equal to 15 km along the origin to destination direction and 30 km in the perpendicular direction.The σ is chosen to be 1.2.The optimal DP route is calculated to avoid CWAM weather contours that exceed 60 percent probability of deviation with a safety margin.The safety margin in the DP design prevents aircraft from flying too close to convective weather.It is also an attempt to cope with uncertainty in the weather forecasts.Note that safety margin is not included in selecting optimal CDRs since all CDRs are predefined.The probability of deviation for DP routes and optimal CDRs are calculated without adding a safety margin to CWAM weather fields.
+V.B. DP Routes Vs. Optimal CDRsThe first row of Fig. 7 shows the distance of the DP (blue solid line) and optimal CDR (green dashed line) routes.The predicted and observed probabilities of deviation are shown on the second and the third row, respectively.The difference between the two sets of data is plotted in Fig. 8.The average distance of the DP routes is shorter than the average distance of the optimal CDRs.It is observed that the DP optimal route is not always shorter than the optimal CDR.This is because a safety buffer is added to the CWAM weather contours when solving the DP algorithm while optimal CDR is selected based on the predicted probability of deviation calculated using CWAM weather fields without adding a safety margin.It is shown that optimal DP routes are about 20 nmi on average shorter than optimal CDRs.Sometimes, the predicted probabilities of deviation are larger than 0.6 for both optimal DP routes and optimal CDRs.This situation occurs when the en-route airspace is almost completely blocked by the convective weather.The mean deviation probabilities of DP routes are slightly higher than those of optimal CDRs, but both are below 0.5.This is caused by the definition of the deviation probability itself.Currently, the predicted and observed deviation probability is calculated by considering CWAM weather fields with a probability of deviation greater than zero while the DP optimal routes are solved to avoid CWAM weather fields with probability of deviation greater than 0.6.In the future, the calculation of the probability of deviation will be modified to consider different pre-defined hypotheses.
+VI. ConclusionThis study develops a linear time algorithm for searching optimal flight path.It is based on dynamic programming and utilizes convective weather avoidance model.The optimal routes are solved by minimizing cost of fuel and expected cost of route deviation.They are considered as alternatives to the CDRs.A formula, which calculates predicted probability of deviation from a given flight path, is also derived.The predicted probability of deviation serves as a computable measure of reliability for the purpose of optimal route selection.The DP routes are generated by varying various design parameters, and their performances are investigated.The optimal routes that are generated using CWAM are shorter than the routes generated using CIWS data on average.This study also compares and evaluates the DP routes, and the optimal CDRs selected from the set of pre-determined CDRs.The optimal DP routes are about 3 percent on average shorter than the optimal CDRs.Figure 1 .1Figure 1.Sample of dynamic programming grids.
+Figure 2 .2Figure 2. The coded departure routes from Chicago O'Hare International Airport (KORD) to Newark Liberty International Airport (KEWR) and three sets of optimal routing grid.Red grids show search space from KORD to KEWR. Green grids show search space from KORD to Washington Dulles International Airport (KIAD), and blue grids show search space from KORD to Jackson Atlanta International Airport (KATL).
+Figure 3 .3Figure 3. CIWS precipitation data (yellow-red filled polygon) and corresponding CWAM (colored contour) output for 18:00 UTC on June 19, 2007.
+Figure 4 .4Figure 4. Distance and predicted and observed deviation probability of the optimal routes calculated using weather data from CIWS and CWAM.
+Figure 5 .5Figure 5. Distance of the optimal routes calculated using weather data from CWAM with different design parameters.
+Figure 6 .6Figure 6.Distance of the optimal routes calculated using weather data from CIWS with different design parameters.
+Figure 7 .7Figure 7. Distance, predicted and observed deviation probability of the optimal routes from dynamic programming algorithm and CDRs
+Figure 8 .8Figure 8. Difference in distance, predicted and observed deviation probability between the optimal routes from dynamic programming algorithm and CDRs
+The current shortest path problem can be solved by an O(e) computation, where e denotes the total number of admissible links.Suppose there are M stages, N states at each stage and L links at each state from first stage to M -1 stage.At the last stage M , there are N cost computations and 0 comparisons since aircraft can go directly from any state to the destination.At the origin, there are N cost computations and N comparisons since aircraft can go directly from the origin to any state at the first stage.At each stagefrom stage 1 to stage M -1, there are N × L cost computations and N × L comparisons.It is clear that the optimal path can be found in O(M × N × L) = O(e) operations.
+		
+		
+			
+
+				
+
+
+	
+		Sequential Traffic Flow Optimization with Tactical Flight Control Heuristics
+		
+			SGrabbe
+		
+		
+			BSridhar
+		
+		
+			AMukherjee
+		
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		
+			32
+			3
+			
+			May-June 2009
+		
+	
+	Grabbe, S., Sridhar, B., and Mukherjee, A., "Sequential Traffic Flow Optimization with Tactical Flight Control Heuris- tics," Journal of Guidance, Control, and Dynamics, Vol. 32, No. 3, May-June 2009, pp. 810-820.
+
+
+
+	
+		Alleviating Airspace Restriction Through Strategic Control
+		
+			AMukherjee
+		
+		
+			SGrabbe
+		
+		
+			BSridhar
+		
+		AIAA Paper 2008-6821
+	
+	
+		AIAA Guidance, Navigation and Control Conference and Exhibit
+		Honolulu, Hawaii
+		
+			August 2008
+		
+	
+	Mukherjee, A., Grabbe, S., and Sridhar, B., "Alleviating Airspace Restriction Through Strategic Control," AIAA Guid- ance, Navigation and Control Conference and Exhibit, Honolulu, Hawaii, AIAA Paper 2008-6821, August 2008.
+
+
+
+	
+		Integration of Traffic Flow Management Decisions
+		
+			BSridhar
+		
+		
+			GBChatterji
+		
+		
+			SGrabbe
+		
+		
+			KSheth
+		
+	
+	
+		AIAA Guidance, Navigation and Control Conference and Exhibit
+		Monterey, California, AIAA
+		
+			August 2002
+		
+	
+	Paper 2002-5014
+	Sridhar, B., Chatterji, G. B., Grabbe, S., and Sheth, K., "Integration of Traffic Flow Management Decisions," AIAA Guidance, Navigation and Control Conference and Exhibit, Monterey, California, AIAA Paper 2002-5014, August 2002.
+
+
+
+	
+		
+			JPrete
+		
+		
+			JS BMitchell
+		
+		Safe Routing of Multiple Aircraft Flows in the Presence of Time-Varying Weather
+		
+	
+	Prete, J. and Mitchell, J. S. B., "Safe Routing of Multiple Aircraft Flows in the Presence of Time-Varying Weather
+
+
+
+	
+		
+			Data
+		
+		AIAA Paper 2004-4791
+		AIAA Guidance, Navigation and Control Conference and Exhibit
+		Providence, Rhode Island
+		
+			August 2004
+		
+	
+	Data," AIAA Guidance, Navigation and Control Conference and Exhibit, Providence, Rhode Island, AIAA Paper 2004-4791, August 2004.
+
+
+
+	
+		Designing On-Demand Coded Departure Routes
+		
+			JKrozel
+		
+		
+			JPrete
+		
+		
+			JS BMitchell
+		
+		
+			PSmith
+		
+		
+			ADAndre
+		
+	
+	
+		AIAA Guidance, Navigation and Control Conference and Exhibit
+		Keystone, Colorado
+		
+			August 2006
+		
+	
+	AIAA paper 2006-6767
+	Krozel, J., Prete, J., Mitchell, J. S. B., Smith, P., and Andre, A. D., "Designing On-Demand Coded Departure Routes," AIAA Guidance, Navigation and Control Conference and Exhibit, Keystone, Colorado, AIAA paper 2006-6767, August 2006.
+
+
+
+	
+		An Exploratory Study of Modeling Enroute Pilot Convective Storm Flight Deviation Behavior
+		
+			RDelaura
+		
+		
+			JEvans
+		
+	
+	
+		12 th Conference on Aviation Range and Aerospace Meteorology
+		Atlanta, GA
+		
+			American Meteorological Society
+			January 2006
+			
+		
+	
+	DeLaura, R. and Evans, J., "An Exploratory Study of Modeling Enroute Pilot Convective Storm Flight Deviation Behavior," 12 th Conference on Aviation Range and Aerospace Meteorology, American Meteorological Society, Atlanta, GA, January 2006, p. 12.6.
+
+
+
+	
+		Convective Weather Avoidance with Uncertain Weather Forecasts
+		
+			RDWindhorst
+		
+		
+			SKarahan
+		
+		
+			To Be Published
+		
+	
+	Windhorst, R. D. and Karahan, S., "Convective Weather Avoidance with Uncertain Weather Forecasts," To Be Published.
+
+
+
+	
+		Analysis of Automated Aircraft Conflict Resolution and Weather Avoidance
+		
+			JFLove
+		
+		
+			WNChan
+		
+		
+			CHLee
+		
+		
+			To Be Published
+		
+	
+	Love, J. F., Chan, W. N., and Lee, C. H., "Analysis of Automated Aircraft Conflict Resolution and Weather Avoidance," To Be Published.
+
+
+
+	
+		A Note on Two Problems in Connexion with Graphs
+		
+			EWDijkstra
+		
+	
+	
+		Numerische Mathematik
+		
+			1
+			1
+			
+			December 1959
+		
+	
+	Dijkstra, E. W., "A Note on Two Problems in Connexion with Graphs," Numerische Mathematik , Vol. 1, No. 1, December 1959, pp. 269-271.
+
+
+
+	
+		A Formal Basis for the Heuristic Determination of Minimum Cost Paths
+		
+			PEHart
+		
+		
+			NJNilsson
+		
+		
+			BRaphael
+		
+	
+	
+		SIGART Newsletter
+		
+			37
+			
+			1972
+		
+	
+	Hart, P. E., Nilsson, N. J., and Raphael, B., "A Formal Basis for the Heuristic Determination of Minimum Cost Paths," SIGART Newsletter , , No. 37, 1972, pp. 28-29.
+
+
+
+	
+		The Focussed D* Algorithm for Real-Time Replanning
+		
+			AStentz
+		
+	
+	
+		Proceedings of the International Joint Conference on Robotics and Automation
+		the International Joint Conference on Robotics and Automation
+		
+			August 1995
+			
+		
+	
+	Stentz, A., "The Focussed D* Algorithm for Real-Time Replanning," Proceedings of the International Joint Conference on Robotics and Automation, August 1995, pp. 3310-3317.
+
+
+
+	
+		The principle of optimality and functional equations
+		
+			REBellman
+		
+		
+			2003
+			Dover Publications
+			291
+		
+	
+	Dynamic Programming
+	Bellman, R. E., "The principle of optimality and functional equations," Dynamic Programming, Dover Publications, 2003, p. 291.
+
+
+
+	
+		
+		
+			DPBertsekas
+		
+		
+			2000
+			1
+			Athena Scientific, Belmont, Massachusetts
+		
+	
+	nd ed.
+	Bertsekas, D. P., Vol. 1, Athena Scientific, Belmont, Massachusetts, 2nd ed., 2000.
+
+
+				
+			
+		
+	

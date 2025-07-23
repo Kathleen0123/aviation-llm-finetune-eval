@@ -1,0 +1,582 @@
+
+	
+	
+		
+I. IntroductionA IR traffic demand is expected to more than double over the next 20 years [1], but air traffic controller workload limits airspace capacity.As such, it is expected that higher levels of automation for separation assurance are needed to accommodate future demand growth.Trajectory prediction error has been shown to be a major limiting factor on the level of safety and efficiency that can be provided by such automation.For instance, previous research found an unacceptable number of late and missed conflict detections that were caused by errors in climb trajectory predictions [2][3][4].This is due to the wide range of error sources [5][6][7] and their respective magnitudes in current operations [8][9][10].Researchers have investigated a variety of methods to reduce climb trajectory prediction errors, including the use of airline flightplanning data [8] and real-time air-to-ground data link of flight parameters [9].In the first study, the author provided two examples where the use of estimated aircraft gross takeoff weight data from Airline Operations Centers resulted in more accurate climb predictions.However, the author also states that the predictions for some flights actually became less accurate possibly due to errors in aircraft thrust performance models.Since the aggregated results were not reported, it is not clear how much improvement can be expected for climbing flights in general.In the second study, the use of flight parameters such as aircraft weight and climb speed intent acquired via air-to-ground data link reduced the mean altitude error for climbing flights in half.On the other hand, this result was based on just twenty Boeing 777 flights that were specifically selected for the analysis because large errors were observed in their flight parameters.As such, it is not clear that the same level of improvement would be realized for the full range of aircraft types and climb profiles that are present in current operations.Researchers have also studied the reductions in top-of-climb time prediction error that can be achieved by using historical data to refine the modeled thrust and climb calibrated airspeed (CAS) parameters used by a trajectory predictor [10].In this study, the authors analyzed 136 MD-80 (McDonnell-Douglas) flights using their own normalized figure of merit based on the difference between predicted and actual time at top of climb.Although their approach improved this particular metric of top-of-climb accuracy by about 50%, the authors did not analyze the accuracy of the rest of the trajectory prediction before top of climb.In addition, since the scope of their analysis was limited to MD-80 flights, it is not clear that this level of improvement can be expected for all aircraft types and climb profiles in general.The adaptive weight algorithm presented in this paper is a more general approach that improves climb trajectory prediction accuracy in real time.It does so by dynamically adjusting the modeled aircraft weight for each individual climbing flight using only the radar track and weather data available today.It does not require any additional data from Airline Operations Centers or aircraft unlike previously investigated approaches [8,9].Also, since it is derived from the pointmass equations of motion and is applied on a per-flight basis, it is more flexible than the method that applies the same statistical model of engine thrust and climb CAS to all flights of the same aircraft type [10].The adaptive weight algorithm was prototyped in prior research using fast-time simulations [11], but this paper extends that work by implementing and fine-tuning the algorithm in a real-time system and evaluating its performance with actual Fort Worth Center traffic.No aircraft types or climb profiles were intentionally excluded from the analysis.It should be emphasized that the objective of this algorithm is not to estimate actual aircraft weight [12] or fuel burn [13].In fact, due to the wide range of sources of uncertainty that cause climb trajectory prediction errors, the algorithm may move the modeled aircraft weight away from the true aircraft weight.Rather, the algorithm seeks to adjust the modeled weight such that the resulting climb trajectory prediction more closely matches observed track data in general.Adjusting the aircraft weight parameter exclusively will not be sufficient to fully compensate for all sources of climb uncertainty, and the resulting trajectory predictions will never perfectly match subsequent track data.Nevertheless, the use of the adaptive weight algorithm presented here is still expected to improve overall climb trajectory prediction accuracy.Comparable adaptive thrust approaches have been developed with this same philosophy and were shown to improve climb trajectory prediction accuracy for several flights [14,15].However, the adaptive weight approach is preferred because engine thrust is computed using altitude data (among other things) that are discretized in 100-ft increments.Also, within any 12 s track update period, individual ground stations may receive different altitude data from the same flight at different times.Since the data from exact one of these ground stations is selected at each track update and the data source used will vary over time, adjusting the modeled thrust is most likely less precise than adjusting the modeled aircraft weight, which is an independent parameter.The remainder of this paper is organized as follows.The next section provides background research on altitude trajectory prediction errors for climbing flights relative to the current legal vertical separation standard of 1000 ft.Following that is a section with a detailed derivation and description of the adaptive weight algorithm starting from a simplified form of the point-mass aircraft equations of motion [16].The section after that contains the results of fast-time simulations using the Airspace Concept Evaluation System (ACES) [17] that establish proof-of-concept for the algorithm.Then, the following section presents the improvements in climb trajectory prediction accuracy that were achieved by the algorithm for actual Fort Worth Center traffic data in the Center/TRACON Automation System (CTAS) [3,18].Several possible means of enhancing and extending the algorithm in the future are discussed afterwards.Lastly, the findings of this research are summarized.
+II. BackgroundThe accuracy of a high-fidelity real-time trajectory predictor for climbing departures in Fort Worth Center was analyzed using actual traffic data from 14 days in February 2008 [3].The CTAS Trajectory Synthesizer generated trajectory predictions using enroute Center Host flight plan and radar track data and atmospheric condition forecasts (e.g., wind, temperature) from the National Oceanic and Atmospheric Administration Rapid Update Cycle model.The altitude errors for these trajectory predictions were computed as a function of look-ahead time t using Eq. ( 1) by comparing them to radar track data:h error t h pred t -h track t (1)Figure 1 illustrates this calculation for an actual climbing flight in Fort Worth Center.In this case, the altitude prediction error for a lookahead time of 5 min is 1763 ft because the predicted altitude was 26,763 ft while the actual radar track altitude was 25,000 ft.The along-track and cross-track errors were also computed in the earlier study [3], but those results are not presented or discussed here because the adaptive weight algorithm primarily improves trajectory prediction accuracy in the vertical dimension with minimal effect on horizontal prediction.The analysis focused on the trajectory predictions generated at the first track above 18,000 ft.This criterion was chosen to allow flights about 4 min to achieve a steady climb speed following the speed restriction of 250 kt at 10,000 ft (assuming a nominal vertical rate of 2000 ft∕ min).In addition, this analysis only included uninterrupted climbing flights that did not have flight plan amendments or nonclimb segments between 18,000 ft and their flight plan cruise altitude.This was done to isolate the analysis from the effects of controller intervention as much as possible.The altitude trajectory prediction errors for over 1000 flights were calculated in this analysis.Figure 2 is a histogram of these errors for a prediction look-ahead time of 5 min.Note that the root-mean-square error is greater than two times the current legal vertical separation standard of 1000 ft.In fact, it is more than 1000 ft for all look-ahead times greater than 1 min (see Fig. 3).Furthermore, the percentage of flights with altitude error greater than 1000 ft is over 50% for lookahead times beyond 3 min (see Fig. 4).Similar analysis of the trajectory predictors used in the Federal Aviation Administration's User Request Evaluation Tool and En Route Automation Modernization found comparable levels of altitude trajectory prediction errors [19].This indicates that improvements in trajectory prediction accuracy for climbing flights may be necessary to realize higher levels of automation for separation assurance to increase the capacity of the Next Generation Air Transportation System (NextGen).
+III. Adaptive Weight Algorithm DescriptionA. General ConceptThe adaptive weight algorithm uses observed track data to improve climb trajectory predictions by dynamically adjusting the modeled aircraft weight on a per-flight basis.Weight is one type of parameter in the sets of aircraft performance models used in CTAS and ACES, respectively, that include an aerodynamic model (lift and drag data) and an engine model (thrust data).The kinetic trajectory calculations in both systems use this information in the point-mass equations of motion.The algorithm uses the trajectory predictor's nominal modeled aircraft weight as a starting point for each individual flight.Then, each time a radar track update is received, the algorithm adjusts this parameter based on the difference between an observed energy rate computed using the track data and a modeled energy rate calculated from the aircraft performance model parameters used by the trajectory predictor for that flight.These energy rates represent the overall rates of change in kinetic and potential energy.If the observed energy rate is greater than the modeled energy rate, the algorithm will decrease the modeled aircraft weight for this particular flight.Conversely, if the opposite is true, then the modeled aircraft weight will instead be increased to reduce the energy rate difference.The updated modeled aircraft weight parameter is used to compute trajectory predictions for this flight until the next iteration of the algorithm when new radar track data is received.A high-level overview of the algorithm is illustrated in Fig. 5.
+B. DerivationThe adaptive weight algorithm adjusts the modeled aircraft weight parameter based on the difference between an observed energy rate, _ E obs , and a modeled energy rate, _ E model , both of which are derived from a simplified form of the point-mass equations of motion [16]:_ V T T -D m -g • γ a - dW l • cos ψ rel dt (2) L W mg (3) _ h V T • sin γ a (4)Dividing both sides of Eq. ( 2) by g, substituting in Eq. ( 3), and rearranging the terms such that the left-hand side only consists of observable states and the right-hand side only has modeled aircraft parameters results in a dimensionless form of Eq. ( 2):1 g • _ V T γ a 1 g • dW l • cos ψ rel dt T -D W (5)The _ V T in the first term on the left-hand side of Eq. ( 5) is rewritten using the chain rule because estimates of _ V T derived from current radar track position data on a 12 s update rate are not sufficiently precise:_ V T dV T dt dV T dh • dh dt dV T dh • _ h (6)Substituting Eq. ( 6) into Eq.( 5) leads to an alternative dimensionless form of Eq. ( 5):dV T dh • _ h g γ a 1 g • dW l • cos ψ rel dt T -D W (7)Equation ( 7) can be simplified further by applying a couple of reasonable assumptions.The first is that the flight-path angle γ a is small (around three degrees for a nominal climb rate of 2000 ft∕ min and a nominal ground speed of 7.5 nmi∕ min), which is true for flights in actual operations.Then, sin γ a ≈ γ a by the small-angle approximation, and Eq. ( 4) can be rewritten as_ h V T γ a (8)The second assumption is that flights will follow a constant CASconstant Mach climb profile.If the algorithm is only enabled in the constant CAS portion of the climb trajectory (roughly between 15,000 and 25,000 ft), then the rate of change in true airspeed with respect to altitude is approximately constant for the range of CAS values that are typically observed in current operations (around 250 to 350 kt).This constant value is calculated using the equation for CAS [20] and the U.S. standard atmosphere (1976) model [21]:Substituting Eqs. ( 8) and ( 9) into Eq.( 7) leads to the final dimensionless form of the energy rate equation:1.0126 s -1 • _ h g _ h V T 1 g • dW l • cos ψ rel dt T -D W (10)The left-hand side of Eq. ( 10) is the observed energy rate, and the right-hand side is the modeled energy rate:_ E obs 1.0126 s -1 • _ h g _ h V T 1 g • dW l • cos ψ rel dt (11) _ E model T -D W (12)The observed energy rate at the current time generally will not equal the modeled energy rate computed using the current modeled values for thrust (T t i ) and drag (D t i ) and the previously modeled aircraft weight (W t i-1 ).This energy rate difference is defined as:Δ _ E t i 1.0126 s -1 • _ h t i g _ h t i V T t i 1 g • dW l • cos ψ rel dt t i - T t i -D t i W t i-1(13)One possible approach is to reduce the energy rate difference (Δ _ E t i ) to zero by selecting a new aircraft weight (W t i ) such that the modeled energy rate calculated using the current modeled values for thrust and drag equals the current observed energy rate:W t i ∶ T t i -D t i W t i 1.0126 s -1 • _ h t i g _ h t i V T t i 1 g • dW l • cos ψ rel dt t i (14)In theory, a single iteration of the algorithm using Eq. ( 14) could result in a climb trajectory prediction that matches subsequent observed track data if the only source of uncertainty were aircraft weight.However, since there is also uncertainty in other aircraft parameters such as thrust, drag, climb profile, and wind magnitude and direction as well as noise in track data, this one-step approach could lead to erratic adaptations.As such, a sensitivity parameter β t i was introduced to balance adaptation speed and stability.It is especially important for adaptations to be steady because it could otherwise lead to inconsistent trajectory predictions and unreliable conflict predictions for climbing flights.To incorporate β t i into the algorithm, the energy rate difference defined in Eq. ( 13) was first rewritten using W t i as defined in Eq. ( 14):T t i -D t i W t i-1 Δ _ E t i T t i -D t i W t i (15)Equation ( 15) can then be divided on both sides by (T t i -D t i ) and rearranged to isolate the updated modeled aircraft weight:W t i 1 W t i-1 Δ _ E t i T t i -D t i -1 (16)The sensitivity parameter β t i could be applied equivalently in several locations in Eq. ( 16).For intuitive purposes, though, it was applied to Δ _ E t i because the energy rate difference is computed using imprecise track data that vary more than the relatively stable modeled thrust and drag parameters used by the trajectory predictor:W t i 1 W t i-1 β t i • Δ _ E t i T t i -D t i -1(17)The functions for β t i were developed through trial and error.Originally, the algorithm used a fixed value for β t i , and initial testing showed considerable improvement in trajectory prediction accuracy for climbing flights.Yet, closer investigation of outliers found that some adaptations could have been faster while others needed to be slower and more stable due to sudden "spikes" and "dips" in the observed track data used by the algorithm.Equations ( 18) and ( 19) are the end results of a limited refinement process in ACES and CTAS: Equations ( 18) and ( 19) are of the same form because the CTAS version was derived from the ACES one, but there are differences such as the respective ranges of values that β t i can take on.For example, the maximum possible value of β t i is greater in ACES (0.205) than CTAS (0.10).One reason is because track data in ACES are stable and precise (e.g., altitude data have several decimal places), which enabled more aggressive adaptations.On the other hand, the minimum value of β t i is higher in CTAS (0.05) than ACES (0.005).This is because the real-world radar track data used in CTAS are noisy and the derived speed estimates are inevitably imprecise.As such, more moderate adaptations over a longer period of time are more effective overall in CTAS.Another possible contributing factor may be the use of Cleveland Center traffic data in the ACES experiments while Fort Worth Center traffic data were used in CTAS.Determining optimal functions for β t i that are different depending on aircraft type, atmospheric conditions, and airspace among other factors is nontrivial, but could significantly improve algorithm performance.Two additional constraints were added to the algorithm during the development process because the adapted weight could still suddenly jump or plunge even when previous adaptations were gradual and steady.For example, consider the situation where β is large and there is a sudden change in the vertical rate due to the imprecision of altitude data in the current system as previously discussed.As such, one constraint limits the amount of adaptation in any single iteration of the algorithm to a maximum of 1% of the most recent modeled aircraft weight.The other limits the cumulative amount of adaptation such that the modeled weight had to remain between 80 and 120% of the nominal modeled aircraft weight in the ACES simulations (see Sec. IV) and between 80 and 100% of the modeled maximum gross takeoff weight in the CTAS experiments (see Sec. V).This also reduces the possibility of trajectory prediction integration failures.ACES∶ β t i ( max0.
+IV. Establishing Proof-of-Concept ThroughFast-Time SimulationThe adaptive weight algorithm was prototyped in fast-time simulations using ACES [17].ACES is a fast-time, gate-to-gate simulation and modeling tool of the National Airspace System that creates trajectories for aircraft using aircraft performance models derived from the Base of Aircraft Data [22].The primary purpose of the ACES simulations was to establish proof-of-concept for the adaptive weight algorithm.As such, it was evaluated using a 12 s track update rate that mirrors that of current radar track data.Furthermore, since it only adjusts the modeled aircraft weight, it was sufficient to demonstrate its ability to improve climb trajectory prediction accuracy in simulations where the only uncertainty was in aircraft weight.Prior research analyzed its performance in simulations with uncertainty in both weight and climb speed schedule (CAS and Mach) [11], but similar analysis is not presented here because the algorithm was also evaluated in the presence of real-world trajectory prediction uncertainties using actual Fort Worth Center traffic (see Sec. V).The Cleveland Center traffic data set that was used to test the adaptive weight algorithm contained about 600 departures.A uniform distribution was used to apply a random amount of fuel weight uncertainty between -50 and 50% to each flight in the simulation.This range of fuel weight uncertainty roughly corresponds with the ∕ -15% variation in gross aircraft takeoff weight that was observed in actual operations [8].The terminology in Table 1 is used to describe and discuss the results of the ACES simulations.
+A. Weight Adaptation AccuracyThe first-order analysis of algorithm performance is a comparison of the adapted and perturbed modeled weights to the actual weights.Figure 6 contains plots of the root-mean-square error of the adapted and perturbed weights relative to the actual weights as a function of the amount of adaptation time (i.e., the amount of time since the first track above 15,000 ft).Note that the plot for the "no adaptation" (perturbed) weights is almost but not exactly flat due to slight differences in the fuel burn rates used to model flights and their perturbed trajectory predictions in the simulation (see solid curve).By comparison, the difference between the adapted and actual weights steadily decreases toward zero (see dashed curve).However, the algorithm does not reduce these errors all the way down to zero because of the sensitivity parameter β that balances adaptation speed and stability as discussed in Sec.III.Still, with improvements on the order of 75%, this high-level first-order analysis indicates that the adaptive weight algorithm is generally successful in terms of weight adaptation accuracy.
+B. Climb Trajectory Prediction AccuracyThe promising results of the first-order weight error analysis imply that the adaptive weight algorithm will also significantly improve climb trajectory prediction accuracy.As expected, this turns out to be the case throughout the climb phase.First, consider Figs.7 and8, which are histograms of altitude error on a 5-min prediction lookahead time for climb trajectory predictions made at the first track above 18,000 ft.Recall that the algorithm was first enabled at the first track above 15,000 ft and, thus, had only been working for around 1 or 2 min.Still, it was able to reduce the root-mean-square error by nearly 50%.Similar improvements in climb trajectory prediction accuracy were also observed across prediction look-ahead times and at different altitudes throughout the climb phase as well.For example, Fig. 9 is a plot of altitude root-mean-square error as a function of prediction look-ahead time for trajectory predictions made at the first track above 18,000 ft.Note how the algorithm reduced trajectory prediction errors at all look-ahead times.A similar plot for trajectory predictions generated at the first track above 24,000 ft (see Fig. 10) illustrates how it also continued to enhance this level of improvement throughout the climb phase of flight.predictions that were more accurate across all look-ahead times, others were less accurate some or all of the time.Several examples are illustrated and analyzed in the next section.Following that is a discussion of possible improvements to position, velocity, and climb profile data that would enhance algorithm performance.
+A. Algorithm Performance for Individual FlightsThe adaptive weight algorithm would ideally improve trajectory prediction accuracy for all climbing flights for all prediction lookahead times as in Fig. 18.In this case, it correctly decreased the modeled aircraft weight from the start of the algorithm at the first track above 15,000 ft.The result is an adapted trajectory prediction (dashed curve) with a lower vertical rate that is closer to the actual track data than the nominal trajectory prediction (solid curve) across all look-ahead times.This type of consistent improvement in trajectory prediction accuracy across all prediction look-ahead times is unfortunately not observed for all climbing flights.Consider the case illustrated in Fig. 19 in which the adapted trajectory prediction was more accurate for some look-ahead times and less accurate for others.Here, the algorithm decreased the modeled weight, which resulted in an adapted trajectory prediction that starts off with a lower vertical rate that is noticeably closer to the actual track data than the nominal trajectory prediction.However, due to climb profile uncertainty, the actual flight starts climbing at a faster rate at around the 5 min mark than what was modeled by both trajectory predictions.It just so happens that the actual flight eventually catches up to the nominal trajectory prediction, and starting around the 10 min mark the nominal prediction actually has smaller (absolute) errors than the adapted prediction.There were also some cases where the adapted trajectory prediction was strictly less accurate than the nominal trajectory prediction.One such example is illustrated in Fig. 20a.In this case, the algorithm initially increased the modeled aircraft weight based on track data that indicated a relatively slow vertical rate of about 1500 ft∕ min.Soon after this trajectory prediction was generated at 18,000 ft, though, the actual flight started climbing faster with a vertical rate of about 2500 ft∕ min.As a result, this adapted trajectory prediction was less accurate than the nominal trajectory prediction across all look-ahead times.However, as the actual flight accelerated,  the algorithm reversed itself and decreased the modeled aircraft weight instead.As illustrated in Fig. 20b, the adapted prediction for this flight eventually matched the actual track data just like the nominal prediction.As expected, adjusting only the modeled aircraft weight was not sufficient to fully compensate for all sources of climb uncertainty, and the resulting trajectory predictions never exactly matched the radar track data.Among other things, the quality of the track data available today is a major limiting factor on the amount of improvement that can be achieved with the adaptive weight algorithm right now.In the future, though, ADS-B Out is expected to enhance the performance of the algorithm.
+B. Automatic Dependent Surveillance-Broadcast OutThe Federal Aviation Administration's mandate that all aircraft operating in transponder airspace be equipped with ADS-B Out by 1 January 2020 [23] will significantly enhance the track data available to the adaptive weight algorithm.This is expected to improve the quality of the adaptations and the accuracy of the resulting trajectory predictions for climbing flights.Among other things, ADS-B Out will provide 1 s updates of horizontal velocity and vertical rate directly from aircraft [24] that are more accurate than what can be computed currently using 12 s radar track updates for the algorithm.Furthermore, estimates of aircraft acceleration ( _ V T ) should also be more precise, which could allow the algorithm to be extended beyond the constant CAS portion of climb.Improving the quality of the vertical rate data may be the most important for the algorithm since it is present in two of the three terms of the observed energy rate Eq.(11).Recall that altitude data are currently discretized in 100-ft increments.Also, within any 12 s track update period, individual ground stations may receive different altitude data from the same flight at different times.The data from exactly one of these ground stations is selected at each track update, and the exact data source used will vary over time.The resulting inconsistency is detrimental to the quality of the vertical rate estimates that can be derived.By contrast, with ADS-B Out, vertical rate data would be sent directly from aircraft and should be more precise than current estimates derived from altitude data.As such, although the improvement in climb trajectory prediction accuracy achieved by the adaptive weight algorithm using currently available data is promising, ADS-B Out should further enhance its performance.
+C. Climb Profile DataImprovements to the modeled climb profile are also needed to complement the expected enhancements in track data quality.This is because the algorithm adjusts the modeled weight based on the most recent track data with the implicit assumption that the actual flight will fly according to the climb profile in the underlying aircraft trajectory prediction model.If this does not hold, then the adapted climb trajectories may be more accurate for shorter look-ahead times of up to a few minutes, but less accurate for longer look-ahead times (or vice versa).Two examples were illustrated in Figs.19 and20.As such, up-to-date climb profile dataespecially climb speed schedule (e.g., vertical rate, or CAS and Mach)should be disclosed for each flight (possibly as part of the filed flight plan, flight plan amendments, and/or ADS-B Out broadcasts).This would likely facilitate the expansion of the algorithm to a greater portion of the climb phase.Otherwise, follow-on research efforts to develop methods to infer climb profile on a per-flight basis in real time and/or statistical models based on historical data as in prior work [10] are needed.
+D. General Applicability of the AlgorithmThe adaptive weight algorithm presented in this study was evaluated in fast-time simulations using ACES and with actual Fort Worth Center traffic data in CTAS.However, since it was derived from (a simplified form of) the point-mass equations of motion [16], it is expected to be flexible enough to handle new aircraft types that are not present in current operations.For this same reason, it should also improve climb trajectory prediction accuracy in any airspace and for any trajectory predictor that uses kinetic models (given some fine-tuning of the parameters).Follow-on work to evaluate its performance in all Centers of the National Airspace System is underway.
+VII. ConclusionsAn algorithm that improves the accuracy of trajectory predictions of climbing aircraft has been developed.It dynamically adjusts modeled aircraft weights on a per-flight basis to adapt these predictions to more closely match observed track data.Evaluation using actual Fort Worth Center data showed that it reduced both altitude and top-of-climb time prediction errors by about 20%.It should be emphasized the algorithm only uses the radar track and weather data available today and does not require any additional data from Airline Operations Centers or aircraft.Furthermore, no aircraft types or climb profiles were specifically excluded in the analysis.Improvements to both the quality and quantity of the input data to the algorithm in the near future are expected to further enhance algorithm performance.Regardless, this study has demonstrated that the adaptive weight algorithm is an approach that can be used as a foundation to improve climb trajectory prediction accuracy to the extent necessary for higher levels of separation assurance automation to increase the capacity of the Next Generation Air Transportation System.Fig. 1 Fig. 212Fig. 1 Altitude trajectory prediction error calculation example.
+Fig. 3 Fig. 434Fig. 3 Altitude root-mean-square error by prediction look-ahead time.
+Fig. 55Fig. 5 High-level overview of the adaptive weight algorithm.
+Fig. 77Fig. 7 Altitude errors for trajectory predictions in ACES without adaptation (5-min look-ahead time).
+Fig. 66Fig.6Root-mean-square error in modeled aircraft weights relative to actual weights.
+Fig. 17 Fig. 181718Fig. 17 Top-of-climb time prediction error for trajectories generated at different altitudes in CTAS.
+Fig. 19 Fig. 201920Fig.19 Example of adapted trajectory prediction that is more accurate for some look-ahead times.
+Table 11Terminology for ACES simulations
+			Downloaded by NASA AMES RESEARCH CENTER on February 16, 2013 | http://arc.aiaa.org| DOI: 10.2514/1.58508
+		
+		
+
+			
+AcknowledgmentsThe authors would like to thank Heinz Erzberger, Todd Lauderdale, Todd Farley, Dave McNally, Russ Paielli, Joseph Rios, Banavar Sridhar, Young Sang Park, and others for their encouragement and insightful comments and suggestions from rapid prototyping of the adaptive weight algorithm in fast-time simulations through real-time evaluation using actual traffic data.
+			
+
+			
+V. Evaluation with Actual Flights in Fort Worth CenterThe next step in the validation process for the adaptive weight algorithm was to evaluate its performance in the presence of realworld uncertainties.This was done using CTAS, a real-time research prototype system developed at NASA that includes mature capabilities for four-dimensional trajectory prediction, conflict detection, conflict resolution, and other functions [3,18].Trajectory predictions were generated using the CTAS Trajectory Synthesizer with and without the algorithm enabled using Fort Worth Center Host track data and National Oceanic and Atmospheric Administration Rapid Update Cycle atmospheric data.Data from 29 November-1 December 2011 were used to exercise and fine-tune the algorithm (see Sec. III).Then, weekday data from five days from the following week (5-7 December and 12-13 December 2011) were used to evaluate its performance.Only the results for climbing flights from the latter test set are presented in this section.Unfortunately, several weekdays in-between were not part of this analysis because the data from those days were incomplete (e.g., missing weather data).
+A. Climb Trajectory Prediction AccuracyThe performance of the adaptive weight algorithm was evaluated in terms of climb trajectory prediction accuracy using the same method described in Sec.II.More specifically, the trajectory prediction errors for a flight were calculated only if it did not have any flight plan amendments or nonclimb segments between the time the trajectory prediction was made and the time its flight plan cruise altitude was attained.Recall that this was done to isolate the analysis from the effects of controller intervention as much as possible.Aggregate-level improvement in climb trajectory prediction accuracy can be seen by comparing the histograms of altitude errors for the nominal and adapted trajectory predictions made at the first track update above 18,000 ft (see Figs.  prediction look-ahead times and 2) at different altitudes throughout the climb phase.First, consider the plot of altitude root-mean-square error as a function of prediction look-ahead time for trajectory predictions made at the first track above 18,000 ft (see Fig. 13).As in the ACES simulations, the algorithm also reduced these errors across all prediction look-ahead times in the CTAS experiments.In fact, the amount of improvement (both absolute and percentage-wise) generally increased as a function of prediction look-ahead time.This is significant because trajectory prediction errors do not necessarily increase monotonically as a function of prediction look-ahead time (see Sec. VI) due to the wide range of error sources [5][6][7] and their respective magnitudes in current operations [8][9][10].A similar plot for trajectory predictions generated at the first track above 24,000 ft (see Fig. 14) illustrates how the algorithm was able to maintain similar improvement in trajectory prediction accuracy throughout climb.The magnitude of these errors implies that additional improvement in climb trajectory prediction accuracy may still be necessary given the current legal vertical separation limit of 1000 ft.As discussed in Sec.VI, the quality of the input track data available today is a major limiting factor on the amount of improvement that can be achieved by the adaptive weight algorithm right now.However, this is not expected to be the case in the near future in large part because the Federal Aviation Administration (FAA) is mandating all aircraft operating in transponder airspace to be equipped with Automatic Dependent Surveillance-Broadcast (ADS-B) Out by 1 January 2020 [23].Among other things, ADS-B Out will increase both the quality and quantity of data that are communicated directly from aircraft and also reduce the track update rate from 12 s in the current system to just 1 s [24].These improvements should enhance the effectiveness of the adaptations and the accuracy of the resulting climb trajectory predictions.With this in mind, the results presented here indicate that the adaptive weight algorithm is a promising approach that could be used as a foundation to improve trajectory prediction accuracy for climbing flights to the extent needed for higher levels of automation for separation assurance to increase the capacity of NextGen.
+B. Top-of-Climb Prediction AccuracyThe promising results from the altitude trajectory error analysis also imply similar improvements in top-of-climb prediction accuracy.As expected, this turns out to be the case throughout climb.First, consider histograms of top-of-climb time prediction errors calculated using the nominal and adapted CTAS trajectory predictions generated at the first track above 18,000 ft (see Figs. 15 and 16, respectively).These errors were calculated the same way as the altitude errors in the previous section: predicted minus actual.Here, the adaptive weight algorithm reduced the root-mean-square error by 19%.Similar improvements are observed for predictions made at the first track above 21,000 ft (21%) and 24,000 ft (20%), respectively (see Fig. 17).This is important because air traffic controllers often require reliable predictions of climbs to different altitudes when developing maneuvers to maintain safe separation of aircraft.
+VI. DiscussionThe evaluation of the adaptive weight algorithm using actual Fort Worth Center data demonstrated its ability to reduce altitude and topof-climb time prediction errors for actual climbing flights at an aggregate level.However, a closer examination of individual flights found that trajectory prediction accuracy was not improved for all flights.For instance, although many flights had adapted trajectory			
+			
+
+				
+
+
+	
+		FAA Aviation Forecasts Fiscal Years 1979-1990. Federal Aviation Administration, Office of Aviation Policy, 800 Independence Avenue, S.W., Washington, D.C. 20591. September 1978. 92p
+		10.1177/004728757901800127
+	
+	
+		Journal of Travel Research
+		Journal of Travel Research
+		0047-2875
+		1552-6763
+		
+			18
+			1
+			
+			March 2012
+			SAGE Publications
+		
+	
+	Office of Aviation Policy and Plans
+	Federal Aviation Administration, Office of Aviation Policy and Plans, "FAA Aerospace Forecast: Fiscal Years 2012-2032," March 2012.
+
+
+
+	
+		Automated Separation Assurance in the Presence of Uncertainty
+		
+			DMcnally
+		
+		
+			DThipphavong
+		
+	
+	
+		26th International Congress of the Aeronautical Sciences
+		
+			2008-8.11.1, Sept. 2008
+		
+	
+	McNally, D., and Thipphavong, D., "Automated Separation Assurance in the Presence of Uncertainty," 26th International Congress of the Aeronautical Sciences, ICAS Paper 2008-8.11.1, Sept. 2008.
+
+
+
+	
+		Analysis of Climb Trajectory Modeling for Separation Assurance Automation
+		
+			DavidThipphavong
+		
+		10.2514/6.2008-7407
+	
+	
+		AIAA Guidance, Navigation and Control Conference and Exhibit
+		
+			American Institute of Aeronautics and Astronautics
+			2008-7407, Aug. 2008
+		
+	
+	Thipphavong, D., "Analysis of Climb Trajectory Modeling for Separation Assurance Automation," AIAA Guidance, Navigation, and Control Conference, AIAA Paper 2008-7407, Aug. 2008.
+
+
+
+	
+		A Near-Term Concept for Trajectory-Based Operations with Air/Ground Data Link Communication
+		
+			DMcnally
+		
+		
+			EMueller
+		
+		
+			DThipphavong
+		
+		
+			RPaielli
+		
+		
+			JCheng
+		
+		
+			CLee
+		
+		
+			SSahlman
+		
+		
+			JWalton
+		
+		
+			Sept. 2010
+		
+	
+	27th International Congress of the Aeronautical Sciences, ICAS Paper 2010-11.4.4
+	McNally, D., Mueller, E., Thipphavong, D., Paielli, R., Cheng, J., Lee, C., Sahlman, S., and Walton, J., "A Near-Term Concept for Trajectory- Based Operations with Air/Ground Data Link Communication," 27th International Congress of the Aeronautical Sciences, ICAS Paper 2010-11.4.4, Sept. 2010.
+
+
+
+	
+		Trajectory Prediction Concepts for Next Generation Air Traffic Management
+		
+			AWarren
+		
+	
+	
+		Third USA/Europe Air Traffic Management Research and Development Seminars
+		Naples, Italy
+		
+			June 2000
+			91
+		
+	
+	Warren, A., "Trajectory Prediction Concepts for Next Generation Air Traffic Management," Third USA/Europe Air Traffic Management Research and Development Seminars, Naples, Italy, Paper 91, June 2000.
+
+
+
+	
+		EUROCONTROL and FAA sign memorandum of cooperation
+		
+			SMondoloni
+		
+		10.1108/aeat.2005.12777aab.007
+	
+	
+		Aircraft Engineering and Aerospace Technology
+		0002-2667
+		
+			77
+			1
+			July 2006
+			Emerald
+		
+	
+	Mondoloni, S., "Aircraft Trajectory Prediction Errors: Including a Summary of Error Sources and Data (Ver. 0.2)," FAA/EUROCONTROL Action Plan 16, July 2006.
+
+
+
+	
+		Sensitivity of Aircraft Performance to Variability of Input Data
+		
+			AGerretsen
+		
+		
+			SSwierstra
+		
+	
+	
+		EUROCONTROL Doc. CoE-TP-02005
+		
+			Feb. 2003
+		
+	
+	Gerretsen, A., and Swierstra, S., "Sensitivity of Aircraft Performance to Variability of Input Data," EUROCONTROL Doc. CoE-TP-02005, Feb. 2003.
+
+
+
+	
+		En route climb trajectory prediction enhancement using airline flight-planning information
+		
+			RichardACoppenbarger
+		
+		10.2514/6.1999-4147
+	
+	
+		Guidance, Navigation, and Control Conference and Exhibit
+		
+			American Institute of Aeronautics and Astronautics
+			1999-4147, Aug. 1999
+		
+	
+	Coppenbarger, R. A., "Climb Trajectory Prediction Enhancement Using Airline Flight-Planning Information," AIAA Guidance, Navigation, and Control Conference, AIAA Paper 1999-4147, Aug. 1999.
+
+
+
+	
+		Real-Time Data Link of Aircraft Parameters to the Center-TRACON Automation System (CTAS)
+		
+			RACoppenbarger
+		
+	
+	
+		Fourth USA/ Europe Air Traffic Management Research and Development Seminars
+		Santa Fe, NM
+		
+			Dec. 2001
+			109
+		
+	
+	Coppenbarger, R. A., "Real-Time Data Link of Aircraft Parameters to the Center-TRACON Automation System (CTAS)," Fourth USA/ Europe Air Traffic Management Research and Development Seminars, Santa Fe, NM, Paper 109, Dec. 2001.
+
+
+
+	
+		Improving and validating CTAS performance models
+		
+			WilliamChan
+		
+		
+			RalphBach
+		
+		
+			JosephWalton
+		
+		10.2514/6.2000-4476
+		AIAA Paper 2000-4476
+	
+	
+		AIAA Guidance, Navigation, and Control Conference and Exhibit
+		
+			American Institute of Aeronautics and Astronautics
+			Aug. 2000
+		
+	
+	Chan, W., Bach, R., and Walton, J., "Improving and Validating CTAS Performance Models," AIAA Guidance, Navigation, and Control Conference, AIAA Paper 2000-4476, Aug. 2000.
+
+
+
+	
+		Adaptive Trajectory Prediction Algorithm for Climbing Flights
+		
+			CharlesSchultz
+		
+		
+			DavidThipphavong
+		
+		
+			HeinzErzberger
+		
+		10.2514/6.2012-4931
+	
+	
+		AIAA Guidance, Navigation, and Control Conference
+		
+			American Institute of Aeronautics and Astronautics
+			2012-4931, Aug. 2012
+		
+	
+	Schultz, C., Thipphavong, D., and Erzberger, H., "Adaptive Trajectory Prediction Algorithm for Climbing Flights," AIAA Guidance, Navigation, and Control Conference, AIAA Paper 2012-4931, Aug. 2012.
+
+
+
+	
+		Closed-Form Takeoff Weight Estimation Model for Air Transportation Simulation
+		
+			Hak-TaeLee
+		
+		
+			GanoChatterji
+		
+		10.2514/6.2010-9156
+	
+	
+		10th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		
+			American Institute of Aeronautics and Astronautics
+			Sept. 2010
+		
+	
+	Lee, H., and Chatterji, G. B., "Closed-Form Takeoff Weight Estimation Model for Air Transportation Simulation," 10th AIAA Aviation, Technology, Integration, and Operations Conference, AIAA Paper 2010-9156, Sept. 2010.
+
+
+
+	
+		Fuel Burn Estimation Using Real Track Data
+		
+			GanoBChatterji
+		
+		10.2514/6.2011-6881
+		AIAA Paper 2011-6881
+	
+	
+		11th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		
+			American Institute of Aeronautics and Astronautics
+			Sept. 2011
+		
+	
+	Chatterji, G. B., "Fuel Burn Estimation Using Real Track Data," 11th AIAA Aviation, Technology, Integration, and Operations Conference, AIAA Paper 2011-6881, Sept. 2011.
+
+
+
+	
+		Adaptive improvement of aircraft climb performance for air traffic control applications
+		
+			GLSlater
+		
+		10.1109/isic.2002.1157831
+	
+	
+		Proceedings of the IEEE Internatinal Symposium on Intelligent Control
+		the IEEE Internatinal Symposium on Intelligent Control
+		
+			IEEE
+			Oct. 2002
+			
+		
+	
+	Slater, G. L., "Adaptive Improvement of Aircraft Climb Performance for Air Traffic Control Applications," Proceedings of the IEEE International Symposium on Intelligent Control, Oct. 2002, pp. 602-607. doi:10.1109/ISIC.2002.1157831
+
+
+
+	
+		Kinetics studies, thermal decomposition and carbonation. Final report
+		
+			AAGodbole
+		
+		10.2172/10153551
+		
+			2003
+			Office of Scientific and Technical Information (OSTI)
+			Cincinnati, OH
+		
+		
+			Dept. of Aerospace Engineering and Engineering Mechanics, Univ. of Cincinnati
+		
+	
+	M. S. Thesis
+	Godbole, A. A., "Adaptive Improvement of Climb Performance," M. S. Thesis, Dept. of Aerospace Engineering and Engineering Mechanics, Univ. of Cincinnati, Cincinnati, OH, 2003.
+
+
+
+	
+		Trajectory Synthesis for Air Traffic Automation
+		
+			RhondaSlattery
+		
+		
+			YiyuanZhao
+		
+		10.2514/2.4056
+	
+	
+		Journal of Guidance, Control, and Dynamics
+		Journal of Guidance, Control, and Dynamics
+		0731-5090
+		1533-3884
+		
+			20
+			2
+			
+			1997
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Slattery, R., and Zhao, Y., "Trajectory Synthesis for Air Traffic Automation," Journal of Guidance, Control, and Dynamics, Vol. 20, No. 2, 1997, pp. 232-238. doi:10.2514/2.4056
+
+
+
+	
+		Build 8 of the Airspace Concept Evaluation System
+		
+			SapaGeorge
+		
+		
+			GoutamSatapathy
+		
+		
+			VikramManikonda
+		
+		
+			KeePalopo
+		
+		
+			LarryMeyn
+		
+		
+			ToddLauderdale
+		
+		
+			MichaelDowns
+		
+		
+			MohamadRefai
+		
+		
+			RichardDupee
+		
+		10.2514/6.2011-6373
+	
+	
+		AIAA Modeling and Simulation Technologies Conference
+		
+			American Institute of Aeronautics and Astronautics
+			2011-6373, Aug. 2011
+		
+	
+	George, S. E., Satapathy, G., Manikonda, V., Wieland, F., Refai, M. S., and Dupee, R., "Build 8 of the Airspace Concept Evaluation System," AIAA Modeling and Simulation Technologies Conference, AIAA Paper 2011-6373, Aug. 2011.
+
+
+
+	
+		Design of Center-TRACON Automation System
+		
+			HErzberger
+		
+		
+			TJDavis
+		
+		
+			SMGreen
+		
+	
+	
+		Proceedings of the AGARD Guidance and Control Panel 56th Symposium on Machine Intelligence in Air Traffic Management
+		the AGARD Guidance and Control Panel 56th Symposium on Machine Intelligence in Air Traffic ManagementNeuilly Sur Seine, France
+		
+			1993
+			12
+			
+		
+		
+			Advisory Group for Aerospace Research & Development (AGARD
+		
+	
+	Erzberger, H., Davis, T. J., and Green, S. M., "Design of Center- TRACON Automation System," Proceedings of the AGARD Guidance and Control Panel 56th Symposium on Machine Intelligence in Air Traffic Management, Advisory Group for Aerospace Research & Development (AGARD), Neuilly Sur Seine, France, 1993, pp. 11.1-11.12.
+
+
+
+	
+		Climb Trajectory Prediction Software Validation for Decision Support Tools and Simulation Models
+		
+			JRomanelli
+		
+		
+			CSantiago
+		
+		
+			MMPaglione
+		
+		
+			ASchwartz
+		
+	
+	
+		ITEA Journal of Test and Evaluation
+		
+			30
+			4
+			
+			Dec. 2009
+		
+	
+	Romanelli, J., Santiago, C., Paglione, M. M., and Schwartz, A., "Climb Trajectory Prediction Software Validation for Decision Support Tools and Simulation Models," ITEA Journal of Test and Evaluation, Vol. 30, No. 4, Dec. 2009, pp. 481-491.
+
+
+
+	
+		Introduction to Avionics Systems
+		
+			RP GCollinson
+		
+		10.1007/978-94-007-0708-5
+		
+			2011
+			Springer Netherlands
+			3
+			
+			New York
+		
+	
+	rd ed.
+	Collinson, R. P. G., Introduction to Avionics Systems, 3rd ed., Springer- Verlag, New York, 2011, pp. 395-396.
+
+
+
+	
+		Climiate diagnostics bulletin: Near real-time analyses ocean/atmosphere
+		10.2172/453771
+	
+	
+		National Aeronautics and Space Administration (NASA), and U.S. Air Force, U.S. Standard Atmosphere
+		Washington, DC
+		
+			Office of Scientific and Technical Information (OSTI)
+			1976. 1976
+		
+	
+	National Oceanic and Atmospheric Administration, National Aeronau- tics and Space Administration (NASA), and U.S. Air Force, U.S. Standard Atmosphere 1976, U.S. Government Printing Office, Washington, DC, 1976.
+
+
+
+	
+		Sensitivity Analysis of Aviation Environmental Impacts for the Base of Aircraft Data (BADA) Family 4
+		
+			ExperimentalEurocontrol
+		
+		
+			Centre
+		
+		10.2514/6.2021-0457.vid
+		11/03/08-08
+		
+			April 2011
+			American Institute of Aeronautics and Astronautics (AIAA)
+			Brétignysur-Orge, France
+		
+	
+	Rev. 3.9
+	EUROCONTROL Experimental Centre, User Manual for the Base of Aircraft Data (BADA), Rev. 3.9, EEC Note No. 11/03/08-08, Brétigny- sur-Orge, France, April 2011.
+
+
+
+	
+		Air Traffic Control (ATC) surveillance environment
+		
+			BusyairahSyd Ali
+		
+		10.4324/9781315566382-2
+	
+	
+		Aircraft Surveillance Systems
+		
+			Routledge
+			May 2010
+			75
+			
+		
+	
+	Federal Aviation Administration, "14 CFR Part 91 Automatic Dependent Surveillance-Broadcast (ADS-B) Out Performance Requirements to Support Air Traffic Control (ATC) Service; Final Rule," Federal Register, Vol. 75, No. 103, May 2010.
+
+
+
+	
+		RTCA special committee 228 UAS command and control (C2) standards development
+		
+			JohnRMoore
+		
+		10.1109/icnsurv.2014.6820071
+		RTCA Special Committee-186
+	
+	
+		2014 Integrated Communications, Navigation and Surveillance Conference (ICNS) Conference Proceedings
+		
+			IEEE
+			June 2002
+		
+	
+	RTCA/DO-242A
+	RTCA Special Committee-186, "Minimum Aviation System Perfor- mance Standards for Automatic Dependent Surveillance Broadcast (ADS-B)," RTCA/DO-242A, June 2002.
+
+
+				
+			
+		
+	

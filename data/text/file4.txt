@@ -1,0 +1,750 @@
+
+	
+	
+		
+I. IntroductionS uccessful integration of Unmanned Aircraft Systems (UAS) into the National Airspace System (NAS) is predicated upon maintaining or exceeding the level of safety and performance achieved by current operations [1].RTCA Special Committee 228 (SC-228) is developing UAS Minimum Operational Performance Standards (MOPS) to achieve this goal.These MOPS define the Detect-And-Avoid function [2], which comprises three sub-functions, namely, detection, alerting, and guidance.In addition the MOPS introduce an algebraic definition of what it means to be Well Clear of other aircraft, referenced hereinafter as DAA Well Clear (DWC).The DAA Detect function uses onboard or ground surveillance systems to detect traffic.Of particular relevance is the ability to detect non-cooperative traffic, such as aircraft flying visual flight rules (VFR) that do not have a broadcasting transponder or ADS-B system.The MOPS require an onboard air-to-air radar (ATAR) for this purpose (see [3] for ATAR requirements).The Alerting and Guidance functions provide notification of potential hazards that may arise with detected aircraft, and the solutions available to avoid or mitigate observed hazards.One of the key challenges in implementing effective DAA systems, is sensor noise.The effects of sensor noise are varied and may include loss of alerting and guidance stability.Alerting, for example, may flicker while guidance may exhibit distracting fluctuations.For a pilot-in-control concept of operation, which is adopted in the MOPS, this can be detrimental to effective mitigation of hazards.Furthermore, different sensor systems may exhibit distinctly different noise characteristics.For example, a mode-C transponder does not measure bearing of another aircraft (an intruder) relative to the UA controlled by the UAS pilot (ownship), whereas an ATAR does.DAA systems must take sensor noise characteristics into account.Several schemes for mitigating the effects of noise are possible.A tracker may be used, for example, to provide correlated smoothed intruder states [4][5][6][7][8][9][10][11], which are then used to predict hazards.Another approach would generate multiple belief states assigning each state a likelihood using known noise characteristics and using a decision process to predict hazards [12,13].Yet another approach might use a buffer to inflate desired separation thresholds, thus providing more conservative hazard predictions [14].One may also impose alerting persistence requirements or may delay the onset of an alert until a certain number of hazards are reported in a given period of time for each intruder [2].These methods and others are not mutually exclusive and may be used in combination to achieve desired DAA performance.This paper investigates the benefits of using sensor uncertainty information in a Sensor Uncertainty Mitigation (SUM) method, which is implemented in the Detect and Avoid Alerting Logic for Unmanned Systems (DAIDALUS), the reference algorithm adopted in the MOPS.DAIDALUS SUM performance is compared with separation buffers using the same safety and operational suitability metrics.Closed loop DAA simulations incorporating UAS pilot resolutions are used, with SUM parameters being the independent variables.Open loop alerting-only simulations are also used to assess open-loop alerting metrics.The paper is organized as follows.The next section provides a high-level background on DAA systems.Section III provides overview of previous work related to sensor uncertainty mitigation methods.Section IV describes the approach used to evaluate SUM performance.Section V describes the main results.Finally, concluding remarks are presented in Section VI.
+II. Background on Detect-and-AvoidThe DAA system assists UAS operators and pilots in maintaining separation with other aircraft.One of the core challenges of such capability is to meet FAA requirements to "see and avoid" and when passing other aircraft to remain "well clear" as mandated for manned aircraft in 14 CFR §91.113 [15].UAS pilots are not in the flight deck to "see and avoid," so pilots must rely on surveillance and algorithms for conflict detection and avoidance.In this situation, the separation standard, or the DWC, must have a quantitative definition.To provide information for maintaining DWC, the DAA system computes alerts and guidance based on a look-ahead time of 1 to 2 minutes.The alerting and guidance structure is designed with the assumptions that a UAS flies by instrument flight rules (IFR) and UAS operators or pilots are "in the loop" for decision making.The study applies a DWC that is to be defined in an upcoming revision of the DAA MOPS for en-route encounters with non-cooperative intruders, i.e., VFR aircraft without a broadcasting transponder or ADS-B out system.Encounters with non-cooperative intruders pose unique challenges because of sensor noise and especially large vertical state uncertainty typical for ATAR.This study focuses on the DAA system's performance against non-cooperative intruders in an operational environment representative of UAS with low size, weight, and power (SWaP) sensors, i.e., low speed unmanned aircraft (UA) and a limited surveillance range (see Section IV for more details).The DWC for a non-cooperative intruder is a short cylinder (a "hockey puck") with a horizontal radius of 2,200 ft and a vertical threshold of 450 ft above and below the UA [16].The DAA MOPS define three types of alerts in increasing levels of severity: preventive, corrective, and warning.The medium level, corrective, alert indicates that a loss of DAA well clear (LoDWC) is predicted to occur in the future, an avoidance maneuver is necessary, but there is still time for coordination with air traffic control (ATC).The highest level, warning, alert indicates that a LoDWC is imminent, an avoidance maneuver is needed, and coordination with ATC before maneuvering is not a requirement.The lowest level, preventive alert, effectively has the same thresholds and alerting times as a corrective alert, but with larger vertical separation between 450 to 700 feet.This alert should not be triggered by non-cooperative aircraft (due to the lack of precise altitude information) and is not modeled in this study.The DAA system must present maneuver guidance to UAS pilots in the form of DWC-based, conflict-free aircraft headings or altitude ranges, or "bands."In case a LoDWC is imminent, these bands become "saturated," meaning there are no conflict free headings or altitudes and that a loss of DWC is unavoidable no matter what action a UAS pilot takes.In this case the DAA system should present Well Clear Recovery (WCR) guidance.This is a range of headings or altitudes that, if executed, can increase separation at CPA and regain DWC effectively.Figure 1 depicts a mockup of guidance to remain and regain DWC.In this figure red (warning) or yellow (corrective) represent the ranges of headings or altitudes that will result in a LoDWC, and green depicts the guidance that will (a) avoid a LoDWC or (b) effectively regain DWC.NASA developed the Generic Resolution Advisor and Conflict Evaluator (GRACE) alerting and guidance algorithm, which combined flexibility, robustness, and computational efficiency [18].GRACE was used in a number of real-time and fast-time experiments, including parametric studies, NAS-wide simulations, human-in-the-loop experiments, and live flight tests.Another alerting and guidance algorithm, Detect and Avoid Alerting Logic for Unmanned Systems (DAIDALUS) [19], was developed by NASA specifically to support Phase 1 MOPS [2].DAIDALUS uses closed-form solutions to compute alerting and guidance.The recently developed Aircraft Collision Avoidance System X (ACAS-X) [12] is envisioned by the Federal Aviation Administration (FAA) as a replacement for the currently deployed Traffic Alert and Collision Avoidance System II (TCAS-II) [20].The UAS-variant of ACAS-X, called ACAS-Xu, is being developed to meet the requirements defined by the SC-228 in DO-365 [2].
+III. Sensor Uncertainty Mitigation Methods
+A. Mitigation SchemesThe first "line of defense" against sensor noise is improving stability of aircraft states used in DAA algorithms.The MOPS define a fusion tracker that can correlate and fuse measurements from multiple sensors such as ADS-B, active surveillance, and ATAR.This tracker can potentially implement various filtering algorithms such as multi-state filtering [4][5][6][7][8], alpha-beta filter [9], different versions of Kalman filter [10], and other filters [4,11] For conflict avoidance systems, a common approach to mitigating sensor noise and other sources of uncertainty in aircraft states involves adding spatial or temporal safety buffers.An example of such an approach for UAS DAA systems can be found in [14].This method is simple and effective, but it has its limitations.For example, large safety buffers may increase the likelihood of incorrect alerts defined in DAA MOPS as alerts issued when the intruder aircraft remains in the Non-Hazard Zone, where DAA must not alert [2].This can lead to unnecessary maneuvers, therefore increasing workload.The DAA MOPS include an alert hysteresis requirement, which aims to reduce undesired alert flickering [2].The requirement is that an alert "shall persist for a minimum of four seconds, unless the intruder is declared a higher priority alert."In addition, the MOPS also suggest the use of an M of N (M < N) alert filter, which requires that an alert must be present in at least M of N consecutive detection cycles, in order for the alert to be valid.The effect is to delay alerting and guidance displayed to the UAS pilot until the alerts have sufficiently stabilized.The use of hysteresis or M of N, however, cannot mitigate gradual changes in alerts caused by low-frequency components of tracker noise, or by maneuvering aircraft, or both.Furthermore, they do not address the issue of guidance fluctuations, which may confuse a UAS pilot or lead to erroneous maneuvers.One approach to addressing this issue would be to apply persistence logic for guidance in the same way as it was used for alerts.A more reliable way to suppress the abrupt guidance changes is by using a cost/reward function that allows a flexible balance between guidance stability and other considerations.This idea was implemented in two different algorithms that demonstrated robust performance under simulated sensor uncertainties [18,21]: GRACE [18] and ACAS and its derivatives [13].If sensor uncertainty information is available in real time, it can be used to improve alerting and guidance stability.For instance, ACAS-Xu utilizes this information in computation of its belief states.The Sensor Uncertainty Mitigation (SUM) capability, recently added to DAIDALUS, also follows a similar approach.DAIDALUS SUM, which will be described in Subsection III.B, is the focus of this study.
+B. DAIDALUS SUMDAIDALUS SUM uses sensor uncertainty information to compute bounds on the errors in the aircraft position and velocity vectors [22].These bounds are used to create "phantom" intruders, which are then used to compute alerting and guidance by combining the results for each phantom with those for the sensed intruder.This approach is effectively creating a "dynamic" buffer, which is reevaluated with every detection cycle.SUM requires six tunable parameters.Three of these parameters are z-scores indicating the number of standard deviations to consider for horizontal and vertical position uncertainty and for vertical velocity uncertainty: h_pos_z number of standard deviations for horizontal position uncertainty v_pos_z number of standard deviations for vertical position uncertainty v_vel_z number of standard deviations for vertical velocity uncertainty The other three tunable parameters for horizontal velocity uncertainty are: h_vel_z_score_min number of standard deviations for horizontal velocity uncertainty at high distance h_vel_z_score_max number of standard deviations for horizontal velocity uncertainty at low distance h_vel_z_distance distance at which to start phasing between the high distance and low distance values The use of the last three parameters requires some clarification.SUM allows using a smaller velocity uncertainty when the aircraft are further apart because a slight change in the size of the velocity error at those distances can produce a very large set of possible future states as those velocities are propagated in time.This problem is mitigated by allowing the horizontal velocity uncertainty, expressed as a number of standard deviations, to decrease as the aircraft get further apart.For given level of sensor noise, larger z-scores have the effect of increased "dynamic buffers" around a "sensed" intruder.Larger z-scores are therefore expected to make alerts and bands more stable.At the same time, alerts may be issued earlier, and the probability of incorrect alerts may increase.Furthermore, using large z-scores may result in wider bands that may become saturated earlier than necessary.Increasing z-scores will therefore result in increasingly conservative guidance, which may cause pilots to use more aggressive or excessive maneuvers.Evaluation of an earlier version of SUM using a limited number of encounters was conducted in [23][24][25].The main alerting metric used for evaluation was Alert Jitter, which is defined as the average number of transitions to alerts of higher severity (e.g. from corrective to warning alerts) that occur within an encounter set.The effectiveness of guidance was evaluated using Severity of Loss of Well Clear (SLoWC) metric, capturing the most serious instance of LoDWC throughout an encounter.SLoWC ranges from 0% (DAA Well Clear maintained throughout the encounter) to 100% (mid-air collision).Results showed improvement in alert stability and safety metrics with SUM.However, the tunable SUM parameters in all these studies varied only within narrow ranges.Also, the small number of encounters simulated (< 300) was not enough for accurate estimates of safety metrics such as the SLoWC.Moreover, the optimal values of these parameters may be very different if more metrics are used and if Phase 2 requirements for aircraft and sensor performance are assumed, such as lower aircraft speeds, faster turn rates, and shorter radar range.The need to find most suitable values of these parameters for Phase 2 DAA MOPS motivated this study.
+IV. Approach A. Simulation ArchitectureThe simulations in this study are conducted using the Java Architecture for DAA Extensibility and Modeling (JADEM), developed by NASA to support evaluation of different DAA concepts and their safety characteristics [18].Figure 2
+B. MetricsThree metrics are analyzed in this study: 1) Severity of Loss of Well Clear (SLoWC) ratio, defined as the ratio of weighted averages of SLoWC between mitigated and unmitigated runs for the same encounter set and configuration.The advantage of this metric is that it captures not only the number of LoDWC events, but also how "severe" (i.e.close to NMAC) these events were.The lower value of SLoWC ratio indicates that the UAS pilot is more successful in avoiding the LoDWC, and if the losses of DWC cannot be avoided, the pilot maneuvers make them less dangerous.2) Number of UAS pilot actions (i.e.evaluation, selection, and execution of maneuvers) per encounter, denoted as N pa .This metric can be used to characterize the workload.It also may have implications for safety due to the factors that are not captured by DAA pilot model used in this study.For instance, it's conceivable that excessive maneuvering caused by more conservative guidance may increase UAS pilot fatigue and probability of wrong decisions.3) Average time between the well clear recovery (WCR) time and the time of LoDWC, denoted as t WCR-LoDWC .For operational reasons, t WCR-LoDWC shouldn't be too large because WCR presents a risky situation in which pilots are given limited guidance, which should not be displayed earlier than necessary.Since the maneuver time needed to resolve a conflict is typically from 10 to 20 seconds [2], it is assumed that WCR to LoDWC time should not exceed 20 seconds.
+C. EncountersThe study used more than 80,000 pairwise encounters generated from projected UAS mission profiles developed under prior work [26], but modified for low SWaP UAS, and recorded radar traffic data that include visual flight rules and non-cooperative flights [27].The encounters have the following properties when the aircraft are at their closest point of approach (CPA):• ownship's true airspeed is below 110 KTAS.• intruder's true airspeed is below 170 KTAS, a 95 percentile upper bound for non-cooperative aircraft [28].• ownship's altitude is below 11000 feet.More details about the encounters can be found in [29].
+D. Sensor and Tracker ModelsFor this study, the intruders' simulated trajectory states, referred hereafter as "truth" states, were perturbed by a radar model with a vertically cylindrical radar field of view (FOV) with a radius of 3 NM, representative of the range of a low SWaP radar.Analysis with this type of FOV sheds light on the sensitivity of the DAA performance metrics to a finite surveillance range, a critical question for UAS operations with low SWaP sensors.Representative values used for azimuth and elevation errors were 0.5 • ± 1.0 • and those for (slant) range error were 15 ± 21 meters.The Phase 1 MOPS require a tracker that fuses and correlates measurements from multiple sensors for a single intruder into tracks.The UA's state is also input into the tracker to produce the intruder's state in absolute coordinates.A fusion tracker developed by Honeywell [30] is used for this work.This tracker outputs the intruder's track position and velocity as well as estimated accuracies of the track.
+E. Alerting and Guidance AlgorithmFor this study, DAIDALUS is configured to issue a corrective alert 60 seconds and a warning alert 30 seconds before the UA is predicted to enter the conflict zone.Upon alerting, DAIDALUS generates corresponding preventive, corrective, and warning guidance indicating a range of conflict-free headings and altitudes for UAS pilot to select from in order to maintain DWC separation.In the absence of alerts, DAIDALUS computes peripheral guidance by projecting candidate vertical and horizontal DAA maneuvers into future times to determine which would result in conflicts.DAIDALUS also computes regain DWC guidance, or well clear recovery (WCR), if a LoDWC is unavoidable.The alert conflict zone is based on the DWC and adds a buffer around it.For runs with a static buffer, the DWC's horizontal radius, or the horizontal miss distance threshold (HMD*) is scaled by a factor of 1.52 to be consistent with the parameters referenced in the Phase 1 MOPS.The vertical threshold, h*, is 450 ft in one configuration and 4000 ft in another.The 450 ft value is equal to the vertical threshold of the DWC as defined in the MOPS.The 4000 ft value is a conservative threshold suggested by the Phase 1 MOPS to guard against the large vertical state noise of an ATAR detecting non-cooperative aircraft.All runs with DAIDALUS SUM use the unbuffered HMD* = 2200 ft and vertical threshold h* = 450 ft.
+F. Pilot Response ModelThe DAA MOPS reference pilot response model calibrated from UAS pilot performance data obtained in the Human-in-the-Loop (HITL) simulations [29] was used to select maneuvers from DAA guidance and execute them.Appropriate delays at various states are applied to mimic the air traffic coordination time and pilot evaluation time.More details are described in [29].Only horizontal maneuvers are used because large vertical state errors make vertical maneuvers less robust.
+G. UA Flight ModelOnce the UAS pilot response model selects a DAA maneuver and the execution delay elapses, the flight model takes control and modifies the UA's truth trajectory in accordance with the DAA maneuver.JADEM's flight model is based on Multimodal Adaptable Trajectory Generator (MATG) [18], a fast and flexible kinematic trajectory predictor.MATG can handle any constraints (position, heading, speed, altitude, vertical speed, and time) in any combination.The UA kinematics can be modeled using either bank angle or turn rate and vertical speeds that can be defined as functions of altitude and flight phase (climb/descent).When MATG is used for modeling pilot maneuvers, the target heading or altitude constraint is created from the output of DAA pilot model.Once the flight model has achieved the target heading or altitude, the UA trajectory retains it until the end of the encounter.The intruder's trajectory remains unchanged.In this study, the DAA pilot model provided only heading guidance, and constant turn rate 7 deg/sec was assumed for all UA maneuvers.
+H. Experiment SetupEvaluating the effectiveness of sensor uncertainty mitigation necessitates comparisons between the following scenario configurations:1) Perfect: the baseline case with "perfect" surveillance data without simulated sensor errors but with limited FoV representative of low SWaP airborne radar.2) Noisy: similar to the perfect case but uses sensor and tracker model developed by Honeywell [30], for airborne radar with the same FoV.3) Mitigated: similar to the noisy case but configured to use one or more noise mitigation methods, such as static buffers, or DAIDALUS SUM with different tunable parameters.Perfect, noisy, and each of the mitigated configurations required two runs: "open loop," was used to generate metrics without applying a UAS pilot response model (see Section IV.F for more details), and "closed loop" with the application of the UAS pilot response model.This section presents results for the following Mitigated configurations, compared with Perfect and Noisy configurations as defined in IV.H: 1) HMD* buffer: the HMD threshold was set to 3342 ft, replacing the standard 2200 ft HMD threshold.2) HMD* & Vert.buffer: in addition to the HMD* buffer, the vertical threshold was set to 4000 ft, to protect against large radar errors in vertical state.3) SUM: DAIDALUS SUM with different combinations of horizontal and vertical tunable parameters.For SUM configurations, the following assumptions were made for SUM parameters:• h_vel_z_score_max = h_pos_z_score • h_vel_z_distance = 3.0 nmi • h_vel_z_score_max / h_vel_z_score_min = 5• v_vel_z_score = v_pos_z_score This leaves only two independently varying parameters to generate a 2D map of performance metrics for SUM configurations: horizontal and vertical position z_scores.
+I. Performance EvaluationThis study attempts to compare the overall performance of each simulation configuration via a single cost function by combining the aforementioned three metrics defined in Subsection IV.B.This approach is generally challenging and subjective.Nonetheless, this attempt will demonstrate the trade space between metrics and determine a reasonable range of SUM parameters.To facilitate the construction of this cost function, the performance indices s k were calculated for all metrics.The lower values of these indices always indicate the better performance.For the first two metrics, SLoWC ratio and N pa , s k was defined simply as the ratio of value m k of k th metric for given configuration to its value m k,noisy for Noisy configuration:s k = m k m k,noisy , k = 1, 2(1)The Noisy configuration is used as the denominator because this is the case without mitigation that can be used as a natural reference.The last metric, t WCR-LoDWC , couldn't be normalized the same way since it represented a penalty applied only for a time exceeding 20 second limit.Hence, its s k was calculated as:s k = max(m k -m k,limit , 0) 0.1 * m k,limit , k = 3(2)This ensured that s k was zero when the m k is below 20 second limit m k,limit , and it rapidly increased once the m k exceeded m k,limit .The overall performance index S for each configuration was calculated simply by averaging s k for all metrics with weights w k reflecting the relative importance of each metric.S = k w k s k(3)This allowed to compare overall performance across configurations.Section V provides a summary of evaluation results.
+V. ResultsThe results for statistical metrics for buffered and SUM configurations in this section are shown as bar charts with error bars.Figure 3 shows the LoWC Severity ratio for different mitigation methods compared to the unmitigated noisy configuration.Even for perfect configuration, the LoWC severity ratio is not zero because even with accurate information about intruder states, the losses of DWC could not always be avoided when intruders maneuvered unexpectedly.The LoWC Severity ratio for unmitigated noisy configuration is at the level of 16%, more than two times higher than for perfect configuration.This level of LoWC Severity ratio for worst case of noisy surveillance without any mitigation is too high and not operationally acceptable.All mitigation methods substantially reduce the LoWC Severity ratio compared to the unmitigated noisy configuration.The HMD* buffer reduces the LoWC Severity ratio two times, from 16.2% to 8.01%, and the combined HMD* and vertical buffer reduces it even further to 6.5%, comparable with best results for SUM.SUM results show a clear trend of reducing LoWC Severity ratio for increasing horizontal and vertical z_scores.The lowest SLoWC ratios are achieved at horizontal position z_score above 3 and vertical position z_scores 1 or higher, when SUM alerting and guidance become more conservative.Further increase in vertical z_score has little impact because the additional encounters affected by the increasing "dynamic" vertical buffer in SUM have little chance to become the LoDWC.The reduction in SLoWC ratios is achieved at the cost of earlier alerts and higher likelihood of incorrect alerts.This results in higher values of N pa as shown in Figure 4.All mitigation methods increase N pa , and the most conservative SUM alerting and guidance increases it more than two times compared to noise without mitigation.In other words, pilots may have to work harder to achieve a slightly lower LoWC severity.This increase in workload is expected as was discussed in Subsection IV.B.Note that the vertical buffer and the increase in vertical z_score above 2 have only modest effect because the additional encounters affected by larger static or "dynamic" (in SUM) vertical buffer have a smaller chance to become the LoDWC.Figure 5 shows that t WCR-LoDWC increases more than two-fold when horizontal static buffer is used, and nearly triples when SUM horizontal z_score increases from 1 to 5.This is a result of early saturation of heading bands for larger horizontal buffers, whether they are static or "dynamic" in SUM.Note that sensor noise by itself has very little effect on band saturation, hence the values of t WCR-LoDWC for perfect and noisy configurations are similar.More importantly, t WCR-LoDWC remains below acceptable 20 second limit only for SUM with horizontal position z_score below 3.This indicates that, irrespective of trade-off between SLoWC ratio and N pa , using SUM with horizontal z_score higher than 3 will be problematic, since it will allow WCR guidance to appear too early.Since all three metrics tell different stories, it is tempting to pursue an overall, or "combined," performance index for each configuration using Equation (3) with particular metric weights.Any choice of these weights is inherently subjective, but for the data in this study it was found that performance profile for different configurations and the optimal DAIDALUS SUM parameters were insensitive to weights within a wide range of "reasonable" metric weights.Figure 6 illustrates one such choice.Since safety outweighs any operational suitability considerations, the weight of SLoWC ratio w 1 is set to 1 while the weights of N pa and t WCR-LoDWC are ten times lower: w 2 = w 3 = 0.1.With this choice, the combined performance index S for each configuration is shown in Figure 6 as a color map with blue and red colors representing the lower (preferred) and the higher values respectively.From this Figure it becomes clear that the best mitigation method is SUM with the horizontal position z_score equal 2 and vertical position z_score 0.4.Nonetheless, the overall combined performance index is fairly insensitive to the vertical z_score.Configurations with static buffers have slightly higher values of S than the optimal SUM configuration, but they perform better than SUM configurations with the horizontal z_score other than 2. This may indicate that static buffers used in this study provide a reasonably good approximation for average sensor noise.For different surveillance the advantage of SUM over static buffers may become more pronounced.Since values of all three metrics are subject to a certain level of error due to the finite number of encounters sampled, all SUM configurations with a horizontal position z_score equal to 2 as well as the HMD* plus vertical buffer configuration are all considered performing reasonably well.Another set of simulations was performed for nearly 200,000 uncorrelated encounters provided by MIT Lincoln Laboratory [31].General trends and optimal SUM configuration for this larger and very different encounter data set were found to be nearly the same as for NAS-wide encounters that were presented in this section.
+VI. Summary and Concluding RemarksSensor uncertainties may impact the performance of Detect-and-Avoid (DAA) systems.This paper evaluated the effectiveness of two static buffers and Sensor Uncertainty Mitigation (SUM) scheme implemented in the Detect and Avoid Alerting Logic for Unmanned Systems (DAIDALUS).Analysis focused on encounters involving unmanned aircraft with speeds below 110 KTAS flying below 11000 feet and non-cooperative aircraft with speeds below 170 KTAS detected by an airborne radar.Both open and closed-loop simulations, the latter involving a UAS pilot response model, were performed on more than 80,000 encounters.Three metrics were defined and computed for evaluating the effectiveness of horizontal and vertical buffers and DAIDALUS SUM in mitigating the impact of sensor noise.Results show a trade space between safety and operational suitability metrics.It was determined that DAIDALUS SUM performance was the best for a horizontal z_score equal to 2, or two standard deviations for horizontal position and velocity uncertainty, and it was relatively insensitive to vertical z_score parameters.The static buffers runs also achieve comparable performance.These results were found to be robust with respect to the choice of encounter data set.The results of this study may inform RTCA SC-228 in terms of validating sensor uncertainty requirements in the Phase 2 MOPS and provide supporting data to the FAA's system safety assessment.Future research may include evaluation of multi-state noise mitigation methods, such as the Virtual Intruder State Aggregation (VISA) method supported in JADEM.Conceptually this method is similar to a special case of alpha-beta filter, known as the alpha-filter [9].VISA is currently being investigated and has been shown to have potential in exceeding SUM performance.(a) Guidance to Remain Well Clear (b) Guidance to Regain Well Clear
+Fig. 11Fig. 1 Guidance Display Examples
+depicts the simulation architecture used.The components in the figure are described in more detail in subsections IV.D-IV.G below.
+Fig. 22Fig. 2 Simulation Architecture
+Fig. 33Fig. 3 Metrics for LoWC Severity Ratio
+Fig. 55Fig. 5 Metrics for t WCR-LoDWC
+		
+		
+
+			
+AcknowledgmentsThe authors want to express gratitude to Eric Wahl for his help in running simulations, and the whole DAA team at NASA for all fruitful discussions, help, and support.
+			
+
+			
+
+				
+
+
+	
+		Integration of Civil Unmanned Aircraft Systems (UAS) in the National Airspace System (NAS) Roadmap, 2
+		Washington, DC
+		
+			2018
+		
+	
+	Federal Aviation Administration
+	Integration of Civil Unmanned Aircraft Systems (UAS) in the National Airspace System (NAS) Roadmap, 2 nd ed., Federal Aviation Administration, Washington, DC, 2018.
+
+
+
+	
+		Minimum Operational Performance Standards (MOPS) for Detect and Avoid (DAA) Systems (DO-365)
+		
+			Sc-228
+		
+		
+			2017
+			RTCA, Washington, DC
+		
+	
+	SC-228, Minimum Operational Performance Standards (MOPS) for Detect and Avoid (DAA) Systems (DO-365), RTCA, Washington, DC, 2017.
+
+
+
+	
+		Minimum Operational Performance Standards (MOPS) for Air-to-Air Radar for Traffic Surveillance (DO-366)
+		
+			Sc-228
+		
+		
+			2017
+			RTCA, Washington, DC
+		
+	
+	SC-228, Minimum Operational Performance Standards (MOPS) for Air-to-Air Radar for Traffic Surveillance (DO-366), RTCA, Washington, DC, 2017.
+
+
+
+	
+		Radar target tracking by Kalman and particle filter
+		
+			PRohal
+		
+		
+			JOchodnicky
+		
+	
+	
+		Proceedings of 2017 Communication and Information Technologies (KIT)
+		2017 Communication and Information Technologies (KIT)Vysoke Tatry, Slovakia
+		
+			IEEE
+			2017
+		
+	
+	Rohal, P., and Ochodnicky, J., "Radar target tracking by Kalman and particle filter," Proceedings of 2017 Communication and Information Technologies (KIT), IEEE, Vysoke Tatry, Slovakia, 2017.
+
+
+
+	
+		Target Tracking in Interference Environments Reinforcement Learning and Design for Cognitive Radar Soft Processing
+		
+			FZhou
+		
+		
+			DZhou
+		
+		
+			GYu
+		
+	
+	
+		Proceedings of 2008 Congress on Image and Signal Processing
+		2008 Congress on Image and Signal ProcessingSanya, Hainan, China
+		
+			2008
+		
+	
+	Zhou, F., Zhou, D., and Yu, G., "Target Tracking in Interference Environments Reinforcement Learning and Design for Cognitive Radar Soft Processing," Proceedings of 2008 Congress on Image and Signal Processing, IEEE, Sanya, Hainan, China, 2008.
+
+
+
+	
+		A tutorial on particle filters for online nonlinear/non-Gaussian Bayesian tracking
+		
+			MArulampalam
+		
+		
+			SMaskell
+		
+		
+			NGordon
+		
+		
+			TClapp
+		
+	
+	
+		Proceedings of IEEE Transactions on Signal Processing
+		IEEE Transactions on Signal Processing
+		
+			IEEE
+			2002
+			50
+			
+		
+	
+	Arulampalam, M., Maskell, S., Gordon, N., and Clapp, T., "A tutorial on particle filters for online nonlinear/non-Gaussian Bayesian tracking," Proceedings of IEEE Transactions on Signal Processing, Vol. 50, IEEE, 2002, pp. 174-188.
+
+
+
+	
+		Sequential Monte Carlo methods for multiple target tracking and data fusion
+		
+			CHue
+		
+		
+			J.-PLCadre
+		
+		
+			PPerez
+		
+	
+	
+		Proceedings of IEEE Transactions on Signal Processing
+		IEEE Transactions on Signal Processing
+		
+			IEEE
+			2002
+			50
+			
+		
+	
+	Hue, C., Cadre, J.-P. L., and Perez, P., "Sequential Monte Carlo methods for multiple target tracking and data fusion," Proceedings of IEEE Transactions on Signal Processing, Vol. 50, IEEE, 2002, pp. 309-325.
+
+
+
+	
+		Multi-Sensor Fusion with Interaction Multiple Model and Chi-Square Test Tolerant Filter
+		
+			CYang
+		
+		
+			AMohammadi
+		
+		
+			QChen
+		
+	
+	
+		Sensors (Basel)
+		
+			16
+			2016
+			PMC
+		
+	
+	Yang, C., Mohammadi, A., and Chen, Q., "Multi-Sensor Fusion with Interaction Multiple Model and Chi-Square Test Tolerant Filter," Sensors (Basel), Vol. 16, PMC, 2016.
+
+
+
+	
+		The Tracking Index: A Generalized Parameter for α -β and α -β -γ Target Trackers
+		
+			PRKalata
+		
+	
+	
+		Proceedings of IEEE Transactions on Aerospace and Electronic Systems
+		IEEE Transactions on Aerospace and Electronic Systems
+		
+			IEEE
+			1984
+			20
+			
+		
+	
+	Kalata, P. R., "The Tracking Index: A Generalized Parameter for α -β and α -β -γ Target Trackers," Proceedings of IEEE Transactions on Aerospace and Electronic Systems, Vol. AES-20, IEEE, 1984, pp. 174-182.
+
+
+
+	
+		Fundamentals of Kalman Filtering: A Practical Approach
+		
+			PZarchan
+		
+		
+			HMusoff
+		
+		
+			2000
+			AIAA
+			190
+		
+	
+	Zarchan, P., and Musoff, H., Fundamentals of Kalman Filtering: A Practical Approach, Vol. 190, AIAA, 2000.
+
+
+
+	
+		Robust hierarchical multiple hypothesis tracker for multiple-object tracking
+		
+			MAZulkifley
+		
+		
+			BMoran
+		
+	
+	
+		Expert Systems with Applications
+		
+			39
+			
+			2012
+		
+	
+	Zulkifley, M. A., and Moran, B., "Robust hierarchical multiple hypothesis tracker for multiple-object tracking," Expert Systems with Applications, Vol. 39, 2012, pp. 12319-12331.
+
+
+
+	
+		ACAS Xu UAS Detect and Avoid Solution
+		
+			WOlson
+		
+	
+	
+		Proceedings of Lincoln Laboratory Air Traffic Control Workshop
+		Lincoln Laboratory Air Traffic Control Workshop
+		
+			2016 -2, 2016
+		
+	
+	Olson, W., "ACAS Xu UAS Detect and Avoid Solution," Proceedings of Lincoln Laboratory Air Traffic Control Workshop 2016 -2, 2016.
+
+
+
+	
+		Accounting for State Uncertainty in Collision Avoidance
+		
+			JPChryssanthacopoulos
+		
+		
+			MJKochenderfer
+		
+	
+	
+		Journal of Guidance, Control and Dynamics
+		
+			34
+			
+			2011
+			AIAA
+		
+	
+	Chryssanthacopoulos, J. P., and Kochenderfer, M. J., "Accounting for State Uncertainty in Collision Avoidance," Journal of Guidance, Control and Dynamics, Vol. 34, AIAA, 2011, pp. 951-960.
+
+
+
+	
+		Characteristics of a Well Clear Definition and Alerting Criteria for Encounters between UAS and Manned Aircraft in Class E Airspace
+		
+			MJohnson
+		
+		
+			ERMueller
+		
+		
+			CSantiago
+		
+	
+	
+		Proceedings of the Eleventh USA/Europe Air Traffic Management Research and Development Seminar (ATM2015)
+		the Eleventh USA/Europe Air Traffic Management Research and Development Seminar (ATM2015)Lisbon, Portugal
+		
+			2015
+		
+	
+	Johnson, M., Mueller, E. R., and Santiago, C., "Characteristics of a Well Clear Definition and Alerting Criteria for Encounters between UAS and Manned Aircraft in Class E Airspace," Proceedings of the Eleventh USA/Europe Air Traffic Management Research and Development Seminar (ATM2015), Lisbon, Portugal, 2015.
+
+
+
+	
+		Code of Federal Regulation, General Operating and Flight Rules, title 14, sec. 91.113, United States Department of Transportation: United States Federal Aviation Administration
+		
+	
+	Code of Federal Regulation, General Operating and Flight Rules, title 14, sec. 91.113, United States Department of Transporta- tion: United States Federal Aviation Administration, ????
+
+
+
+	
+		Detect and Avoid Alerting Performance with Limited Surveillance Volume for Non-Cooperative Aircraft
+		
+			MGWu
+		
+		
+			SLee
+		
+		
+			ACCone
+		
+		10.2514/6.2019-2073
+		
+	
+	
+		AIAA Scitech 2019 Forum
+		
+			2019
+		
+	
+	Wu, M. G., Lee, S., and Cone, A. C., "Detect and Avoid Alerting Performance with Limited Surveillance Volume for Non- Cooperative Aircraft," AIAA Scitech 2019 Forum, 2019. URL https://arc.aiaa.org/doi/pdf/10.2514/6.2019-2073.
+
+
+
+	
+		Development, Integration and Testing of a Stand-Alone CDTI with Conflict Probing Support
+		
+			ETheunissen
+		
+		
+			BSuarez
+		
+		
+			KKirk
+		
+	
+	
+		Proceedings of the AIAA Infotech Aerospace Conference
+		the AIAA Infotech Aerospace ConferenceGarden Grove, California
+		
+			AIAA
+			2012
+		
+	
+	Theunissen, E., Suarez, B., and Kirk, K., "Development, Integration and Testing of a Stand-Alone CDTI with Conflict Probing Support," Proceedings of the AIAA Infotech Aerospace Conference, AIAA, Garden Grove, California, 2012.
+
+
+
+	
+		The Generic Resolution Advisor and Conflict Evaluator (GRACE) for Unmanned Aircraft Detect-And-Avoid Systems
+		
+			MAbramson
+		
+		
+			MRefai
+		
+		
+			CSantiago
+		
+		NASA/TM-2017-219507
+		
+			2017
+			Moffett Field, California
+		
+		
+			NASA Ames Research Center
+		
+	
+	Tech. Rep.
+	Abramson, M., Refai, M., and Santiago, C., "The Generic Resolution Advisor and Conflict Evaluator (GRACE) for Unmanned Aircraft Detect-And-Avoid Systems," Tech. Rep. NASA/TM-2017-219507, NASA Ames Research Center, Moffett Field, California, 2017.
+
+
+
+	
+		DAIDALUS: Detect and Avoid Alerting Logic for Unmanned Systems
+		
+			CMuñoz
+		
+		
+			ANarkawicz
+		
+		
+			GHagen
+		
+		
+			JUpchurch
+		
+		
+			ADutle
+		
+		
+			MConsiglio
+		
+	
+	
+		Proceedings of the 34th Digital Avionics Systems Conference
+		the 34th Digital Avionics Systems ConferencePrague, Czech Republic
+		
+			IEEE/AIAA
+			2015
+		
+	
+	Muñoz, C., Narkawicz, A., Hagen, G., Upchurch, J., Dutle, A., and Consiglio, M., "DAIDALUS: Detect and Avoid Alerting Logic for Unmanned Systems," Proceedings of the 34th Digital Avionics Systems Conference, IEEE/AIAA, Prague, Czech Republic, 2015.
+
+
+
+	
+		Introduction to TCAS II Version 7.1, United States Department of Transportation: United States Federal Aviation Administration
+		
+			2011
+			Washington, DC
+		
+	
+	Introduction to TCAS II Version 7.1, United States Department of Transportation: United States Federal Aviation Administration, Washington, DC, 2011.
+
+
+
+	
+		Comparative Analysis of ACAS-Xu and DAIDALUS Detect-and-Avoid Systems
+		
+			JTDavies
+		
+		
+			MGWu
+		
+		NASA/TM-2018-219773
+		
+			2018
+			Moffett Field, California
+		
+		
+			NASA Ames Research Center
+		
+	
+	Tech. Rep.
+	Davies, J. T., and Wu, M. G., "Comparative Analysis of ACAS-Xu and DAIDALUS Detect-and-Avoid Systems," Tech. Rep. NASA/TM-2018-219773, NASA Ames Research Center, Moffett Field, California, 2018.
+
+
+
+	
+		Sensor Uncertainty Mitigation and Dynamic Well Clear Volumes in DAIDALUS
+		
+			ANarkawicz
+		
+		
+			CMuñoz
+		
+		
+			ADutle
+		
+	
+	
+		Proceedings of the 37th Digital Avionics Systems Conference
+		the 37th Digital Avionics Systems ConferenceLondon, UK
+		
+			IEEE
+			2018
+		
+	
+	Narkawicz, A., Muñoz, C., and Dutle, A., "Sensor Uncertainty Mitigation and Dynamic Well Clear Volumes in DAIDALUS," Proceedings of the 37th Digital Avionics Systems Conference, IEEE, London, UK, 2018.
+
+
+
+	
+		Mitigating the Impact of Sensor Uncertainty on Unmanned Aircraft Operations
+		
+			DPJack
+		
+		
+			KDHoffler
+		
+		
+			JLSturdy
+		
+		
+			2017
+			NASA Langley Research Center
+			Hampton, VA
+		
+	
+	Tech. Rep. NASA CR 2017
+	Jack, D. P., Hoffler, K. D., and Sturdy, J. L., "Mitigating the Impact of Sensor Uncertainty on Unmanned Aircraft Operations," Tech. Rep. NASA CR 2017, NASA Langley Research Center, Hampton, VA, 2017.
+
+
+
+	
+		Unmanned Aircraft Systems Minimum Operational Performance Standards End-to-End Verification and Validation (E2-V2) Simulation
+		
+			RWGhatas
+		
+		
+			DPJack
+		
+		
+			DTsakpinis
+		
+		
+			MJVincent
+		
+		
+			JLSturdy
+		
+		
+			CAMunoz
+		
+		
+			KDHoffler
+		
+		
+			AMDutle
+		
+		
+			RRMyer
+		
+		
+			AMDehaven
+		
+		
+			ETLewis
+		
+		
+			KEArthur
+		
+		Rep. NASA/TM-2017-219598
+		
+			2017
+			NASA Langley Research Center
+			Hampton, VA
+		
+	
+	Tech.
+	Ghatas, R. W., Jack, D. P., Tsakpinis, D., Vincent, M. J., Sturdy, J. L., Munoz, C. A., Hoffler, K. D., Dutle, A. M., Myer, R. R., DeHaven, A. M., Lewis, E. T., and Arthur, K. E., "Unmanned Aircraft Systems Minimum Operational Performance Standards End-to-End Verification and Validation (E2-V2) Simulation," Tech. Rep. NASA/TM-2017-219598, NASA Langley Research Center, Hampton, VA, 2017.
+
+
+
+	
+		The Effects of Severity of Losses of Well Clear on Minimum Operations Performance Standards End-to-End Verification and Validation Simulation Study for Integrating Unmanned Aircraft Systems into the National Airspace System using Detect and Avoid Systems
+		
+			RWGhatas
+		
+		
+			DTsakpinis
+		
+		
+			JLSturdy
+		
+		
+			DPJack
+		
+		
+			RRMyer
+		
+		
+			AMDehaven
+		
+	
+	
+		Proceedings of the 2018 AIAA Information Systems-AIAA Infotech @ Aerospace
+		the 2018 AIAA Information Systems-AIAA Infotech @ AerospaceKissimmee, FL
+		
+			AIAA
+			2018
+		
+	
+	Ghatas, R. W., Tsakpinis, D., Sturdy, J. L., Jack, D. P., Myer, R. R., and DeHaven, A. M., "The Effects of Severity of Losses of Well Clear on Minimum Operations Performance Standards End-to-End Verification and Validation Simulation Study for Integrating Unmanned Aircraft Systems into the National Airspace System using Detect and Avoid Systems," Proceedings of the 2018 AIAA Information Systems-AIAA Infotech @ Aerospace, AIAA, Kissimmee, FL, 2018.
+
+
+
+	
+		Unmanned Aircraft System Demand Generation and Airspace Performance Impact Prediction
+		
+			SAyyalasomayajula
+		
+		
+			FWieland
+		
+		
+			ATrani
+		
+		
+			NHinze
+		
+	
+	
+		Proceedings of the 32nd IEEE Digital Avionics Systems Conference
+		the 32nd IEEE Digital Avionics Systems ConferenceSyracuse, NY
+		
+			IEEE
+			2013
+		
+	
+	Ayyalasomayajula, S., Wieland, F., Trani, A., and Hinze, N., "Unmanned Aircraft System Demand Generation and Airspace Performance Impact Prediction," Proceedings of the 32nd IEEE Digital Avionics Systems Conference, IEEE, Syracuse, NY, 2013.
+
+
+
+	
+		Radar Data Tracking Using Minimum Spanning Tree-Based Clustering Algorithm
+		
+			CPark
+		
+		
+			HLee
+		
+		
+			BMusaffar
+		
+	
+	
+		Proceedings of 11th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference
+		11th AIAA Aviation Technology, Integration, and Operations (ATIO) ConferenceVirginia Beach, VA
+		
+			2011
+		
+	
+	Park, C., Lee, H., and Musaffar, B., "Radar Data Tracking Using Minimum Spanning Tree-Based Clustering Algorithm," Proceedings of 11th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference, AIAA, Virginia Beach, VA, 2011.
+
+
+
+	
+		Uncorrelated Encounter Model of the National Airspace System, Version 1.0
+		
+			MJKochenderfer
+		
+		
+			JKKuchar
+		
+		
+			LPEspindle
+		
+		
+			JGriffith
+		
+		
+			2008
+			Lexington, Massachusetts
+		
+		
+			MIT Lincoln Laboratory
+		
+	
+	Tech. Rep. ATC-345
+	Kochenderfer, M. J., Kuchar, J. K., Espindle, L. P., and Griffith, J., "Uncorrelated Encounter Model of the National Airspace System, Version 1.0," Tech. Rep. ATC-345, MIT Lincoln Laboratory, Lexington, Massachusetts, 2008.
+
+
+
+	
+		Impact of Sensor Uncertainties on Detect-and-Avoid Systems' Separation Performance
+		
+			MWu
+		
+		
+			SLee
+		
+	
+	
+		AIAA Aviation Forum
+		
+			2020. 2020
+			NV (In Press
+			Reno
+		
+	
+	Wu, M., and Lee, S., "Impact of Sensor Uncertainties on Detect-and-Avoid Systems' Separation Performance," 2020 AIAA Aviation Forum, AIAA, Reno, NV (In Press), 2020.
+
+
+
+	
+		Multi-Intruder Aircraft, Multi-Sensor Tracking System
+		
+			VLBageshwar
+		
+		
+			EAEuteneuer
+		
+	
+	
+		Proceedings of the 34th Digital AvionicsSystems Conference (DASC)
+		the 34th Digital AvionicsSystems Conference (DASC)Prague, Czech Republic
+		
+			IEEE/AIAA
+			2015
+			
+		
+	
+	Bageshwar, V. L., and Euteneuer, E. A., "Multi-Intruder Aircraft, Multi-Sensor Tracking System," Proceedings of the 34th Digital AvionicsSystems Conference (DASC), IEEE/AIAA, Prague, Czech Republic, 2015, pp. 5A5-1-13.
+
+
+
+	
+		Uncorrelated Encounter Model of the National Airspace System, Version 2.0
+		
+			AJWeinert
+		
+		
+			EPHarkleroad
+		
+		
+			JGrith
+		
+		
+			MWEdwards
+		
+		
+			MJKochenderfer
+		
+		
+			2013
+			Lexington, Massachusetts
+		
+		
+			MIT Lincoln Laboratory
+		
+	
+	Tech. Rep. ATC-404
+	Weinert, A. J., Harkleroad, E. P., Grith, J., Edwards, M. W., and Kochenderfer, M. J., "Uncorrelated Encounter Model of the National Airspace System, Version 2.0," Tech. Rep. ATC-404, MIT Lincoln Laboratory, Lexington, Massachusetts, 2013.
+
+
+				
+			
+		
+	

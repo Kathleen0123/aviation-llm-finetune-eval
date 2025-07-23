@@ -1,0 +1,327 @@
+
+	
+	
+		
+I. Introduction
+Sintegration of Unmanned Aircraft Systems (UAS) into the National Airspace System (NAS) is predicated upon maintaining the same level of safety and performance as achieved by current manned operations.To ensure that safety and performance goals are achievable, various data collection and analysis methods are employed in developing UAS Minimum Operational Performance Standards (MOPS) [1].These methods include first principle engineering analyses, human-in-the-loop simulations, live flight tests, and fast-time simulations.Regardless of the methodologies employed, a main challenge is identifying representative data sets to use in foundational studies and safety and performance assessments.For system-wide assessments, the challenge is two-fold.First, UAS mission data is not available at the anticipated densities.Second, UAS will operate in managed and unmanaged airspace, so, Visual Flight Rules (VFR) traffic data is also required.An approach to provide representative data sets was developed by MIT Lincoln Laboratory [2], wherein radar data from the 84th Radar Evaluation Squadron (RADES) is used to estimate VFR initial conditions and trajectories.The data are sampled to create a database of statistical features of these flights.These statistics are then sampled to create new trajectories with characteristics consistent with the original trajectories.Encounters are modeled by sampling one or more trajectories that satisfy 'proximity' criteria.The model therefore generates encounters representing VFR to VFR encounters.The approach taken at NASA has been to develop a set of UAS mission profiles that represent today's view of future expected UAS operations and missions [3].Nineteen missions and their corresponding geographical locations and operating schedules were developed with extensive contributions from subject matter experts [4].To model intruder traffic, RADES data for 21 days of varying traffic density were selected and processed to provide smoothed VFR trajectories [5].These VFR and UAS data have been used to conduct several foundational NAS-wide and parametric fast-time simulations in support of MOPS development [3,[6][7][8][9][10].While this approach has proven quite valuable to MOPS development, it suffers from several shortcomings, which include:• The total duration of encounters is a small fraction of the time of flight, so a full end-to-end simulation is wasteful.• UAS maneuvers, when employed, alter the remaining UAS trajectory and the characteristics of following encounters, making data comparison difficult.• VFR data is rather extensive and consequently, simulations consume considerable resources, despite various optimizations, and results include considerably more data than is typically required.• A priori scenario selection is not possible.• The data are not currently shared mainly due to size and computational requirements.• Simulation results can be moderately sensitive to flight mechanics models, computational optimizations, etc; this complicates comparisons of alternative approaches.This paper describes an encounter-based simulation architecture aimed at addressing these challenges.Simply put, this new approach uses the RADES and UAS mission data to identify and persist potential encounters, which are subsequently used in various Detect and Avoid (DAA) simulations and analyses.The process of identifying encounters also generates a set of corresponding encounter properties, which can be used to pre-select encounters of interest to a particular study.This approach marks a shift from past NAS-wide simulations by focusing on the events of interest and simulating only the relevant portions of flight instead of full end-to-end departure to destination modeling.In what follows, we discuss this approach and its benefits in more detail.The next section defines encounters and scenarios and describes the encounter-based simulation architecture.Section III describes canonical encounter detection.Section IV discusses encounter properties and their uses.Section V describes scenario selection using encounter properties and typical uses cases.Sample results are provided in Section VI.Finally, concluding remarks are presented in Section VII.
+II. Encounter-Based ArchitectureThe new architecture is based on a decomposition of the processing steps used in our research when running NAS-wide fast time simulations.This decomposition is depicted in Fig. 1 and will henceforth be referred to as a "processing pipeline".The figure is simplified to depict unmitigated simulations and omits miscellaneous other optimizations.In preparation for running DAA on a given ownship, we first predict UAS trajectory states using a flight mechanics model.We then determine if an alert is likely using a series of gross filters and subsequently create the encounters to be processed.Noise is then optionally added before running DAA alerting and guidance algorithm and persisting the results.A subsequent post-processing step is used to generate metrics for reporting and analysis purposes.This processing pipeline has the following charactersitics:• The pipeline is fixed and requires code modification to change.• Any time a simulation is executed, the Java Architecture for DAA Extensibility and Modeling (JADEM) [11] portion of the pipeline is executed in full even when the resulting perturbed encounters are unchanged between runs.• Encounters are not persisted in a standard format.• The pipeline lacks a mechanism to control or select the types of encounters processed.
+Fig. 1 Current processing pipelineBy refactoring these processing steps into independent modules, we can eliminate wasteful processing, change order of steps where applicable, and allow for additional steps to be interspersed where desired.Furthermore, by modularizing the processing pipeline, we allow it to be composited from available modules or alternative module implementations.Fig. 2 depicts one realization of a modular processing pipeline that applies a perturbation module and a scenario selection module prior to running DAA with various settings for a parametric or tradespace study.See Section V.A for other examples.In the figure, we persist and load data in between all processing steps but it should be noted that this is not a requirement.UAS missions are modeled using a flight mechanics model and saved as trajectory states.VFR and UAS states are then processed to detect encounters, which are subsequently perturbed.In the scenario selection step, a subset of the resulting perturbed encounters are selected for DAA processing.Finally, the DAA data is processed to generate metrics of interest.UAS mission modeling, encounter generation, perturbations, and scenario selection are executed once, whereas DAA can be executed multiple times for different configurations.
+Fig. 2 Modular processing pipelineEncounters For our purposes, we define encounters to include trajectory portions from one ownship and one or more intruders that can potentially cause loss of well clear, an alert, or peripheral guidance [1] with the ownship.Peripheral guidance is guidance information corresponding to an intruder that is not itself alerted [1, §2.2.4.4].In addition to traffic data, a set of properties describing encounter characteristics of interest are also included in the encounter definition (see Section IV for details).This facilitates selective processing of encounters as dictated by research needs (see Sections IV.A and V).Note that an encounter, as defined here, includes one ownship only, so multiple ownship coordinated maneuvers are not modeled.A "canonical" encounter is one that is generated from source data such as VFR traffic and UAS data.
+Pairwise EncountersThe above definition of an encounter is quite general but for many foundational studies, the interaction with multiple intruders is of less interest; instead single intruder interactions are desired.For these cases, pairwise encounters composed of one ownship and one intruder are more appropriate.Such encounters are referred to as pairwise encounters.Note that multi-intruder encounters can be created by composition of pairwise encounters of the same ownship that overlap temporally.Pairwise encounters can therefore be considered as fundamental building blocks for creating more general or complex encounters.Scenarios A scenario is a means to specify the encounters to be processed by DAA.It is defined as the set of encounters that satisfy specified criteria.For example, a scenario may include only those encounters whose ownship speed is within a specified range.Scenarios are typically generated by selecting from one or more sets of encounters such as those obtained from data for different days.Scenarios can also be created by filtering encounters from other scenarios In addition to the list of encounters, a scenario specification includes a reference to the source data and the encounter selection criteria used to generate the scenario.The source data can be another scenario, multiple scenarios, or the set of VFR and UAS data.Referencing source data and selection criteria in the scenario specification provides traceability of scenario data; this is depicted in Fig. 3.
+Fig. 3 Scenario Tree
+A Note About Encounter Ownship Trajectory DataAn encounter's ownship trajectory data can be represented as a set of trajectory states or as a mission profile, which is typically a portion of the full mission profile.In most simulations, trajectory state data is sufficient.However, if a simulation requires mission recapture, then the relevant portion of the mission profile must also be included in the encounter.
+A. Scalable ArchitecturesThe encounter-based architecture described above is particularly suited to scalable and big data architectures.Scalable concurrent execution is much simplified given that encounters are independent of one another.The modular nature of the pipeline also facilitates understanding of the data volumes to be processed at each step and the typical processing times involved.This simplifies data and processing architecture design dictated by research needs.Hybrid systems can be considered, which leverage scalable architectures for some processing steps and big data architectures for others.These can be combined to result in a flexible end-to-end solution from data acquisition to metric reports.
+III. Encounter DetectionThe goal of the core encounter detection algorithm is to extract encounters from input ownship and intruder flight data.
+A. Encounter Detection CriteriaOwnship and intruder flights for an encounter are selected by applying user-defined predicates (boolean expressions) to pairs of ownship and intruder states.The simplest predicate is a cylindrical "hockey puck" (a static disc).If this predicate is used, the encounter is determined by comparing horizontal distance d horiz and vertical distance d vert between ownship and intruder states for the same time with specified horizontal and vertical separation thresholdsd * horiz , d * vert . (d horiz < d * horiz ) ∧ (d vert < d * vert )(1)d * horiz , d * vert in condition 1 should be large enough to ensure that any alerts and well clear violations will result in an encounter.Fig. 4 shows one of the alerting structures that have been evaluated for UAS.The Buffered Well Clear Criteria (separation standards) in this table include a combination of Horizontal Miss Distance (HMD), vertical separation, and modified tau-separation.The time to Closest point of Approach (CPA) t C P A from Alerting Time Threshold column is more conservative and easier to use to estimate the minimal acceptable values for d * horiz and d * vert .
+Fig. 4 An example of alerting structureThe largest distance between ownship and intruder causing an alert corresponds to situation of head-on encounter.This distance can be estimated as a product of approach speed ∆V horiz , which is an intruder's speed relative to ownship, and the time to CPA from Alerting Time Threshold column in Figure 4.In simulations considered in this paper, the air speed of UAS (ownship) and VFR traffic (intruders) does not exceed 300 knots that corresponds to ∆V horiz < 600knots.The largest t C P A in Alerting Time Threshold column for Preventive or Corrective Alert (Figure 4) is 90 seconds.Therefore, the minimal value for d * horiz = ∆V horiz • t C P A = 15 nmi.A similar estimate based on assumption of relative vertical speed ∆V vert not exceeding 6000 fpm leads to the minimal value for d * vert = ∆V vert • t C P A = 9000 ft.Therefore, the values d * horiz = 20 nmi and d * vert = 10000 ft or higher can be used for generating encounters if target application is simulations with alerting structure similar to shown in Figure 4.
+B. Encounter Detection AlgorithmThe encounter detection algorithm uses ownship and intruder trajectories represented as time series position and velocity data.These trajectories may start and end at any time and need not be contiguous; therefore, data gaps are allowed.The algorithm proceeds as follows (see Fig. 5): 1) Prefilter aircraft states to reduce the amount of computations.2) Apply predicates to identify encounters.3) Post-filter to remove unusable encounters such as those with very short duration.
+Fig. 5 Encounter DetectionPrefiltering is done in two steps.The goal of first step (the coarse filter) is to quickly identify the intruders, which could in principle come close to each ownship within a specified look-ahead time.This is done by mapping all initial intruder horizontal positions to a fixed horizontal grid, as described in [11].Further prefiltering is done by skipping time-steps on the remaining flights.The amount of time to skip is estimated from the time it would take ownship and intruder to be within the horizontal and vertical thresholds in a worst case if
+Fig. 6 Encounter Properties Generation
+A. Encounter FilteringThe main use of encounter properties is to select the encounters of interest for a particular study or application.The technique used for this involves creating user-defined "filters" and is referenced herein as "encounter filtering".A filter is defined as one or more predicates (boolean expressions).Each predicate compares a property specified via its path in the property files to a constant (threshold) or list of constants with appropriate units.The supported comparison operators are equality, strict and non-strict inequality, and "ContainedIn" and "NotContainedIn" operators.The last two operators are used to check whether the property has one of several specified values defined in a list.The predicates can be combined using AND and OR logical operators.For instance, a user may define a filter to select encounters for a particular OwnshipAcType.Another example could be selecting all encounters with OwnshipAltitudeAtCpa below certain altitude in feet for EncounterDuration above a specified threshold in seconds that have a ViolatedNmac = false (i.e.don't result in NMAC).One especially useful filter is selecting encounters with Intruder.MinHmd and Intruder.MinVmd properties that don't exceed H M D * and Z T H R thresholds (Figure 4), since only these encounters can alert or result in LoWC.Applying the filter to a scenario results in another scenario including only a subset of encounters that passed the filter.This process is schematically shown in Fig. 7.
+Fig. 7 Encounter Filtering
+V. Scenario SelectionThis section describes how the encounter detection and filtering methodology introduced in Sections III and IV.A is typically used in simulations (see Fig. 3 for a depiction of this process).The first step is to generate scenarios for available VFR and UAS data sets.These scenarios include all pairwise canonical encounters detected using a conservative predicate as described in III.A.As a result, these scenarios typically include many more encounters than are strictly required for a particular study.For instance, many encounters may not result in any events of interest, such as alert, LoWC, or NMAC.To "tailor" scenarios to a study, researchers create filters to be used to select encounters of interest as described in Section IV.A. Filters may be defined using DAA independent properties or they may be defined using properties generated by running a scenario through JADEM as shown in Fig. 6.In the latter case, JADEM is typically run with conservative settings that form a superset of all the design parameters required for the study.The encounter filtering process shown in Fig. 7 can be repeated several times using different filters.The resulting scenario is processed through JADEM to generate DAA data, which are subsequently processed to generate aggregate metrics for analysis and reporting.Note that the most computationally expensive operation, namely, the generation of canonical encounters and computation of their properties, need only be performed once; the resulting encounters can then be used for many different studies.
+A. Use Cases and BenefitsThe benefits of this approach can be illustrated by several use cases.1) Evaluating alternate DAA Well Clear (DWC) definitions.In this case, the desired encounters are those that will generate an alert for at least one of the DWC definitions being evaluated.Therefore, the canonical encounters are processed once through JADEM using the most conservative DWC definition, which covers all the DWC definitions.The resulting alerted encounters are then selected for use in the comparative study.2) Selecting Low Size, Weight, and Power (SWaP) encounters.Low SWaP sensors are typically installed on relatively small and slow UAS flying below 10000 ft.Therefore, low SWaP encounters can be selected using filters composed from predicates on OwnshipAcType, OwnshipSpeedAtCpa, OwnshipAltitudeAtCpa, and possibly others, depending on specific goals of the study.3) Selecting Terminal Area encounters.Terminal area encounters can be selected using such properties as OwnshipAirspaceClass, OwnshipAltitudeAtCpa, and OwnshipFlightPhase.4) Selecting flight-phase-specific encounters.For studies focused on characterization of encounters by flight phase (e.g.level-level, level-climb, climb-descent, etc), encounters can be selected using OwnshipFlightPhase and IntruderFlightPhase properties.It should be noted, however, that IntruderFlightPhase may be difficult to determine from non-cooperative flight data.5) Validating canonical encounters.To experimentally validate the encounters generated by the encounter detection process, one could compare JADEM results using original VFR and UAS data to the results using canonical encounters generated for a test case.Should the results differ meaningfully, the encounter predicate is adjusted and the process repeated.This is depicted in Fig. 8.
+Fig. 8 Validating Canonical Encounters
+VI. ResultsThis section compares the performance of the encounter-based approach to that of the "old" approach, which modeled flights from departure to destination.The comparisons were performed using 21 days of VFR traffic with a parametric suite of 96 individual configurations each.The baseline computation times, using the old approach, were estimated from an average day using one representative configuration rather than from the full suite of 2016 simulation runs.The processing pipeline used in this comparison study is depicted in Fig. 9.The overall approach can be summarized in four steps: 1) Detect pairwise encounters.2) Filter out all encounters that will not violate any of the Low SWaP DWC definitions; this is accomplished through the use of a conservative DWC that covers all the Low SWaP DWC definitions.3) Combine the resulting encounters into a single scenario.4) Process the scenario through DAA and generate the metrics.The first step is to generate the trajectories for all UAS flights; trajectory generation uses the model described in [11].The flight times are subsequently adjusted for each simulation day.For each of the 21 days, pairwise encounters are 3) DAA Filter: Use the alert results to filter encounters, thus creating a scenario containing only those encounters that alert on Phase 1 DWC.4) Low SWaP Filter: Apply a speed and altitude filter on the resulting scenario to remove all encounters whose speeds and altitudes exceed the Low SWaP performance limits.The resulting scenario will include only Low SWaP encounters that alert on Phase 1 DWC.The resulting scenarios for the 21 days are small enough that they can be combined into a single scenario.This is done in order to reduce the number of simulations, since we are only interested in the overall results not those of individual days.As a result, we only have to contend with 96 instead of 2,016 (96 × 21) simulations.Table 1 summarizes the salient computational performance figures.For each step in the pipeline (cyan colored rows), the table reports the average time per run, the number of runs, the total time for all runs, and where applicable, the total number of input encounters, the total number of output encounters, and the average time per input encounter.Also reported in the table are the estimated times (salmon colored rows) had the simulations been run using JADEM as shown in Fig. 1.These time estimates were obtained from a single run and scaled to all 2,016 runs.The main takeaways from the table are that filtering is key to improving the overall performance and that using the new processing pipeline reduced the total computation time five-fold.1, all I/O operations were to the file system, with I/O over the network consuming approximately twice as much time as local I/O.In the early stages of the pipeline, where the data volumes are large, the processing time is dominated by I/O.This is especially true for encounter detection where computations consumed only 20% of the total time.Note that all calculations were performed without any parallelization.
+VII. ConclusionNASA uses JADEM to conduct fast-time parametric and tradespace studies in support of UAS integration in the NAS.These studies use NAS-wide VFR data and projected UAS missions.Simulations are conducted on the full airspace data, modeling flights from departure to destination.As a result, simulations are time consuming, require substantial computational resources, and are wasteful since the events of interest represent a small fraction of flight time.Furthermore, research studies often require selective processing of encounters but the current tools do not provide mechanisms for selecting encounters a priori.Finally, the voluminous NAS-wide data with our partners is cumbersome.To address these issues, JADEM was refactored to an encounter-centric processing pipeline composed of a set of decoupled modules.This design has been shown to have the following advantages:• Reduced memory footprint and processing time.• Flexible scenario generation.• Flexible DAA processing pipeline, with swappable modules.• Standardized Encounter, Scenario, and Filtering representations.• Canonical encounters that can be shared across multiple teams.• Increased transparency.Fig. 99Fig. 9 Experiment Pipeline
+Table 1 Performance Metrics1Processing StepAverage Time (hr)#Total Time (hr)Total Input EncountersTotal Output EncountersTime (ms) Per EncounterTrajectory Generation0.7510.75---Encounter Detection1.2321 days25.9---HMD/VMD Filter (Phase 1)0.4221 days8.89,692,0902,106,6103.3Phase 1 DAA1.9321 days40.62,106,610-69DAA Filter (Phase 1)0.1421 days2.92,106,610129,3945.0Low SWaP Filter0.021 days0.0129,39482,5240.7Scenario Merge0.01 scenario0.082,52482,5240.0Low SWaP DAA3.6096 cases3467,922,304-157DAA Data Analysis8.6996 cases8347,922,304-379Metrics0.0096 cases0.2---Total--1,259---Legacy DAA Processing1.821 × 963,651Legacy DAA Data Analysis1.521 × 963,024Legacy Total--6,675---
+		
+		
+
+			
+AcknowledgmentsWe wish to express gratitude to our fellow DAA team developers for their tireless efforts to realize the encounter-based simulation architecture.
+			
+
+			
+they have instantly turned to a collision course.Note that the amount of time that can be skipped, and hence the number of computations at prefiltering step, does not depend on time step.Once the amount of time-to-skip becomes close to a time step, the prefiltering ends and further calculations are repeated at every time step.All sequential intruder states that satisfy the condition defined by Eq. 1 are included in the encounter for this intruder.The encounter may include more than one intruder if there is a time overlap between trajectory segments of different intruders that satisfy the condition of Eq. 1 for the same ownship.The last optional step of encounter detection algorithm involves filtering out the encounters shorter than a specified minimum duration (e.g. 30 seconds).The remaining encounters are persisted to the data store along with a corresponding scenario specification (see Section V for more details).
+IV. Encounter PropertiesA number of properties are defined as a part of encounter detection process and persisted for each encounter.The most important of these properties are listed below.indicates whether an intruder is in a NMAC defined as (d horiz < 500 f t) ∧ (d vert < 100 f t) The "." notation is used to indicate the grouping of related properties.It is also used in a search path when looking up the properties in "filters" described in IV.A.In particular, all intruder-specific properties are grouped by intruder.
+EncounterIDIn addition to these "general properties" that don't depend on specific separation standards, several "DAA properties" can be defined, such as the properties of Loss of Well Clear (LoWC) and alerts of different "levels" corresponding to a particular alerting structure, such as shown in Fig. 4.These DAA properties are calculated by processing results generated by JADEM.The processing pipeline for generating all encounter properties is shown in Fig. 6.			
+			
+
+				
+
+
+	
+		Detect and Avoid Minimum Operational Performance Standards Phase I (DAA MOPS)
+		
+			Sc-228
+		
+	
+	
+		RTCA
+		
+			2017
+			Washington, DC
+		
+	
+	SC-228, Detect and Avoid Minimum Operational Performance Standards Phase I (DAA MOPS), RTCA, Washington, DC, 2017.
+
+
+
+	
+		Uncorrelated Encounter Model of the National Airspace System, Version 2.0
+		
+			AJWeinert
+		
+		
+			EPHarkleroad
+		
+		
+			JGrith
+		
+		
+			MWEdwards
+		
+		
+			MJKochenderfer
+		
+		
+			August 2013
+			Lexington, Massachusetts
+		
+		
+			MIT Lincoln Laboratory
+		
+	
+	Tech. Rep. ATC-404
+	Weinert, A. J., Harkleroad, E. P., Grith, J., Edwards, M. W., and Kochenderfer, M. J., "Uncorrelated Encounter Model of the National Airspace System, Version 2.0," Tech. Rep. ATC-404, MIT Lincoln Laboratory, Lexington, Massachusetts, August 2013.
+
+
+
+	
+		Evaluating Alerting and Resolution Performance of a UAS Detect-And-Avoid (DAA) System
+		
+			SLee
+		
+		
+			CPark
+		
+		
+			DThipphavong
+		
+		
+			DIsaacson
+		
+		
+			CSantiago
+		
+		NASA/TM-2016-219067
+		
+			February 2016
+			Moffett Field, California
+		
+		
+			NASA Ames Research Center
+		
+	
+	Tech. Rep.
+	Lee, S., Park, C., Thipphavong, D., Isaacson, D., and Santiago, C., "Evaluating Alerting and Resolution Performance of a UAS Detect-And-Avoid (DAA) System," Tech. Rep. NASA/TM-2016-219067, NASA Ames Research Center, Moffett Field, California, February 2016.
+
+
+
+	
+		Unmanned Aircraft System Demand Generation and Airspace Performance Impact Prediction
+		
+			SAyyalasomayajula
+		
+		
+			FWieland
+		
+		
+			ATrani
+		
+		
+			NHinze
+		
+	
+	
+		Proceedings of the 32nd IEEE Digital Avionics Systems Conference
+		the 32nd IEEE Digital Avionics Systems ConferenceSyracuse, NY
+		
+			IEEE
+			2013
+		
+	
+	Ayyalasomayajula, S., Wieland, F., Trani, A., and Hinze, N., "Unmanned Aircraft System Demand Generation and Airspace Performance Impact Prediction," Proceedings of the 32nd IEEE Digital Avionics Systems Conference, IEEE, Syracuse, NY, 2013.
+
+
+
+	
+		Radar Data Tracking Using Minimum Spanning Tree-Based Clustering Algorithm
+		
+			CPark
+		
+		
+			HLee
+		
+		
+			BMusaffar
+		
+	
+	
+		11th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference (AIAA-2011-6825)
+		Virginia Beach, VA
+		
+			AIAA
+			2011
+		
+	
+	Park, C., Lee, H., and Musaffar, B., "Radar Data Tracking Using Minimum Spanning Tree-Based Clustering Algorithm," 11th AIAA Aviation Technology, Integration, and Operations (ATIO) Conference (AIAA-2011-6825), AIAA, Virginia Beach, VA, 2011.
+
+
+
+	
+		Investigating Effects of "Well Clear" Definitions on UAS Sense-And-Avoid Operations
+		
+			SLee
+		
+		
+			CPark
+		
+		
+			MJohnson
+		
+		
+			EMueller
+		
+	
+	
+		2013 AIAA Aviation Technology, Integration, and Operations Conference
+		Los Angeles, CA
+		
+			AIAA
+			2013
+		
+	
+	Lee, S., Park, C., Johnson, M., and Mueller, E., "Investigating Effects of "Well Clear" Definitions on UAS Sense-And-Avoid Operations," 2013 AIAA Aviation Technology, Integration, and Operations Conference, AIAA, Los Angeles, CA, 2013.
+
+
+
+	
+		Investigating Detect-and-Avoid Surveillance Performance for Unmanned Aircraft Systems
+		
+			CPark
+		
+		
+			SLee
+		
+		
+			EMueller
+		
+	
+	
+		AIAA Aviation Technology, Integration, and Operations Conference
+		Atlanta, GA
+		
+			AIAA
+			2014. 2014
+		
+	
+	Park, C., Lee, S., and Mueller, E., "Investigating Detect-and-Avoid Surveillance Performance for Unmanned Aircraft Systems," 2014 AIAA Aviation Technology, Integration, and Operations Conference, AIAA, Atlanta, GA, 2014.
+
+
+
+	
+		Characteristics of a Well Clear Definition and Alerting Criteria for Encounters between UAS and Manned Aircraft in Class E Airspace
+		
+			MJohnson
+		
+		
+			EMueller
+		
+		
+			CSantiago
+		
+	
+	
+		10th USA/Europe ATM Research and Development Seminar, ATM2015, ATM Seminar
+		Lisbon, Portugal
+		
+			2015
+		
+	
+	Johnson, M., Mueller, E., and Santiago, C., "Characteristics of a Well Clear Definition and Alerting Criteria for Encounters between UAS and Manned Aircraft in Class E Airspace," 10th USA/Europe ATM Research and Development Seminar, ATM2015, ATM Seminar, Lisbon, Portugal, 2015.
+
+
+
+	
+		UAS Well Clear Recovery against Non-Cooperative Intruders using Vertical Maneuvers
+		
+			ACone
+		
+		
+			DThipphavong
+		
+		
+			SLee
+		
+		
+			CSantiago
+		
+		AIAA-2017-4382
+	
+	
+		17th AIAA Aviation Technnology
+		Denver, Colorado
+		
+			AIAA
+			2017
+		
+	
+	Cone, A., Thipphavong, D., Lee, S., and Santiago, C., "UAS Well Clear Recovery against Non-Cooperative Intruders using Vertical Maneuvers," 17th AIAA Aviation Technnology (AIAA-2017-4382), AIAA, Denver, Colorado, 2017.
+
+
+
+	
+		Ensuring Interoperability between UAS Detect-and-Avoid and Manned Aircraft Collision Avoidance
+		
+			DThipphavong
+		
+		
+			ACone
+		
+		
+			SLee
+		
+	
+	
+		Twelfth USA/Europe Air Traffic Management Research and Development Seminar
+		Seattle, Washington
+		
+			2017
+			2017
+		
+	
+	ATM
+	Thipphavong, D., Cone, A., and Lee, S., "Ensuring Interoperability between UAS Detect-and-Avoid and Manned Aircraft Collision Avoidance," Twelfth USA/Europe Air Traffic Management Research and Development Seminar, ATM2017, ATM Seminar, Seattle, Washington, 2017.
+
+
+
+	
+		The Generic Resolution Advisor and Conflict Evaluator (GRACE) for Unmanned Aircraft Detect-And-Avoid Systems
+		
+			MAbramson
+		
+		
+			MRefai
+		
+		
+			CSantiago
+		
+		NASA/TM-2017-219507
+		
+			2017
+			Moffett Field, California
+		
+		
+			NASA Ames Research Center
+		
+	
+	Tech. Rep.
+	Abramson, M., Refai, M., and Santiago, C., "The Generic Resolution Advisor and Conflict Evaluator (GRACE) for Unmanned Aircraft Detect-And-Avoid Systems," Tech. Rep. NASA/TM-2017-219507, NASA Ames Research Center, Moffett Field, California, 2017.
+
+
+				
+			
+		
+	

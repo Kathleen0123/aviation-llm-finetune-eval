@@ -1,0 +1,686 @@
+
+	
+	
+		
+Furthermore, each open sector is monitored from a particular workstation consisting of seats for air traffic controllers, a radar scope, plugs for headsets, and other equipment used by controllers to monitor traffic.Which workstation is utilized to monitor an open sector can influence how much work is involved when the open sector is changed by adding or removing sectors from it.A workstation configuration specifies which workstation is utilized for monitoring each open sector in a corresponding airspace configuration.Together, corresponding airspace, operating position, and workstation configurations will be referred to simply as a configuration.An Area of Specialization (AoS) is a set of sectors that a group of controllers are certified to control and that are permitted to be combined into larger open sectors. 1 AoS supervisors select configurations of the available sector, controller personnel, and physical air traffic control equipment resources so that expected traffic demand is safely and efficiently managed.Allocating these AoS resources for safe and efficient operations involves both 1) selecting configurations that encourage engaged but not overworked controller personnel and 2) avoiding disruptive transitions between configurations. 2][5][6][7][8][9][10][11][12][13][14][15][16][17][18][19] Some of these algorithms support tactical decision-making, 3-5, 16, 18, 19 but the rest focus on pre-tactical or strategic decisions concerned with staff planning.Fewer algorithms related to operating position or workstation configurations have been proposed.A controller task load-based approach called "positions to traffic" for determining how many operating positions should be allocated to each open sector is analyzed by the Transportation Research Board in Ref. 20.This approach was developed by MITRE for long-term staff planning, not tactical decisionsupport.Relationships between workload metrics, controller staff levels, and National Airspace System performance are investigated by Kamble in his PhD thesis, but he stops short of proposing an algorithm for determining the number of operating positions that should be allocated to each open sector. 21Tien proposed a mixed-integer programming problem and solution method for suggesting airspace configurations that minimize the predicted or expected value of the number of operating positions. 17,18 is approach utilizes a statistical model that estimates the probabilities that one or two operating positions will be allocated to each open sector, given the characteristics of the traffic in the open sector.An extension of this problem can also enforce requirements on the length of time between changes to open sectors.This work does not attempt to simultaneously optimize operating position or workstation assignments along with airspace configurations because it ignores workstations and treats operating position assignments as an exogenous random process outside of the control of the optimization process.However, some related work by Tien does simultaneously propose both airspace configurations and corresponding operating position configurations when sector boundaries can be specified arbitrarily in an attempt to match expected air traffic demand. 22n this research, an algorithm that computes a configuration schedule advisory is developed and some sample results are presented.For each time step in a tactical time horizon of around two hours, a configuration schedule advisory specifies a configuration consisting of a set of open sectors, the number of operating positions allocated to each open sector, and a workstation to be used for managing each open sector.The algorithm is an extension of the algorithm for suggesting airspace configuration schedules proposed in Ref. 19.While Tien's approach in Refs.17 and 18 suggests airspace configuration schedules that consider likely corresponding operating position schedules, the algorithm proposed here simultaneously suggests airspace, operating position, and workstation configurations.The algorithm proposed here is not designed to suggest appropriate or minimal safe levels of staffing, as is done in MITRE's positions to traffic work 20 and in some previous work by the authors of this paper, Tien, and others. 3-5, 17, 18Instead, it takes as an input schedules indicating possible numbers of operating positions and open sectors at each time, which should be derived from the number of staff that are available during the advisory time horizon of a few hours.It then suggests a configuration schedule advisory that encourages safe and efficient operations for predicted traffic demand and is also consistent with the user-specified ranges of numbers of operating positions and open sectors.The suggested configuration advisory minimizes a cost penalizing open sector traffic levels that are too high or too low as well as the effort associated with configuration changes.The algorithm does not enforce restrictions on the time period between changes to open sectors, as Tien proposes in Ref. 17, but rather imposes a traffic-dependent cost on configuration changes.This cost on configuration changes ensures that configuration changes are only proposed when they generate sufficiently safer and more efficient operations by producing open sectors with traffic levels that keep controller personnel engaged but not overworked.The remainder of this paper is structured as follows.In Section II, the inputs and outputs of the algorithm are specified.Section III describes how determining a configuration schedule is posed as a shortest-path problem.Most of this section is devoted to precisely defining the formulation of the cost function.Then, the dynamic programming solution method selected to solve this shortest-path problem is briefly described in Section IV, and some alternative solution methods are mentioned.Default cost function parameters selected based on descriptions of operational procedures, subject-matter expert feedback, and historical data are documented in Section V. Specifications of and results for two sample problem instances are in Section VI.Finally, Sections VII and VIII contain possible items for future work and conclusions, respectively.
+II. Algorithm Inputs and OutputsThe inputs and outputs of the proposed algorithm are specified in Fig. 1.One input is traffic predictions.The traffic predictions must be specified at a level of detail sufficient for the calculation of the cost, which is discussed in sub-section III.D.As defined in this paper, this cost function requires a prediction of which flights will be in each sector at each traffic time step.Another input is a schedule of the valid configurations that the algorithm can advise at each time.Some configurations are never valid and so will never be part of the valid configuration set.For example, an open sector might be impossible to control due to radio frequency coverage issues.Any configuration involving such an open sector would never be valid.Alternatively, some configurations might only be temporarily valid or invalid.For example, a supervisor may know that a particular controller will be trained on a particular open sector for a period of time.Changes to that open sector in this period would interrupt the training, so only configurations involving that open sector would be valid during this period of time.A baseline valid set of configurations could be pre-specified and then modified as needed by the supervisor.A third input is scheduled ranges of the number of operating positions and the number of open sectors.This input may remove some configurations in the scheduled set of valid configurations from consideration by the algorithm.The scheduled range of the number of operating positions specifies the total number of operating positions that can be allocated to open sectors at each time in the airspace under consideration.This range should be driven by the number of available controllers.Default values for these constraints could be derived from a staff management system such as the Cru-ART system currently used by the Federal Aviation Administration, but such a default schedule could be adjusted by the supervisor.The scheduled number of open sectors is an optional input.If no range for the number of open sectors is specified for a certain time period, the algorithm considers valid configurations with any number of open sectors that satisfy the constraint on the number of operating positions.The final input is a set of algorithm parameters.One parameter specifies the length of the time step used to discretize time.The algorithm can specify a different configuration at each configuration time step, but it usually does not due to a cost that penalizes changes in configurations, also known as reconfigurations (see sub-section III.D.2).Another parameter specifies the time horizon of the configuration schedule advisory.Due to uncertainties in traffic predictions, it is unlikely that this time horizon would exceed three hours.Other parameters that impact the algorithm cost function also must be specified; these will be discussed in more detail in sub-section III.D and Section V.Finally, the algorithm outputs a configuration schedule advisory.At each configuration time step in the time horizon, this schedule assigns each sector to exactly one open sector and allocates one (R-side) or two (an R-side and a D-side) operating positions to each open sector.Each open sector is also assigned to a workstation.
+III. Problem StatementThe problem stated here attempts to capture the relevant issues involved in determining a configuration schedule that will encourage safe and efficient operations for predicted air traffic.The problem statement consists of decision variables, data, constraints, and an objective.Some of the relevant issues and the problem are first described informally and then the problem will be stated in detail in sub-sections III.A-III.D.For each time period during a time horizon of interest, a configuration advisory suggests a configuration that describes how to allocate the available resources in an AoS.The configurations must respect problem constraints, such as constraints on the number of operating positions available at each time.The problem statement encourages safe and efficient operations by specifying a cost function to be minimized.The problem cost function attempts to quantify and penalize any way that a configuration might not encourage safe and efficient operations for the predicted traffic as well as any way that changes in configurations require effort that may inhibit safe and efficient operations.The cost function used in this paper is a relatively complicated function involving 25 parameters.The function complexity was increased as subject-matter experts identified deficiencies in previous, simpler cost functions that prevented those functions from leading to useful configuration advisories.Default parameter values, which were determined based on a combination of descriptions of operational procedures, subject-matter expert feedback, and comparisons of historical and algorithm-suggested configurations, are described in Section V.One "dimension" of the resource allocation described by a configuration is the airspace configuration: the way in which sectors are grouped into open sectors.Which individual controllers will work at each operating position is another dimension of configurations.This dimension is excluded from the problem statement because factors that influence this dimension, such as controller skill and personality, may be difficult to quantify.This dimension of the configuration schedule is left for the supervisor to determine without the assistance of an advisory.The decision variables, data, constraints, and cost function that make up the problem statement will now be described in detail.The problem statement attempts to model the resource allocation problem faced by AoS supervisors such that problem solutions will help supervisors make configuration decisions that encourage safe and efficient operations.
+III.A. Decision VariablesTo facilitate the search for a configuration schedule, the time horizon of the schedule is broken into K discrete configuration time steps k = 1, 2, . . ., K of length ∆ minutes.The k th configuration time step begins at the start of minute (k -1)∆ + 1 and ends at the end of minute k∆.The problem time horizon is therefore K∆ minutes.The decision variables C that make up a configuration schedule advisory are C k for k ∈ {1, 2, . . ., K}, where C k is the advised configuration at configuration time step k.More concretely, a configuration advisoryC k = {C A k , C OP k , C W k }A k = {σ 1 , σ 2 , . . . , σ |C A k | }. Each open sector σ ∈ C A k is itself a set consistingC OP k (σ) ∈ {1, 2} ∀σ ∈ C A k . Finally, a workstation configuration C W k is a mapping from open sectors in C A k to the set of available workstations W = {w 1 , w 2 , . . . , w |W | }.Constraints on configurations will be discussed in sub-section III.C.The problem involves searching over these three dimensions of configurations (airspace, operating position, and workstation) simultaneously.
+III.B. DataThe traffic situation data T is a set consisting of a configuration time step traffic situation data element T k for each configuration time step k ∈ {1, 2, . . ., K}.Generally, this traffic situation data must contain any predicted air traffic data required to compute the problem cost function.Although many other cost function formulations are possible, the function specified in sub-section III.D for use in this paper requires that T k contain a unique identifier for each flight in each sector at each traffic time step during configuration time step k.Since air traffic characteristics and their impact on controller workload often change faster than airspace configurations, time is discretized into traffic time steps of length δ minutes, where δ ≤ ∆ and ∆ = Dδ for some positive integer D. The t th traffic time step begins at the start of minute (t -1)δ + 1 and ends at the end of minute tδ.Since there are K configuration time steps and D traffic time steps per configuration time step, the traffic time steps run from 1 to KD.The k th configuration time step begins at the start of traffic time step (k -1)D + 1 and ends at the end of traffic time step kD.Let τ (k) be the set of D traffic time steps in configuration time step k.Then T contains the traffic situation data for each sector during configuration time step k:T k = {T s1 k , T s2 k , . . . , T s |S| k } for k ∈ {1, 2, . . . , K}. Here each T s k is itself a set containing the traffic situation data in sector s at each t ∈ τ (k): T s k = {T s t } t∈τ (k) .Finally, each T s t contains unique identifiers of each aircraft located within s during traffic time step t.Then |T s t | is the sector count for s at t: the number of aircraft located within sector s at traffic time step t.Another piece of data required for the problem objective used in this paper is open sector capacities, expressed in terms of a maximum number of aircraft that can safely simultaneously be within each open sector when the open sector is allocated two operating positions.Due to differences in traffic and controller characteristics, there is no such hard upper bound, but an open sector Monitor Alert Parameter (MAP) is roughly analogous to this notion of capacity and is used in current air traffic operations.a Denote Ω(S) as the set of all open sectors that can be constructed from the sectors in S. Then the required sector capacity data is {MAP(σ)} σ∈Ω(S) .Finally, the initial configuration C 0 and traffic situation T 0 are also required for the problem.These specify the configuration and traffic situation during the configuration time step just before the configuration schedule advisory begins.
+III.C. Constraints
+III.C.1. Valid ConfigurationsThe configuration schedule C must be in the set C of all valid configuration schedules.Although C could be defined more generally, for this paper it is specified as a set of valid configurations at each configuration time step: Valid configurations can also be specific to certain problem instances and may apply for all or only a subset of configuration time steps.Configurations containing certain open sectors might be denoted as invalid because they are geographically too large to be displayed clearly on a scope.Other configurations might be invalid for some period of time due to temporary workstation equipment outages.More permanent technological limitations, such as radio frequency coverage issues, may also limit the set of valid configurations.Training may require that certain open sectors be a part of any configuration utilized for certain configuration time steps.This list is not exhaustive; any configuration can be removed from consideration during any configuration time step and for any number of reasons.C = {C k } K k=1 . Valid configurations in C k mustConfiguration constraints on the number of open sectors and operating positions described in the next subsection are just a particular type of constraint on valid configurations.They are given special consideration to emphasize that this algorithm does not seek to minimize the number of open sectors or operating positions.
+III.C.2. Number of Open Sectors and Operating PositionsIt may only be possible or desired to utilize a certain range of number of operating positions or open sectors at each configuration time step.This type of constraint might result from the number of controllers that are available to be assigned to operating positions during a particular shift.Let λ k be a lower bound on the number of open sectors at configuration time step k and let λ k be an upper bound on the number of open sectors at configuration time step k for k ∈ {1, 2, . . ., K}.Then the constraint on the number of open sectors can be expressed asλ k ≤ |C A k | ≤ λ k ∀k ∈ {1,2, . . ., K}.Similarly, let µ k be a lower bound on the number of operating positions at configuration time step k and let µ k be an upper bound on the number of operating positions at configuration time step k for each k ∈ {1, 2, . . ., K}.Then the constraint on the number of operating positions can be expressed asµ k ≤ σ∈C A k C OP k (σ) ≤ µ k ∀k ∈ {1,
+III.D. Objective: Minimize CostThe problem objective is to minimize a cost g(C, T ).The cost for a schedule is a sum of the costs incurred by the scheduled configuration at each configuration time step in the time horizon.g(C, T ) = K k=1 g k (C k , T k ).(For a single configuration time step, the cost is a weighted sum of a single configuration time step static cost and a single configuration time step reconfiguration cost :g k (C k , T k ) = g S k (C k , T k ) + β R g R k (C k-1 , T k-1 , C k , T k ),(2)where β R is the reconfiguration weight.Details of the static and reconfiguration costs are provided next.These cost functions are complex and involve many parameters.Complexity and parameters were only added to the cost functions when subjectmatter feedback indicated that simpler versions of the cost function were not sufficient for producing useful configuration advisories.The initial, simpler cost functions used for this work are described in Ref. 19.
+III.D.1. Static CostThe static cost penalizes configurations with too much or too little traffic in open sectors.Too much traffic can lead to controllers that are too busy to provide safe and efficient control, and too little traffic can lead to controllers that are not engaged enough to provide safe and efficient control.The term "static" is used because this cost is associated with periods when the configuration is static, although of course the traffic will change during these periods.It is the sum over all the open sectors of a static cost computed for each open sector: Furthermore, the static cost for a single open sector at a configuration time step is itself a sum of a single traffic time step cost g S,OS t over all the traffic time steps in the configuration time step.It is expressed asg S k (C k , T k ) = σ∈C A k g S,OS k (σ, C OP k (σ), T k ),(3)g S,OS k (σ, C OP k (σ), T k ) = t∈τ (k) g S,OS t (σ, C OP k (σ), T t ). (4)The static cost for a single open sector during a single traffic time step g S,OS t takes on different forms depending on the number of operating positions allocated to the open sector.Therefore,g S,OS t (σ, C OP k (σ), T t ) =    g S,OS,1OP t (σ, T t ), if C OP k (σ) = 1 g S,OS,2OP t (σ, T t ), if C OP k (σ) = 2.()5The function g S,OS,1OPℓ(σ, T t ) = s∈σ |T s t | MAP(σ).Each penalizes open sector loads that are too high or too low to ensure safe and efficient operations in the open sector.The functions areg S,OS,1OP t (σ, T t ) = α 1OP θ 1OP -ℓ(σ, T t ) + γ 1OP + α 1OP ℓ(σ, T t ) -θ 1OP + γ 1OP(6(σ, T t ) = α 2OP θ 2OP -ℓ(σ, T t ) + γ 2OP + α 2OP ℓ(σ, T t ) -θ 2OP + γ 2OP ,(7)where [a] + evaluates to a if a ≥ 0 and to 0 if a < 0. The twelve parameters in this cost function are• α 1OP and α 2OP : one-and two-operating position low load weights,• θ 1OP and θ 2OP : one-and two-operating position low load thresholds,• γ 1OP and γ 2OP : one-and two-operating position low load exponents,• α 1OP and α 2OP : one-and two-operating position high load weights,• θ 1OP and θ 2OP : one-and two-operating position high load thresholds, and• γ 1OP and γ 2OP : one-and two-operating position high load exponents.Default parameter values will be discussed in Section V. Fig. 2 contains plots of the static cost for a single open sector during a single traffic time step when allocated one and two operating positions.These plots are generated with the default values for these parameters described in Section V. Open sector load levels between the thresholds incur no cost.The thresholds are at higher levels for open sectors allocated two operating positions.
+III.D.2. Reconfiguration CostThe reconfiguration cost penalizes reconfigurations, especially reconfigurations that are likely to induce a significant amount of effort for the controllers involved.The reconfiguration cost is the sum of two different reconfiguration costs: Conversely, when a D-side operating position is removed from an open sector, these responsibilities must be transferred from the D-side operating position back to the R-side operating position.The reconfiguration operating position cost attempts to quantify and penalize these efforts, which may distract controllers from safely and efficiently managing aircraft.It is a sum over all open sectors experiencing changes in the number of operating positions but no changes in airspace, and it differentiates between open sectors gaining and losing operating positions.It is expressed asg R k (C k-1 , T k-1 , C k , T k ) = g R,OP k (C k-1 , T k-1 , C k , T k ) + g R,W k (C k-1 , T k-1 , C k , T k ). (8g R,OP k (C k-1 , T k-1 , C k , T k ) = σ∈{C A k-1 ∩C A k } C OP k (σ) -C OP k-1 (σ) + g R,OP+ k (σ, T k-1 , T k ) (9) + C OP k-1 (σ) -C OP k (σ) + g R,OP- k (σ, T k-1 , T k ).The reconfiguration operating position gain cost g R,OP+ k penalizes effort associated with the addition of a second (D-side) operating position and the reconfiguration operating position loss cost g R,OP- k penalizes effort associated with the removal of a second (D-side) operating position.The form of these two types of reconfiguration costs are nearly identical.They areg R,OP+ k (σ, T k-1 , T k ) = β R,OP+,O + β R,OP+,T ∪s∈σ, t∈ψ R,OP ± T s t (10) and g R,OP- k (σ, T k-1 , T k ) = β R,OP-,O + β R,OP-,T ∪s∈σ, t∈ψ R,OP ± T s t .(11)The .When the sectors that make up an open sector change, control of sector airspace and any aircraft within it must move from operating position(s) at one workstation to operating position(s) at another workstation.There is overhead and transfer work associated with this type of reconfiguration.Furthermore, this transfer can be even more difficult when the operating positions giving and receiving responsibility for airspace and aircraft are already busy monitoring other "background" aircraft that are not being transferred.Finally, there is work associated with moving the operating positions associated with an open sector from one workstation to another, even when the open sector airspace and number of allocated operating positions do not change.The reconfiguration cost attempts to quantify and penalize these types of work, and it is the sum of four terms:g R,W k (C k-1 , T k-1 , C k , T k ) =g R,W,O k (C k-1 , T k-1 , C k , T k ) + g R,W,T k (C k-1 , T k-1 , C k , T k ) (12) +g R,W,B k (C k-1 , T k-1 , C k , T k ) + g R,W,M k (C k-1 , T k-1 , C k , T k )10g R,W,O k (C k-1 , T k-1 , C k , T k ) = β R,W,O C A k \ C A k-1 ,(13)where \ is the set difference operator.The reconfiguration workstation overhead weight is a cost per new open sector.The second type of work that makes up the reconfiguration workstation cost is the reconfiguration workstation transfer cost g R,W,T k .It penalizes work associated with transferring aircraft from operating position(s) at one workstation to operating position(s) at another workstation, as quantified by a per-aircraft reconfiguration workstation transfer weight β R,W,T multiplied by the number of aircraft transferred.To facilitate the expression of this and other costs, let the workstation configuration mapping also return the relevant workstation for each sector:C W k (s) = C W k (σ) ∀s ∈ σ. Also, let C A k (s) return the open sector containing s in the airspace configuration C A k : C A k (s) = σ ⇔ s ∈ σ.Then the expression for this cost isg R,W,T k (C k-1 , T k-1 , C k , T k ) = β R,W,T s∈S|C W k-1 (s) =C W k (s), C A k-1 (s) =C A k (s) ∪ t∈ψ R,W ± T s t .(14)The set of traffic time steps ψ R,W
+±surrounding the reconfiguation at the start of configuration time step k is expressed asψ R,W ± = {(k -1)D + 1 -ǫ R,W -, . . . , (k -1)D + ǫ R,W + }, where ǫ R,W-≥ 0 and ǫ R,W + ≥ 1 are parameters that determine the number of traffic time steps used to count the traffic involved in the reconfiguration.Transferring airspace and aircraft between operating position(s) at different workstations is particularly difficult when the operating position(s) involved are busy monitoring other background aircraft at the time of the transfer.The reconfiguration workstation background cost g R,W,B k penalizes the additional effort required due to the background aircraft.It is a per-aircraft reconfiguration workstation background weight β R,W,B multiplied by the number of aircraft that are monitored but not transferred by operating position(s) involved in transfering other aircraft.Then this cost isg R,W,B k (C k-1 , T k-1 , C k , T k ) = β R,W,B s∈S|C W k-1 (s)=C W k (s), C A k-1 (s) =C A k (s) ∪ t∈ψ R,W ± T s t . (15)The fourth and final term in the reconfiguration workstation cost quantifies the work associated with moving control of an open sector from one workstation to another without making any other changes to the open sector.This reconfiguration workstation move cost g R,W,M k is expressed asg R,W,M k (C k-1 , T k-1 , C k , T k ) = β R,W,M s∈S|C W k-1 (s) =C W k (s), C A k-1 (s)=C A k (s) ∪ t∈ψ R,W ± T s t .(16)Here β R,W,M is a per-aircraft reconfiguration workstation move weight.
+III.E. Problem Statement SummaryThe problem to be solved by the algorithm when generating a configuration advisory is minimizeC={C1,C2,...,CK} K k=1 g S k (C k , T k ) + β R g R k (C k-1 , T k-1 , C k , T k ) (17) subject to C k ∈ C k , k = 1, 2, . . . , K(18)λ k ≤ |C A k | ≤ λ k , k = 1, 2, . . . , K(19)µ k ≤ σ∈C A k C OP k (σ) ≤ µ k , k = 1, 2, . . . , K.(20)The objective in eq. ( 17) is to find a configuration schedule advisory that minimizes the cost, which is a weighted sum of static and reconfiguration costs.The constraints require that at each configuration time step, a configuration is chosen that is valid (constraint ( 18)), contains an appropriate number of open sectors (constraint ( 19)), and contains an appropriate number of operating positions (constraint (20)).
+III.F. Problem Statement GeneralizationsThe problem has been stated in terms of generating open sectors from predefined sectors and with a particular objective function form.However, analogous problem statements for more general Dynamic Airspace Configuration problems could be defined.The essential characteristics of this type of problem statement are that the set of possible configurations at each configuration time step be finite and that the objective function be expressed as a sum of terms involving configurations and traffic at each configuration time step or between successive configuration time steps.Although these characteristics do preclude the use of this type of problem statement for some Dynamic Airspace Configuration problems, they are general enough to accomodate many such problems.The strengths of this type of problem statement are that it allows for an explicit consideration of traffic-dependent reconfiguration effort, it leads to airspace configuration schedules in which reconfiguration times are optimized, and that it is a type of shortest-path problem.As will be discussed in the next section, there are many algorithms that can efficiently solve shortest-path problems either optimally or approximately.
+IV. Algorithm Solution MethodThis problem can be cast as a shortest path problem.Each configuration option at each configuration time step can be modeled as a node in the relevant graph, and each possible reconfiguration can be modeled as a directed edge in the graph.The starting node for the shortest path problem is C 0 and the destination node can be any of the valid configurations meeting the constraints at configuration time step K. Static costs are node costs and reconfiguration costs are edge costs.Let n be the largest number of valid configurations at any configuration time step: n = max k∈{1,2,...,K} |C k |.This graph has at most nK nodes and at most n 2 K edges.For AoS 4 in Cleveland Air Route Traffic Control Center, 16 airspace configurations can be used operationally.When operating position and workstation configurations are considered as well, there are n = 173 valid configurations of this AoS.A two-hour time horizon with 5-minute reconfiguration time steps (∆ = 5) would lead to K = 24 reconfiguration time steps.Many algorithms can compute optimal solutions to the shortest path problem. 23The results in this paper were generated with one of these algorithms (a dynamic programming value iteration algorithm), but other algorithms like the A * algorithm could also be used to find a minimum-cost configuration schedule.The computational complexity of the dynamic programming value iteration algorithm is O(n 2 K).For large problems, finding a minimum-cost configuration schedule might be computationally difficult.Fortunately, many algorithms for quickly finding near-shortest paths also exist. 23
+V. Default Cost ParametersThere are 25 parameters in the cost function.This section describes efforts at finding default values for these parameters.More thorough and rigorous parameter tuning and sensitivity analyses are topics for future research.Default values for the static and reconfiguration cost parameters described in sub-sections V.A and V.B were selected based on descriptions of operating procedures and also discussions with and a survey of subjectmatter experts.The survey contained 13 questions; 4 questions were related to static cost parameters and 9 questions were related to reconfiguration cost parameters.The survey was sent to 9 subject-matter experts.All of the experts had some experience as an air traffic controller and many of them are currently or have been supervisors of an AoS, meaning that they have made decisions about how to configure sectors, operating positions, and workstations.Completed surveys were returned by 5 of these experts and 4 of them answered every question.
+V.A. Static CostThe 12 parameters in the static cost are listed along with default values in Table 1.These are the parameter values that were used to generate the static cost curves in Fig. 2. Two-operating position high load exponent 2Experts indicated that sector load levels between the θ thresholds are in a "sweet spot" in which controllers are typically engaged but not over-worked.Lower load levels do not encourage safe and efficient operations because controllers may not be busy enough to stay focused, while higher load levels do not encourage safe and efficient operations because controllers may be too busy to carefully control the traffic.The α weights and γ exponents were set to produce larger penalties for open sectors with excessive traffic levels than for open sectors with too little traffic.They were set so that an open sector allocated two operating positions at its MAP value would incur 1 unit of cost per traffic time step.Furthermore, these parameters were set so that an open sector allocated a single operating position at 75% of its MAP value would also incur 1 unit of cost per traffic time step.Costs increase slowly (sub-linearly) to this point as open sector loads increase beyond the "sweet spot," but higher load levels lead to fast (super-linear) growth in costs beyond 75% and 100% for one-and two-operating position open sectors, respectively.Finally, these parameters were set so that open sectors with no traffic at all would incur 1 and 2 units of cost per traffic time step in open sectors with one and two operating positions, respectively.
+V.B. Reconfiguration CostThe 12 parameters in the reconfiguration cost are listed along with default values in Table 2.Subject matter expert survey responses were primarily used to determine these parameter values.Most of the relevant survey questions asked for estimates of the relative difficulty of various types of configuration changes; these relative difficulties roughly correspond to ratios of various parameters.Parameter values were selected to be consistent with these survey-derived ratios.In addition to the survey results and discussions with experts, Federal Aviation Administration procedures documents were used to better understand the steps involved in various configuration changes and to set parameter values accordingly.Sub-section 2-2-4 of the Federal Aviation Administration Order 7210.3Xconcerning Facility Operation and Administration provides guidelines for the steps that are required during a transfer of position responsibility. 1Appendix J of the Cleveland Air Route Traffic Control Center Standard Operating Procedures contains position relief briefing checklists that are used at that facility. 24Any configuration change involves one or more position responsibility transfers.Moving airspace between workstations involves opening or closing R-side operating positions, and briefings associated with these processes are more involved than briefings related to opening or closing D-side positions.Therefore, parameters associated with changes in the number of operating positions (β R,OP+,O , β R,OP+,T , β R,OP-,O , and β R,OP-,T ) are smaller than corresponding parameters associated with airspace moving from one workstation to another (β R,W,O and β R,W,T ).Futhermore, removing a D-side operating po- sitions is less difficult than adding a D-side operating position because when a D-side position is removed, the controller working in the corresponding R-side operating position already knows almost everything that the controller working on the closing D-side position knows.Therefore, parameters related to removing operating positions (β R,OP-,O and β R,OP-,T ) are smaller than corresponding parameters related to adding operating positions (β R,OP+,O and β R,OP+,T ).The "transfer" parameters that are multiplied by the number of aircraft that are transferred in various reconfigurations (β R,OP+,T , β R,OP-,T , and β R,W,T ) are larger than the "overhead" parameters that contribute to the reconfiguration cost regardless of the number of aircraft being transferred (β R,OP+,O , β R,OP-,O , and β R,W,O ).Comments on the completed surveys indicate that the majority of the discussion in most reconfiguration briefings is dedicated to communicating attributes of aircraft because aircraft states are more complicated than the state of non-aircraft elements like airspace, and because aspects of pairs of aircraft, such as conflicts, may also need to be communicated.In fact, feedback suggests that each individual transferred aircraft generates more reconfiguration effort than all of the aircraft-independent items, leading to this trend in parameter magnitudes.However, aircraft that are controlled but not transferred when airspace is added or removed from an open sector do not substantially increase the effort involved in the reconfiguration briefing, leading to a value for β R,W,B that is less than β R,W,O and β R,W,T .Finally, based on survey feedback, the reconfiguration workstation move weight was set to a value less than the corresponding workstation transfer weight but more than the workstation background weight.Workstation moves are relatively rare, but they often happen when the controllers working in the open sector operating positions are replaced with different controllers.This would require a briefing similar to the briefing associated with sectors moving between workstations, providing some motivation for β R,W,M being almost as large as β R,W,T .The ǫ parameters that specify the duration of the ψ ± intervals are set to create a 2-traffic time step interval for changes in the number of operating positions and a 3-traffic time step interval for workstationrelated changes.These parameters were set assuming that the traffic time step length δ was 1 minute.A larger interval is selected for workstation-related changes because expert feedback suggests that these briefings typically take a longer period of time.
+V.C. Reconfiguration WeightThe reconfiguration weight parameter β R determines the relative importance of the static and reconfiguration costs in the problem objective.A low β R value will allow more or more costly reconfigurations in order to drive down the static cost, which is based on open sector loads.Conversely, a high β R value places more weight on reconfiguration cost, so higher static costs will be tolerated in order to reduce the cost of reconfigurations.In practical terms, a configuration plan generated by a high β R value would involve fewer or less costly reconfigurations, at the expense of over-or under-loaded open sectors.Insight into the operational sector configuring strategy employed by area supervisors can be gained by measuring the static and reconfiguration costs incurred by the configurations selected by area supervisors.Then, those costs can be compared to the costs of sector configuration advisories produced by the algorithm for various values of β R .Sector configuration and traffic data from Cleveland Air Route Traffic Control Center AoS 4 for 38 non-weekend and non-holiday days selected from 21 October to 15 December 2011 were used for analysis.Weekends and holidays were excluded because they might involve low-volume or atypical traffic patterns that supervisors are not accustomed to, leading to configuration selections that are not consistent with their preferences.The algorithm was run 21 times with different values of β R for each of the 38 days for the time span of 4 am-12 am local time.The resulting static and reconfiguration costs are recorded.Historical costs were also computed by using historical traffic and airspace configuration data.In order to simplify the analysis and reduce the dependence of the tuning process on values selected for other reconfiguration cost parameters, only airspace configurations were considered.Static cost parameters were selected to produce a cost curve that is roughly in-between the one-and two-operating position curves in Fig. 2. Also, the algorithm matches the number of open sectors within AoS 4 to the number of open sectors recorded in the historical data at each configuration time step.While the number of open sectors were constrained to match, the combinations of sectors used to produce the required number of open sectors are not necessarily identical.This constraint was enforced so that the algorithm was solving a problem instance that was not too far removed from the problem instance that was faced in the historical situation, thereby allowing for meaningful comparisons between the algorithm-advised and the historical configurations.The constraint prevented the algorithm from advising configurations that used significantly more or significantly fewer resources than could have been used in the historical situation.An example of a single day's analysis is shown in Fig. 3 for 2 December 2011.Various cost values of configuration plans produced by the algorithm are plotted in blue with the corresponding β R value indicated.The costs of the historical configurations used that day are indicated by the red datum point.This plot highlights several characteristics of airspace management and of the algorithm-most notable is how changing the value of β R allows for trading off between the competing static and reconfiguration costs.Also, for this particular day, it is observed that values of β R greater than or equal to one produce the same costs.At this point the reconfiguration cost has reached a minimum and cannot be reduced any further without violating problem instance constraints.The values of β R that achieve this minimum reconfiguration cost vary from day to day.While any value of β R greater than or equal to one causes the algorithm to produce costs that closely matches the historical costs for 2 December 2011, this is not the case for all 38 days.Some dates feature historical costs that perfectly match those produced by the algorithm for some values of β R while others are significantly different than any of the algorithm results.However, noting that β R is a parameter that controls the relative value of static and reconfiguration costs, it is appropriate to compare the ratio of static algorithm in these instances because the instances were designed with constraints that prevent changes in the configuration of these sectors.Figure 7 shows, for each scenario, the total aircraft counts in ZOB47 and ZOB49 divided by the MAP of an open sector consisting of both of these sectors.For traffic scenario 1, an open sector consisting of ZOB47 and ZOB49 would experience very high sector loads exceeding 100% from 13:45-15:00 UTC.Since the traffic load is evenly distributed between ZOB47 and ZOB49 airspace (depicted later in Fig. 9), it is obvious in this case that the 8 th operating position should be an R-side position so that ZOB47 and ZOB49 can each be operated as open sectors with lower open sector loads.Just before the high sector loads that require this reconfiguration, there is a low-traffic period between 13:30 UTC and 13:40 UTC.Reconfiguring earlier than this period would require greater reconfiguration effort and also might lead to open sector loads that are too low to encourage safe and efficient operations.This time period is an opportunity for the required reconfiguration to occur with a relatively low reconfiguration effort.For traffic scenario 2, an open sector consisting of ZOB47 and ZOB49 does not experience unsafe sector loads, assuming that it is controlled by two operating positions.While in this scenario it may also be acceptable to operate ZOB47 and ZOB49 each as independent open sectors, this would require a large reconfiguration effort relative to simply adding a D-side position to the open sector already in use.Therefore, in this case it is obvious that the 8 th operating position should be a D-side position.Again, from about 13:25-13:40 UTC, there is a low-traffic period just before the load increases to a level requiring the D-side position.Reconfiguring earlier than this period would require greater reconfiguration effort and also would lead to open sector loads that are too low to encourage safe and efficient operations for some period of time.The time period from 13:25-13:40 UTC therefore provides a well-timed opportunity for the D-side operating position to be added with relatively little reconfiguration effort.The configuration time step size for these sample problem instances was set to ∆ = 5 minutes, so there were 24 configuration time steps in the 2-hour time horizon.The traffic time step was set to δ = 1 minute.The other parameters were set to the default values specified in Section V.
+VI.B. ResultsThe configuration schedule advisories for these problem instances reveal how the algorithm can appropriately make use of changes in airspace and operating position configurations to respond to different traffic scenarios.
+VI.B.1. Traffic Scenario 1For traffic scenario 1, the configuration schedule advisory for this sample problem instance is shown in Fig. 8.The number of operating positions allocated to each open sector is shown in parentheses and description text for new open sectors is highlighted in Fig. 8  (b).The schedule advisory uses the required starting configuration from 13:00-13:35 UTC.From 13:35-15:00 UTC, the advisory uses a configuration with 8 operating positions in which ZOB47 and ZOB49 each operate as open sectors and each is allocated a single operating position.This advisory is appropriate because it operates ZOB47 and ZOB49 as separate open sectors and because it selects a relatively low-reconfiguration effort time to perform the required reconfiguration.The
+VII. Future WorkThe algorithm discussed in this paper could be improved and extended in a number of ways.For operational use, it may be required to return a configuration schedule advisory relatively quickly (i.e.within a few seconds).The dynamic programming value iteration solution method currently in use does typically return an advisory fast enough on a workstation, but there are alternative solution methods that can return advisories faster and with little or no loss in terms of cost.Parametric studies in which the cost function parameters are varied will provide insights regarding how parameters influence characteristics of advisories.These insights can facilitate further parameter-tuning efforts.To gain confidence that the algorithm suggests appropriate advisories, the performance of suggested advisories with respect to relevant metrics should be evaluated on a large number of varied problem instances.The suggested advisories could also be evaluated in human-in-the-loop simulations.Potential algorithm users have suggested that it would be beneficial if the algorithm returned multiple (around 3) configuration schedule advisories.These advisories should all achieve low costs and also be meaningfully different from each other.Uncertainties in the predictions of traffic should be explicitly considered by the algorithm.Ref. 19 contains an initial effort at making a closely-related predecessor to this algorithm robust to such uncertainties.Finally, factors that could impact configuration plans but currently only influence the algorithm to the extent that they affect traffic predictions, such as weather and traffic management initiatives, may need to be explicitly considered by the algorithm.
+VIII. ConclusionsAir traffic controller supervisors configure available sector, operating position, and workstation resources to safely and efficiently control air traffic.This paper describes an algorithm for providing configuration schedule advisories to assist supervisors with this task.The algorithm takes as inputs traffic predictions and constraints on configurations and then outputs a configuration schedule advisory.The advisory minimizes a cost function that is a weighted sum of a static cost and a reconfiguration cost.Decreased safety and efficiency associated with a mismatch between the predicted traffic demand and the configuration is penalized by the static cost and decreased safety and efficiency associated with the effort involved in changing configurations is penalized by the reconfiguration cost.The problem considered by the algorithm is a type of shortest path problem that is currently solved with a dynamic programming value iteration solution method.The cost function presented in this paper contains 25 parameters; default values for most of these were based on feedback from subject-matter experts and descriptions of air traffic control procedures.A fundamental parameter that determines the importance of static cost relative to reconfiguration cost was tuned by comparing historical configurations to corresponding algorithm advisories.Sample synthetic problem instance results demonstrate how algorithm advisories appropriately make use of changes in airspace configurations and changes in the number of operating positions assigned to an open sector.Furthermore, the advisories for these sample problem instances pick appropriate times for configuration changes.δCkkLength of traffic time steps [minutes] ℓ Open sector load ǫ R,OP + Number of traffic time steps after a reconfiguration event included in the set ψ R,OP ± ǫ R,OP -Number of traffic time steps before a reconfiguration event included in the set ψ R,OP ± ǫ R,W + Number of traffic time steps after a reconfiguration event included in the set ψ R,W ± ǫ R,W -Number of traffic time steps before a reconfiguration event included in the set ψ R,W ± Set of all valid configuration schedules C k Set of valid configurations at configuration time step k D Set of days used for β R tuning Ω(S) Set of all open sectors the can be constructed from the sectors in S α 1OP and α 2OP One-and two-operating position high load weights γ 1OP and γ 2OP One-and two-operating position high load exponents λ k Upper bound on the number of open sectors at configuration time step k µ k Upper bound on the number of operating positions at configuration time step k θ 1OP and θ 2OP One-and two-operating position high load thresholds ψ R,OP ± Set of traffic time steps surrounding a reconfiguration event; used in computing g R,OP k ψ R,W ± Set of traffic time steps surrounding a reconfiguration event; used in computing g R,W k σ An open sector; a set of one or more sectors τ (k) Set of traffic time steps in configuration time step k MAP(σ) The Monitor Alert Parameter (MAP) of open sector σ α 1OP and α 2OP One-and two-operating position low load weights γ 1OP and γ 2OP One-and two-operating position low load exponents λ k Lower bound on the number of open sectors at configuration time step k µ k Lower bound on the number of operating positions at configuration time step k θ 1OP and θ 2OP One-and two-operating position low load thresholds C Configuration schedule advisory C k Configuration advisory at configuration time step k C A Traffic time steps per configuration time step d A day used for β R tuning g Cost g R,W k Reconfiguration workstation cost g R,OP+ k Reconfiguration operating position gain cost g R,OP- k Reconfiguration operating position loss cost g R,OP k Reconfiguration operating position cost g R,W,B k Reconfiguration workstation background cost g RStatic cost for a single open sector at configuration time step k g S Static cost for a configuration at configuration time step k g S,OS,1OP t Static cost for a single open sector allocated one operating position g S,OS,2OP t Static cost for a single open sector allocated two operating positions g S,OS t Static cost for a single open sector at traffic time step t K Number of configuration time steps k Configuration time step n Largest number of valid configurations at any configuration time step S Set of sectors s Traffic situation data in sector s at traffic time step t T k Traffic situation data at configuration time step k W Set of workstations w A workstation I. Introduction I n current air traffic management operations, airspace is partitioned into predefined volumes called sectors to facilitate the division of responsibilities between air traffic controllers.An airspace configuration maps a set of sectors into a set of open sectors such that each sector is assigned to exactly one open sector.A single team consisting of one to three operating positions staffed by air traffic controllers monitors each open sector.At least a radar (also known as R-side) operating position is allocated to each open sector.A radar associate or data (also known as D-side) operating position can also be allocated to an open sector.Although rare, a third operating position can be allocated to an open sector.When more operating positions are allocated to an open sector, the tasks associated with controlling traffic in the open sector are divided among more controllers.An operating position configuration specifies how many operating positions are allocated to each open sector in a corresponding airspace configuration.
+Figure 1 .1Figure 1.Algorithm inputs and outputs.
+For example, a configuration advisory might suggest a configuration with two sectors combined for the first hour and then suggest a configuration in which this open sector is split into two smaller open sectors for the second hour.Splitting an open sector can be disruptive and may not facilitate safe and efficient operations for a period of time near the split.However, this open sector split might be worthwhile if the larger open sector contains too much traffic for safe and efficient operations while the two new open sectors are predicted to experience traffic levels that are neither too low nor too high.A second dimension of the allocation is the operating position configuration: the number of operating positions assigned to each open sector.For example, rather than splitting a busy open sector, a configuration advisory might suggest a configuration in which a second (D-side) operating position is added to the open sector.This usually involves less effort than splitting a sector, and certain levels of traffic in an open sector might be too high for a single operating position but just right for two operating positions.A third dimension of the allocation is the workstation configuration: which workstation is utilized for monitoring each open sector.Which workstation is used for an open sector can change the effort and disruption caused by a change in configurations.For example, when an open sector is split into two smaller open sectors, the amount of effort and disruption involved depends largely on the number of flights that must be transferred from the control of one operating position to the control of another operating position.When an open sector is split, this number of transferred flights will depend on which workstation is used to control each of the two new open sectors.If one new open sector is busier than the other, the configuration change will probably be easier if that new open sector utilizes the same workstation as was used for the previous, larger open sector.
+for configuration time step k consists of an airspace configuration C A k , a corresponding operating position configuration C OP k , and a corresponding workstation configuration C W k .For a given set of sectors S = {s 1 , s 2 , . . ., s |S| } under consideration, an airspace configuration consists of a set of open sectors C
+of at least one sector from S. An operating position configuration C OP k is a function that specifies whether one or two operating positions are allocated to each open sector in the corresponding airspace configuration:
+fulfill several fundamental requirements that apply to any problem instance and any configuration time step.Open sectors must be spatially contiguous, for example.Airspace configurations at each configuration time step must assign each sector to an open sector.A sector can be assigned to only one open sector.Only one or two operating positions can be assigned to any open sector.Each open sector must be assigned to a single workstation.A workstation cannot be assigned to multiple open sectors.
+where g S,OS k (σ, C OP k (σ), T k ) is the static cost for a single open sector σ allocated C OP k (σ) operating positions at configuration time step k while experiencing traffic situation T k .
+t(σ, T t ) is the static cost for open sector σ allocated one operating position at traffic time step t with traffic situation T t .The corresponding function g S,OS,2OP t (σ, T t ) is the static cost for open sector σ allocated two operating positions at traffic time step t with traffic situation T t .These one-and two-operating position static functions have identical forms but different parameter values.The functions depend entirely on the open sector load, which is computed as the number of aircraft in the open sector divided by the MAP of the open sector:
+Figure 2 .2Figure 2. Static cost for a single open sector during a single traffic time step when allocated one and two operating positions (g S,OS,1OP t
+)These types of reconfiguration costs are the reconfiguration operating position cost (g R,OP k ) and the reconfiguration workstation cost (g R,W k ).The reconfiguration operating position cost g R,OP k penalizes changes in the number of operating positions allocated to an open sector when the sectors assigned to the open sector do not change.When a D-side operating position is added to an open sector, certain responsibilities associated with the aircraft in the open sector must be transferred from the R-side operating position to the incoming D-side operating position.
+reconfiguration operating position gain overhead and loss overhead weights β R,OP+,O and β R,OP-,O penalize the overhead work associated with adding or removing a D-side operating position from an open sector, respectively.Overhead work refers to work that is independent of the number of aircraft in the open sector, such as describing active special-use airspace.Finally, the reconfiguration operating position gain transfer and loss transfer weights β R,OP+,T and β R,OP-,T are multiplied by aircraft counts to penalize the aircraft transfer work associated with adding or removing a D-side operating position from an open sector, respectively.Transfer work refers to work that is associated with transferring responsibilities associated with monitoring an aircraft from one operating position to another, such as indicating that an aircraft has been cleared to climb to a particular altitude.The set ψ R,OP ± is a set of traffic time steps surrounding the reconfiguration happening between configuration time steps k -1 and k (that is, between traffic time steps (k -1)D and (k -1)D + 1).It is expressed as ψ R,OP ± = {(k -1)D + 1ǫ R,OP -, . . ., (k -1)D + ǫ R,OP + }, where ǫ R,OP -≥ 0 and ǫ R,OP + ≥ 1 are parameters that determine the number of traffic time steps used to count the traffic involved in the reconfiguration.The set ∪ s∈σ,t∈ψ R,OP ± T s t consists of identifiers for the unique aircraft in open sector σ during the traffic time steps in ψ R,OP ± .The other type of reconfiguration cost is the reconfiguration workstation cost g R,W k
+of 22 American22Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 18, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5592The first term is the reconfiguration workstation overhead cost g R,W,O k .It penalizes the overhead work associated with setting up and deploying new open sectors: open sectors that were not used in the configuration in the previous configuration time step.The form of this cost is simply a reconfiguration workstation overhead weight β R,W,O multiplied by the number of new open sectors in the configuration:
+13 of 22 American-1322Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 18, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5592Table 2. Reconfiguration cost parameters.Parameter Name Default Value β R,OP+,O Reconfiguration operating position gain overhead weight 0.45 β R,OP+,T Reconfiguration operating position gain transfer weight 0.6 β R,OP-,O Reconfiguration operating position loss overhead weight 0.01 β R,OP-,T Reconfiguration operating position loss transfer weight 0.3 ǫ R,OP -Traffic time steps before a reconfiguration event included in ψ R,OP ± 0 ǫ R,OP + Traffic time steps after a reconfiguration event included in ψ R,OP Traffic time steps before a reconfiguration event included in ψ R,W ± 1 ǫ R,W + Traffic time steps after a reconfiguration event included in ψ R,W
+Figure 3 .3Figure 3. Raw cost trade-off for 2 December 2011.Algorithm costs for various values of β R are shown in blue, and historical costs are shown in red.
+Figure 7 .7Figure 7.Total number of aircraft in ZOB47 and ZOB49 divided by the MAP value of an open sector consisting of these two sectors during the time period of interest for (a) traffic scenario 1 and (b) traffic scenario 2. Both traffic scenarios are synthetic.
+Figure 8 .Figure 9 .89Figure 8. Configuration schedule advisory for traffic scenario 1.
+Figure 10 .10Figure 10.Configuration schedule advisory for traffic scenario 2.
+Figure 11 .11Figure 11.Open sector load for ZOB47 and ZOB49 in the configuration schedule advisory for traffic scenario 2.
+MAP values for single-sector open sectors are well known, but this is not always the case for open sectors consisting of multiple sectors.Subject-matter experts indicate that taking the maximum MAP value of the sectors in an open sector is an appropriate way to estimate the MAP value for an open sector consisting of multiple sectors.2, . .., K}.a
+Table 1 .1Static cost parameters.Parameter NameDefault Valueθ 1OPOne-operating position low load threshold0.3θ1OPOne-operating position high load threshold0.65θ 2OPTwo-operating position low load threshold0.5θ2OPTwo-operating position high load threshold0.9α 1OPOne-opearating position low load weight3.33α 1OPOne-opearating position high load weight6.66α 2OPTwo-opearating position low load weight2.83α 2OPTwo-opearating position high load weight10γ 1OPOne-operating position low load exponent1.5γ 1OPOne-operating position high load exponent2γ 2OPTwo-operating position low load exponent2γ 2OP
+			of 22 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 18, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5592
+			of 22 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 18, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5592
+			of 22 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 18, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5592
+			of 22 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 18, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5592
+			of 22 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 18, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5592
+			of 22 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 18, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5592
+			of 22 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 18, 2013 | http://arc.aiaa.org| DOI:
+			10.2514/6.2012-5592
+			of 22 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 18, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5592
+			of 22 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 18, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5592
+			of 22 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 18, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5592
+			of 22 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 18, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5592
+			American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 18, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5592
+			of 22 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 18, 2013 | http://arc.aiaa.org| DOI: 10.2514/6.2012-5592
+			of 22 American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 18,
+			| http://arc.aiaa.org| DOI: 10.2514/6.2012-5592
+		
+		
+
+			
+AcknowledgmentsWe are grateful to Mark Evans (Dell) and Brian Holguin (FAA) for answering many questions about airspace, operating position, and workstation configurations.We would also like to thank several individuals at Cleveland Air Route Traffic Control Center for providing valuable input and feedback regarding this algorithm.These individuals include but are not limited to Mark Madden, Brian Hanlon, Kevin Shelar, Al Mahilo, Tom Roherty, Connie Atlagovich, Bill Hikade, Steve Herbruck, Martin Mielke, Don Lamoreaux, Rick Buentello, Dale Juhl, Todd Wargo, Mike Klupenger, Mark McCurdy, and Stephen Hughes.Raphell Taylor, Miguel Anaya, Wayne Bridges, and Bill Preston, all current or former employees of Oakland Air Route Traffic Control Center, also provided useful input and feedback.The historical airspace configuration data used in this research was provided by ATAC.
+			
+
+			
+and reconfiguration costs produced by the algorithm to that of the corresponding historical costs.The value of β R that minimizes the difference between the historical and algorithm cost ratios for all days is sought:where g R (β R , d) and g S (β R , d) are the respective reconfiguration and static costs produced by the algorithm for day d with β R , and g R hist and g S hist are the historical equivalents.The set of all days used in the analysis is D. By plotting the sum of this ratio error over D as shown in Fig. 4, the value of β R that produces the minimum error is found to be β R * = 5.
+VI. Sample Problem InstancesTwo sample problem instances were designed to illustrate characteristics of the algorithm.These problem instances were designed such that appropriate advisories would be obvious, enabling a straightforward illustration of the algorithm's ability to appropriately suggest different types of configuration advisories at appropriate times.Subject-matter experts have confirmed that there is a small set of obviously appropriate advisories for each of these instances, and the experts even suggested some of the properties of the instances.The algorithm should also be evaluated based on its performance with respect to a variety of relevant metrics when it is applied to a large and varied set of problem instances.Ultimately, it should be evaluated based on the usefulness of its advisories in human-in-the-loop simulations or in real operations.These are items for future work.Other than the traffic scenarios, the two problem instances are identical.The 2-hour time horizon selected for these instances ran from 13:00 to 15:00 UTC on 1 December 2011, which is 08:00 to 10:00 local time at ZOB. Synthetic constraints were constructed to demonstrate characteristics of the algorithm.The scheduled range of number of operating positions specified to the algorithm is shown in Fig. 6.The configuration schedule advisory is required to use 7 operating positions for the first 15 minutes of the time horizon, it can use 7 or 8 operating positions from 13:15 until 14:00 UTC, and from 14:00 to 15:00 UTC it must use 8 operating positions.No constraint specifying a scheduled range of number of open sectors was used in these problem instances.Constraints required each open sector to be mapped to a particular workstation, so workstation configurations were not optimized in these problem instances.The workstation mappings still impact reconfiguration costs, however.In addition to these constraints on the number of operating positions, the configuration schedule advisories had to satisfy a few other constraints.For the first 15 minutes, the sectors ZOB45, ZOB46, and ZOB48 were required to be open sectors on their own and controlled with two operating positions.Furthermore, during this first 15 minutes, sectors ZOB47 and ZOB49 were required to be combined into a single open sector that was controlled by a single R-side operating position working at the workstation used for ZOB49 when ZOB49 operates as an open sector on its own.This configuration is depicted in Fig. 5  Two synthetic traffic scenarios were also constructed to demonstrate characteristics of the algorithm.The aircraft counts for ZOB45, ZOB46, and ZOB48 are not important for understanding the behavior of the
+VI.A. Specifications			
+			
+
+				
+
+
+	
+		Encainide
+		10.1016/b978-0-444-53717-1.00682-x
+	
+	
+		Meyler's Side Effects of Drugs
+		
+			Elsevier
+			
+			
+		
+	
+	47, 49
+	R-side operating position. [47, 49](1)
+
+
+
+	
+		F01 00 08
+		10.56373/2000-13-31
+		for 13:00-13:35 UTC (08:00- 08:35
+	
+	
+		Den norske tannlegeforenings Tidende
+		Tidende
+		1894-180X
+		
+			110
+			13
+			
+			The Norwegian Dental Journal
+		
+	
+	2) [45](2) [48](2) (a) Configuration for 13:00-13:35 UTC (08:00- 08:35 local time). This configuration consists of 4 open sectors and 7 operating positions.
+
+
+
+	
+		Fig. 3. Return air mass trajectories for the sampling area in the North Atlantic and the Barents Sea: (a) - No. 135 from 13:00 UTC (UTC) 07/14/2017; (b) - No. 167 dated 12:00 UTC on 06/06/2017, calculated by the method described in [10].
+		10.31857/s0030-1574595771-776-16449
+		35-15:00 UTC (08:35- 10:00
+	
+	
+		This configuration consists of 5 open sectors and 8 operating positions
+		
+			The Russian Academy of Sciences
+			null
+			13
+		
+	
+	47, 49
+	1) [49](1) [48](2) (b) Configuration for 13:35-15:00 UTC (08:35- 10:00 local time). This configuration consists of 5 open sectors and 8 operating positions. [47, 49](1)
+
+
+
+	
+		Saturday, 6 June 2015 08:30-10:00 Hall A S-05 Diet and functional gastrointestinal disorders
+		10.1111/nmo.12595_6
+		for 13:00-13:30 UTC (08:00- 08:30
+	
+	
+		Neurogastroenterology & Motility
+		Neurogastroenterol. Motil.
+		1350-1925
+		
+			27
+			2
+			
+			
+			Wiley
+		
+	
+	2) [45](2) [48](2) (a) Configuration for 13:00-13:30 UTC (08:00- 08:30 local time). This configuration consists of 4 open sectors and 7 operating positions.
+
+
+
+	
+		Fig. 1. Comparative characteristics of glycemia indicators in the studied groups at different periods of observation: time for determining glucose levels, day 2: 7:00, 9:00, 13:00, 15:30, 17:00, 21:00. Time to determine glucose level, day after 3 and 12 months according to self-monitoring: 7:00, 12:00, 15:00.
+		10.14341/dm10099-4571
+		13:30-15:00 UTC (08:30- 10:00
+	
+	
+		Configuration for
+		
+			Endocrinology Research Centre
+			null
+		
+	
+	local time)
+	Configuration for 13:30-15:00 UTC (08:30- 10:00 local time). This configuration consists of 4 open sectors and 8 operating positions.
+
+
+
+	
+		Federal Aviation Administration
+		10.4135/9781544377230.n127
+	
+	
+		Federal Regulatory Guide
+		
+			CQ Press
+			February 2012
+			
+		
+	
+	Federal Aviation Administration
+	Federal Aviation Administration, "Order JO 7210.3X Facility Operation and Administration," February 2012.
+
+
+
+	
+		An Investigation of the Operational Acceptability of Algorithm-Generated Sector Combinations
+		
+			PramodGupta
+		
+		
+			MichaelBloem
+		
+		
+			ParimalKopardekar
+		
+		10.2514/6.2009-7059
+	
+	
+		9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO)
+		Hilton Head, SC
+		
+			American Institute of Aeronautics and Astronautics
+			2009
+		
+	
+	Gupta, P., Bloem, M., and Kopardekar, P., "An Investigation of the Operational Acceptability of Algorithm-generated Sector Combinations," Proc. of AIAA Aviation Technology, Integration and Operations Conference, Hilton Head, SC, Septem- ber 2009.
+
+
+
+	
+		Combining Airspace Sectors for the Efficient Use of Air Traffic Control Resources
+		
+			MichaelBloem
+		
+		
+			ParimalKopardekar
+		
+		10.2514/6.2008-7222
+	
+	
+		AIAA Guidance, Navigation and Control Conference and Exhibit
+		Honolulu, HI
+		
+			American Institute of Aeronautics and Astronautics
+			August 2008
+		
+	
+	Bloem, M. and Kopardekar, P., "Combining Airspace Sectors for the Efficient Use of Air Traffic Control Resources," Proc. of AIAA Guidance, Navigation, and Control Conference and Exhibit, Honolulu, HI, August 2008.
+
+
+
+	
+		Algorithms for Combining Airspace Sectors
+		
+			MichaelBloem
+		
+		
+			ParimalKopardekar
+		
+		
+			PramodGupta
+		
+		10.2514/atcq.17.3.245
+	
+	
+		Air Traffic Control Quarterly
+		Air Traffic Control Quarterly
+		1064-3818
+		2472-5757
+		
+			17
+			3
+			
+			2009
+			American Institute of Aeronautics and Astronautics (AIAA)
+		
+	
+	Bloem, M., Gupta, P., and Kopardekar, P., "Algorithms for Combining Airspace Sectors," Air Traffic Control Quarterly, Vol. 17, No. 3, 2009.
+
+
+
+	
+		A Method of Optimally Combining Sectors
+		
+			MichaelCDrew
+		
+		10.2514/6.2009-7057
+	
+	
+		9th AIAA Aviation Technology, Integration, and Operations Conference (ATIO)
+		Hilton Head, SC
+		
+			American Institute of Aeronautics and Astronautics
+			September 2009
+		
+	
+	Drew, M. C., "A Method of Optimally Combining Sectors," Proc. of AIAA Aviation Technology, Integration and Oper- ations Conference, Hilton Head, SC, September 2009.
+
+
+
+	
+		Genetic Algorithms for Automatic Regrouping of Air Traffic Control Sectors
+		
+			DDelahaye
+		
+		
+			J.-MAlliot
+		
+		
+			MSchoenauer
+		
+		
+			J.-LFarges
+		
+		10.7551/mitpress/2887.003.0057
+	
+	
+		Evolutionary Programming IV
+		San Diego, CA
+		
+			The MIT Press
+			March 1995
+		
+	
+	Delahaye, D., Alliot, J.-M., Schoenauer, M., and Farges, J.-L., "Genetic Algorithms for automatic regroupment of Air Traffic Control sectors," Proc. of 4th Conference on Evolutionary Programming, San Diego, CA, March 1995.
+
+
+
+	
+		Optimization of opening schemes
+		
+			CVerlhac
+		
+		
+			SManchon
+		
+	
+	
+		Proc. of 4th USA/Europe Air Traffic Management
+		of 4th USA/Europe Air Traffic Management
+		
+			21
+			22
+		
+	
+	Verlhac, C. and Manchon, S., "Optimization of opening schemes," Proc. of 4th USA/Europe Air Traffic Management 21 of 22
+
+
+
+	
+		
+		10.2514/6.2012-5592Research
+		
+	
+	
+		Development Seminar
+		
+			April 18, 2013. December 2001
+			American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on
+			Santa Fe, NM
+		
+	
+	American Institute of Aeronautics and Astronautics Downloaded by NASA AMES RESEARCH CENTRE on April 18, 2013 | http://arc.aiaa.org | DOI: 10.2514/6.2012-5592 Research & Development Seminar , Santa Fe, NM, December 2001.
+
+
+
+	
+		Optimization of air traffic control sector configurations using tree search methods and genetic algorithms
+		
+			DGianazza
+		
+		
+			J-MAlliot
+		
+		10.1109/dasc.2002.1067912
+	
+	
+		Proceedings. The 21st Digital Avionics Systems Conference
+		The 21st Digital Avionics Systems ConferenceLas Vegas, NV
+		
+			IEEE
+			June 2002
+		
+	
+	Gianazza, D., Alliot, J.-M., and Granger, G., "Optimal combinations of Air Traffic Control sectors using classical and stochastic methods," Proc. of International Conference on Artificial Intelligence, Las Vegas, NV, June 2002.
+
+
+
+	
+		Optimization of air traffic control sector configurations using tree search methods and genetic algorithms
+		
+			DGianazza
+		
+		
+			J-MAlliot
+		
+		10.1109/dasc.2002.1067912
+	
+	
+		Proceedings. The 21st Digital Avionics Systems Conference
+		The 21st Digital Avionics Systems Conference
+		
+			IEEE
+			October 2002
+		
+	
+	Gianazza, D. and Alliot, J.-M., "Optimization of Air Traffic Control Sector Configurations Using Tree Search Methods and Genetic Algorithms," Proc. of AIAA/IEEE Digital Avionics Systems Conference, October 2002.
+
+
+
+	
+		Selection and Evaluation of Air Traffic Complexity Metrics
+		
+			DavidGianazza
+		
+		
+			KevinGuittet
+		
+		10.1109/dasc.2006.313710
+	
+	
+		2006 ieee/aiaa 25TH Digital Avionics Systems Conference
+		
+			IEEE
+			October 2006
+		
+	
+	Gianazza, D. and Guittet, K., "Selection and Evaluation of Air Traffic Complexity Metrics," Proc. of AIAA/IEEE Digital Avionics Systems Conference, October 2006.
+
+
+
+	
+		Selection and Evaluation of Air Traffic Complexity Metrics
+		
+			DavidGianazza
+		
+		
+			KevinGuittet
+		
+		10.1109/dasc.2006.313710
+	
+	
+		2006 ieee/aiaa 25TH Digital Avionics Systems Conference
+		Belgrade, Serbia and Montenegro
+		
+			IEEE
+			June 2006
+		
+	
+	Gianazza, D. and Guittet, K., "Evaluation of air traffic complexity metrics using neural networks and sector status," Proc. of 2nd International Conference on Research in Air Transportation, Belgrade, Serbia and Montenegro, June 2006.
+
+
+
+	
+		Airspace configuration using air traffic complexity metrics
+		
+			DGianazza
+		
+	
+	
+		Proc. of USA/Europe Air Traffic Management Research & Development Seminar
+		of USA/Europe Air Traffic Management Research & Development SeminarBarcelona, Spain
+		
+			July 2007
+		
+	
+	Gianazza, D., "Airspace configuration using air traffic complexity metrics," Proc. of USA/Europe Air Traffic Management Research & Development Seminar , Barcelona, Spain, July 2007.
+
+
+
+	
+		Study of Pairwise Deconfliction Metrics to Analyze Air Traffic Complexity in Upper Class E Airspace
+		
+			DGianazza
+		
+		10.2514/6.2023-4103.vid
+	
+	
+		Proc. of 3rd International Conference on Research in Air Transportation
+		of 3rd International Conference on Research in Air TransportationFairfax, VA
+		
+			American Institute of Aeronautics and Astronautics (AIAA)
+			June 2008
+		
+	
+	Gianazza, D., "Smoothed traffic complexity metrics for airspace configuration schedules," Proc. of 3rd International Conference on Research in Air Transportation, Fairfax, VA, June 2008.
+
+
+
+	
+		An efficient airspace configuration forecast
+		
+			DGianazza
+		
+		
+			CAllignol
+		
+		
+			NSaporito
+		
+	
+	
+		Proc. of USA/Europe Air Traffic Management Research & Development Seminar
+		of USA/Europe Air Traffic Management Research & Development SeminarNapa, CA
+		
+			July 2009
+		
+	
+	Gianazza, D., Allignol, C., and Saporito, N., "An efficient airspace configuration forecast," Proc. of USA/Europe Air Traffic Management Research & Development Seminar , Napa, CA, July 2009.
+
+
+
+	
+		Forecasting workload and airspace configuration with neural networks and tree search methods
+		
+			DavidGianazza
+		
+		10.1016/j.artint.2010.03.001
+	
+	
+		Artificial Intelligence
+		Artificial Intelligence
+		0004-3702
+		
+			174
+			7-8
+			
+			2010
+			Elsevier BV
+		
+	
+	Gianazza, D., "Forecasting workload and airspace configurations with neural networks and tree search methods," Artificial Intelligence, 2010.
+
+
+
+	
+		ETLM Support tool for Dynamic Airspace Configuration
+		
+			MDorado
+		
+		
+			2009
+			Moffett Field, CA
+		
+	
+	NASA Dynamic Airspace Configuration Workshop
+	Dorado, M., "ETLM Support tool for Dynamic Airspace Configuration," NASA Dynamic Airspace Configuration Work- shop, Moffett Field, CA 2009.
+
+
+
+	
+		Air Traffic Controller Ability Requirements in the U.S. National Airspace System
+		
+			S.-LTien
+		
+		10.4324/9781315242538-12
+	
+	
+		Staffing the ATM System
+		College Park, MD
+		
+			Routledge
+			2010
+			
+		
+		
+			University of Maryland
+		
+	
+	PhD dissertation
+	Tien, S.-L., Demand-Responsive Airspace Sectorization and Air Traffic Controller Staffing, PhD dissertation, University of Maryland, College Park, MD, 2010.
+
+
+
+	
+		TRB Special Report 301: Traffic Controller Staffing in the En Route Domain
+		
+			S.-LTien
+		
+		
+			RHoffman
+		
+		
+			PSchonfeld
+		
+		10.17226/13022
+	
+	
+		Proc. of Transportation Research Board Annual Meeting
+		of Transportation Research Board Annual MeetingWashington, DC
+		
+			Transportation Research Board
+			January 2012
+		
+	
+	Tien, S.-L., Hoffman, R., and Schonfeld, P., "En Route Sector Combination Scheme to Minimize Air Traffic Controller Staffing," Proc. of Transportation Research Board Annual Meeting, Washington, DC, January 2012.
+
+
+
+	
+		TRB Special Report 301: Traffic Controller Staffing in the En Route Domain
+		
+			MBloem
+		
+		
+			PGupta
+		
+		10.17226/13022
+	
+	
+		Proc. of International Congress of the Aeronautical Sciences
+		of International Congress of the Aeronautical SciencesNice, France
+		
+			Transportation Research Board
+			September 2010. 20. 2010
+			301
+		
+		
+			National Research Council
+		
+	
+	Air Traffic Controller Staffing in the En Route Domain
+	Bloem, M. and Gupta, P., "Configuring Airspace Sectors with Approximate Dynamic Programming," Proc. of Interna- tional Congress of the Aeronautical Sciences, Nice, France, September 2010. 20 "Air Traffic Controller Staffing in the En Route Domain," Transportation Research Board Special Report 301, National Research Council, 2010.
+
+
+
+	
+		Non-Cognitive Predictors of Air Traffic Controller Performance
+		
+			SDKamble
+		
+		10.4324/9781315242538-17
+	
+	
+		Staffing the ATM System
+		
+			Routledge
+			2005
+			
+		
+		
+			University of Maryland
+		
+	
+	PhD thesis
+	Kamble, S. D., "Relations Among Enroute Air Traffic Controller Staffing and System Performance," PhD thesis, Univer- sity of Maryland, 2005.
+
+
+
+	
+		Optimizing Airspace Sectors for Varying Demand Patterns using Multi-Controller Staffing
+		
+			S.-LATien
+		
+		
+			RHoffman
+		
+	
+	
+		Proc. of USA/Europe Air Traffic Management Research & Development Seminar
+		of USA/Europe Air Traffic Management Research & Development SeminarNapa, CA
+		
+			June 2009. 23
+		
+	
+	Tien, S.-L. A. and Hoffman, R., "Optimizing Airspace Sectors for Varying Demand Patterns using Multi-Controller Staffing," Proc. of USA/Europe Air Traffic Management Research & Development Seminar , Napa, CA, June 2009. 23
+
+
+
+	
+		Heuristic shortest path algorithms for transportation applications: State of the art
+		
+			LFu
+		
+		
+			DSun
+		
+		
+			LRRilett
+		
+		10.1016/j.cor.2005.03.027
+	
+	
+		Computers & Operations Research
+		Computers & Operations Research
+		0305-0548
+		
+			33
+			11
+			
+			2006. February 2012
+			Elsevier BV
+		
+	
+	24 Federal Aviation Administration
+	Fu, L., Sun, D., and Rilett, L. R., "Heuristic shortest path algorithms for transportation applications: State of the art," Computers & Operations Research, Vol. 33, 2006, pp. 3324-3342. 24 Federal Aviation Administration, "Cleveland Air Route Traffic Control Center (ZOB) Standard Operating Procedures," February 2012.
+
+
+				
+			
+		
+	

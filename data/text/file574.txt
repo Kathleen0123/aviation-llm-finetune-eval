@@ -1,0 +1,1081 @@
+
+	
+	
+		
+I. IntroductionAlthough the FAA has mandated that aircraft flying in the National Airspace System (NAS) must equip with the Automatic Dependent Surveillance System (ADS-B) by 2020 1,2 , general aviation 3 and the US military 4 lag behind their implementation schedule.It is widely recognized that there are still unsolved issues that complicate ADS-B adoption for stakeholders 5 who want to maintain the current levels of privacy 6 , anonymity 7 , authentication 8 and resistance to malicious interference 9 , including spoofing 10 and/or denial of service attacks. 11here have been many proposals for making the ADS-B system more secure, though none have been accepted by the stakeholders, and the FAA does not currently endorse any particular plan for addressing these issues. 12The prior art in this field is often divided into two areas: secure location verification, and secure broadcast authorization.The approaches to secure location verification include multilateration 13 , distance bounding 14 , Kalman filtering 15 , group verification 16 , intent verification 17 data fusion 18 , and traffic modeling 19 .The approaches to secure broadcast authorization include non-crypto schemes, such as fingerprinting 20 , as opposed to explicitly cryptographic schemes, such as public key infrastructure (PKI) 21 .This paper is a contribution to cryptographic secure broadcast authorization approach by presenting a design and description of illustrative prototype software that addresses these ADS-B vulnerabilities via a novel blockchain-based PKI implementation.This design supports ADS-B aviation surveillance services that maintain or exceed current levels of aircraft privacy that are valued features of the present-day centralized NAS radar-based services.This paper introduces an "Aviation Blockchain Infrastructure" (ABI) design that enables aircraft to communicate effectively, securely, and privately with air traffic management and other properly authorized entities.The engineering prototype of the ABI described below, implemented in a widely-available open source permissioned blockchain framework, represents a scalable architecture and illustrates how such a serverless PKI infrastructure may be rapidly deployed and economically maintained.
+II. Background
+ADS-B Effect on Air Traffic Security & PrivacyCurrently NAS Air Traffic Control (ATC) largely relies on a system of ground-based radar systems and Mode-C transponders to track aircraft.The FAA has exclusive possession of the totality of this air traffic surveillance data, enabling the Agency to establish administrative processes to also insure operational privacy for military and approved civil aircraft (who have valid requirements for keeping their activities private) before releasing the rest of this data to the general public.The administrative processes for "blocking" operations from public view (described below) is effective because NAS air traffic surveillance data originates from FAA-controlled radar-based aircraft-surveillance systems.ADS-B data, however, are not subject to the same sort of exclusive control.The ADS-B, as its name suggests, broadcasts data omnidirectionally in plaintext to any receiver within range.Privately-owned inexpensive listening-posts are operated by amateurs and entrepreneurs to form international air traffic surveillance networks that aggregate, record, and display this surveillance data to the world-wide public 22 .The FAA's mandate for universal adoption of ADS-B is complicated by stakeholders' concerns about that system's lack of a robust security model.It has been widely reported that ADS-B is subject to third-party spoofing (false aircraft positionreports) e.g., Greenberg (2012) wrote: "The threat of ADS-B spoofing is of concern to many organizations and altering existing and planned ADS-B infrastructure to prevent such spoofing would require extensive investment in revising existing infrastructure and also changing out ADS-B equipment in existing aircraft." 23lthough there are a number of proposals employing techniques to overcome spoofing, there is no operational plan for mitigation that is both widely-accepted and sufficiently effective.Strohmeier, et al (2015), conclude: "…it seems that the solutions currently under consideration (and in use in practice such as multilateration) can only be a fill-in, providing a quick improvement to the security of the current system." 24everal studies have expressed concern about the privacy and security of ADS-B unencrypted "plaintext" broadcasts 25,26,27 .One study suggested: "…without appropriate countermeasures, critical air traffic management decision processes should not rely on ADS-B derived data." 28he FAA has announced that it will provide air traffic control services exclusively to aircraft equipped with ADS-B by 2020, though the regulations will allow aircraft to operate in an "anonymous" ADS-B mode.Air traffic services, however, will not be provided to aircraft who attempt to either operate ADS-B in "anonymous" mode or to disguise their identity. 29Though some military missions may not require civilian air traffic services, most other military aircraft and the vast majority of corporate flights do require ATC services.These unresolved issues complicate the adoption of ADS-B by military and corporate aircraft operators.These stakeholders express concern about broadcasting their positions every second in plain text, thus compromising present levels of operational privacy and security.The uncertainties regarding these stakeholders' participation in the ADS-B Mandate has a direct effect on a wide range of the FAA's Next Generation (NextGen) Air Traffic Control modernization and automation programs.Many of the NextGen systems are premised on ADS-B usage in the NAS, and so nonadopting aircraft may not be recognized by NextGen systems, and this particular form of data-loss often egregiously degrades their performance.For instance, in 2018 the U.S. Government Accountability Office reported that in the absence of security assurances by the FAA, the Department of Defense (DOD): "… had not taken significant action or fully implemented … Integrating NextGen requirements into plans and policies … did not integrate the needs and requirements of DOD components related to ADS-B into cohesive plans and policies for inclusion in NextGen joint planning and development, as directed by the Deputy Secretary of Defense in 2007….the DOD Mid-Term NextGen Concept of Operations and the DOD Mid-Term NextGen Implementation Plan do not discuss planning for ADS-B Out requirements, which are critical to NextGen Military Aircraft Tracking." 30lthough there are a number of proposals and designs for hardening ADS-B systems, none have been approved for implementation in the NAS.Some of the factors complicating a decision to choose an ADS-B security architecture include the difficulties in establishing universally accepted Client-Server standards that will support an equivalent of a Public-Key/Private-Key Infrastructure (PKI).As yet (2018 Nov.), the aviation industry has not adopted any standard method for this purpose, nor has the FAA and DOD developed procedural or engineering support for these security and privacy issues.The recent U.S. Accountability Office report strongly recommends solutions: "address operations, physical, cyber-attack, and electronic warfare security risks; and risks associated with divesting secondary-surveillance radars.The solution or mitigations should be approved as soon as possible." 31
+Military Issues 1. NAS Military OperationsA characterization of the military and civil aviation data subset (published for the first time in this paper) provides a basis for estimating the participation and impact of these aircraft in the NAS.This derived from a data sample from the 20 Air Route Traffic Control Centers (ARTCCs) which cover the continental United States (CONUS).These data were collected from January 1 to Nov 22 (inclusive), 2016.On a typical day in the CONUS well over a thousand unique military flights were recorded squawking Mode-C transponder data, and on some days over 2,000 such flights were recorded.This represents an average of ~4% of the total amount (~33,000) of all filed flights in CONUS Class A Airspace.On any given day, military operations represent between 6.4% and less than %1 of the total number of flights, with a standard deviation of 1.7%.However, the impact of military flights on civil aviation is partially mitigated by geographical separations between these two populations.Military flights that fly on their own route structures and within special use airspaces will consume less civil airspace and route resources than equivalent quantities of corporate operations, since the latter share these resources with commercial and other civilian operators.FAA air traffic control radar surveillance systems routinely capture documentary data on a wide variety of military operations in the NAS, including: Bomber patrol; UAS border patrols (including The military has a valid operational requirement for maintaining the privacy of the trackhistories (e.g.position and state reports) of these flights, and so may object to mandated plaintext ADS-B broadcasts.
+Controlled Unclassified InformationMilitary aircraft traffic data are considered, at minimum, Controlled Unclassified Information (CUI), and more specifically is referred to as Department of Defense (DoD) "Critical Infrastructure Security Information," defined as: "Information that, if disclosed, would reveal vulnerabilities in the DoD critical infrastructure and, if exploited, would likely result in the significant disruption, destruction, or damage of or to DoD operations, property, or facilities …." 32 Considering the variety and nature of military missions described above and the sensitivity of air traffic data, the military requirement for confidentiality is likely to remain decisive in their adoption and use of ADS-B. 33
+Civilian Aviation Concerns 1. NAS Corporate OperationsThe 11-month sample of traffic from the 20 CONUS ARTCCs mentioned in the above NAS Military Operations was analyzed with a filter based on the "SCBlockAtIndustry" list employed by the FAA to identify aircraft approved for privacy procedures (as explained in Aircraft Situation Display to Industry, below).This sample shows that in an average 24-hour period there were ~33070 filed flight plans, and an average of 1444 of those were "blocked" aircraft.This analysis therefore identifies an average of 4.37% of the total number of non-military aircraft that would be shielded from public view on a typical day.Though this number is just slightly larger than the number of daily CONUS military flights, the impact of these civilian aircraft (particularly corporate business jets) is far greater on NAS resources, since all civilian aircraft must share the same civil airspace and routes, whereas military flights often use other options.
+Aircraft Situation Display to Industry (ASDI)The FAA currently makes aircraft surveillance data available to the public via the Aircraft Situation Display for Industry (ASDI) program.The ASDI data are derived from the FAA Traffic Flow Management System (TFMS), which collects filed flight plans, amendments, and oneminute-update radar-based position reports from all ARTCCs.The TFMS data is primarily used for Traffic Flow Control application and therefore includes all aircraft tracked in every Center, including military and corporate.The FAA first filters and deletes the military CUI data from TFMS data, and the remaining data covers all non-military aircraft tracked by the FAA's Centers.Since the FAA's process for Identification and Protection of military flights does not filter non-military aircraft, the FAA has instituted a separate process called Blocked Aircraft Registration Request (BARR) to remove approved privately-owned aircraft from ASDI publication.This civilian aircraft population includes corporate operators who would prefer to keep their activities private for a number of valid reasons, including prevention of corporate espionage by competitors who are motivated to track the movements of executives.The FAA has therefore instituted BARR procedures for "blocking" such sensitive data from publication via ASDI, offering aircraft operators two methods for "blocking": 34 1) ASDI Subscriber Level Blocking: The FAA sends data to ASDI providers in a manner that can only be accessed by authorized users (aka "subscribers").This method enables subnets of "subscribers" to share information about their own aircraft among themselves and with air traffic services and yet remain hidden from public view.Subscriber Level Blocking is often used by corporate aircraft owners who want to keep operations private from the public, and especially from their competitors, though they may want their support services and other associates to track their movements in near-real-time.2) FAA Source Blocking: FAA blocks the data at the source, such that ASDI providers never receive the information on these aircraft.The FAA's Performance Analysis organization maintains the list of the ~19,000 civil aircraft that are blocked from ASDI publication.This list is available to authorized entities (e.g., FAA, NASA, DoD) in a text file that is maintained on the FAA System-wide Information Management Aeronautical Data Exchange website. 35The "SCBlockAtIndustry" file is updated monthly, and the FAA sends notifications to authorized parties each month when new versions are posted.
+ADS-B Cryptography Prior ArtFinke, et al (2012) 36 proposed that an algorithm called "FFX" (an acronym meant to suggest: Format-preserving, Feistel-based encryption) 37 would be a good fit for ADS-B application because it is both secure and computationally efficient.This efficiency may enable software based on the FFX algorithm to run on the same internal processor(s) that are used in current ADS-B hardware. 38Finke, et al, propose several scenarios for distributing the encryption keys, although they identify these key exchanges as a potential stumbling block to their (and other) ADS-B security schemes, concluding: "The primary obstructions concerning implementation, however, relate to key management and distribution."Lee, et al, and others have proposed to address these key-distribution problems by using variations of PKI to exchange a symmetric key that can be used to encrypt ADS-B messages. 39An outstanding issue in most of these PKI schemes is the difficulty of implementing the public key framework in a manner that can be utilized by aircraft in flight.A key challenge to implementing an aviation-oriented PKI infrastructure concerns issues of allowing and managing participants' access to information that is distributed by centralized data service systems.Most PKI infrastructures have similar end user requirements defined in PKI Certification Authority (CA) Practice Statements issued by a central authority.Although there are alternatives to centralized CA organization, they may be characterized by the observations of Ferguson & Schneier: "PGP has its own strange PKI-like structure called the web of trust.In practice, it is too complicated to explain to users, and it is only used on a limited scale." 40he practical organizational requirements for end user participation in most PKI systems puts a very large impediment to adoption and maintenance.If, for instance, we envisioned a new set of potentially expensive technical training and operational requirements that all aero end users (e.g.airlines) must adopt as a precondition to participation in a PKI infrastructure for aviation, then we may expect the expense and complication of such new mandates would create potent obstructions to adoption.The employment of enterprise-oriented blockchain technology offers a potential solution to overcoming these practical difficulties in establishing an "on-ramp" for aircraft to join an ABI network.A virtue of theses blockchain schemas is that they enable implementation of a PKI infrastructure in which end users are not required to belong to any single organization, or adhere to any single client/server protocol, and therefore end users are not burdened with the kinds of server-based PKI requirements and impediments described above.In summary, previous work has identified ADS-B security, privacy, and authentication vulnerabilities; and recognized the potential of using PKI to distribute symmetrical keys, enabling efficient encryption and decryption of ADS-B messages.
+III. Concept of OperationThis paper will present a design that addresses these ADS-B vulnerabilities via a novel blockchain-based PKI for aviation surveillance application.We propose to use a "lightly permissioned" Blockchain framework to enable the ADS-B systems to meet or exceed the same levels of privacy and security currently provided by radar-based systems in the NAS.The ABI is based on a software platform that is primarily designed to support use-cases where some data are permissible to be shared among all participants, while other data are protected and only observable by selected entities under the appropriate conditions.Figure 1 illustrates several goals of the theory of operation for purposes of near-future air traffic management, e.g., military aircraft may withhold their information from any other non-military entities (except ATC).Corporate and industrial aircraft may want to prevent business competitors from observing their operations, while still enabling their supporting aviation operations services (AOS) to track them.An Uncrewed Aviation System (UAS) may also similarly refrain from sharing their information with the public, while remaining in communication with their own AOS providers.Most general aviation and airline traffic may opt to make their flight information public, in a manner similar to the current levels of privacy offered by ASDI, though more robustly resistant to spoofing.Although this paper focuses primarily on issues relating to operational privacy, it should also be noted that the design and implementation methods (described below) could also be used to enable ADS-B systems that broadcast in plaintext to include an identifying cryptographic token that could be embedded in the transmission and could be used to authenticate the transmission, and therefore could effectively counter malicious and pernicious "spoofing" and denial-of-service attacks.
+IV. Methods and MaterialsBlockchain Channels, Subnets, and Smart Contracts The ABI described in this paper is based on an open source blockchain platform called "Hyperledger Fabric" 41 that is specifically designed for enterprise transactions that resemble typical air traffic management interactions.Hyperledger Fabric also provides services called "private channels" as a means to communicate private information at a comparatively high bandwidth.These private channels may be used to pass a private key (or time-key data structure) suitable for encrypting ADS-B Out transmissions between any specific aircraft and any particular authorized member in accordance with the terms of the smart contracts associated with the particular private channel (and subnet).The use of cyphertext enables ADS-B users to maintain privacy and anonymity from general public while also providing a secure and efficient method for communication with authorized entities, such as Air Traffic Services or Airline Operations Services.Aircraft operating a Traffic Alert and Collision Avoidance System (TCAS) should also receive ADS-B information in a form that may be used within the system requirements to avoid loss of separation.The precise method for inter-aircraft communication was not fully modeled the ABI prototype code, however, and the algorithmic solution to this issue must be fully solved in a manner that is acceptable to the aviation community as a precondition for operational use of an ABI implementation.Theoretically, many blockchain system implementations grant members the power to conduct private and confidential transactions while coexisting with restricted members on the same blockchain network. 42Controlling members define one or more channels to isolate peers into subnets and create private ledgers.Each channel's ledger is only accessible to its member peer nodes.The channel's organizations (entities) must approve each peer's membership to the channel.Client requests are routed to a specified channel to run a smart contract that is deployed on that channel.The results are endorsed and verified, and then updated in that channel's ledger.Channels are used for conducting confidential transactions.For example, aircraft state information (e.g., altitude, latitude, longitude, indicated airspeed, heading, etc.) may be kept secure via a private channel, while the public aspects of the aircraft's flight plan information (e.g., aircraft id --aka callsign, aircraft type and equipage, origin, destination, filed route of flight, etc.) may be published on a channel that's open to all approved members.
+Blockchain Platform Design: Enterprise vs. "Coin" Use-CasesA variety of different Blockchain platform technologies are currently available.Typically, a platform is primarily characterized by the token blockchain, as opposed to the underlying technology that implements the project platform.The most popular is Ethereum, a blockchain platform designed to implement decentralized applications called smart contracts. 43thereum claims a >80% market share, followed by other platforms, including (in order of market share popularity): Waves, Bitcoin Fork, Stratis, Graphene, Hyperledger, Ethereum Classic, Maidsafe, Litecoin Fork, NEO, and Rootstock.44 All of the above platforms were designed to support "coin" (monetary) applications, and although non-monetary contracts and communications may be accomplished, the implementations often lack cohesion, flexibility, and consistency due to the platforms' design limitations.The design limitations of these "financial tech" ("fintech") foundations have prompted the development of an alternative blockchain foundation that is better suited for transactions and communications that cater to the requirements of business use-cases.The Linux Foundation, in association with a number of corporations (e.g., IBM, Oracle) hosts a number of open-source "Hyperledger" projects.One of these projects, "Hyperledger Fabric," is a blockchain framework implementation designed for commercial enterprise applications, and is intended as a development foundation with a modular architecture that allows plug-and-play components.These applications, usually called "smart contracts" in other blockchain platforms are called "chaincode" in Hyperledger Fabric parlance. 45,46 perledger Fabric features a number of distinctive design innovations intended to differentiate it from "fintech" systems and make it more versatile and appropriate for enterprise transactions that support air traffic surveillance use-cases.These features include: permissioned membership, consensus management, private channels and contracts, decentralized implementation, fullfeatured computer-languages used in chaincode, and open source code that may be modified to meet air traffic surveillance requirements (e.g.implementing high-speed channels to meet system transport-delay constraints).The Hypertext Fabric platform was chosen among the other alternatives because it conforms more closely to requirements that were identified for provision of systemic remedies to ADS-B security issues.For instance, most fintech platforms are characterized as networks available to the public that allow unknown identities to participate, with few hard-engineered provisions for a permission management process.The "proof of work" (PoW) protocols employed in these platforms to establish consensus are required precisely because these networks are open permissionless systems populated by participants with unknown identities.Fabric's seminal difference from these systems is that it is an explicitly private and permissioned Distributed Ledger Technology (DLT) platform that is specifically designed for enterprise services.Specific features of this "permissioned" platform are designed to meet practical enterprise usecase requirements for near-real-time transactions between securely identified participants.These features include: 1) Participants must be identified/identifiable; 2) Networks are required to be permissioned; 3) High transaction throughput performance; 4) Low latency of transaction confirmation; 5) Authentication, privacy and confidentiality of tracking and communication between clients (e.g.aircraft) and providers (e.g.air and services) is consistently supported.All members of a Fabric network are required to enroll through a trusted Membership Service Provider (MSP).The "enrollment" protocols provide capabilities that enable greater flexibility in consensus management.Whereas most coin-oriented ledger platforms employ Byzantine Fault Tolerant (BFT) methods to determine consensus, another distinct design feature of Fabric that differentiates it from other "permissioned" platforms (i.e., that it particularly appropriate for air traffic surveillance applications) is its support for alternative consensus protocols 47 , such as Crash Fault Tolerance (CFT), that are both more computationally efficient and practical for many transactional uses-cases.Fabric's consensus protocol flexibility allows for parallel code execution, effectively increasing system-wide performance and eliminating vulnerabilities caused by non-determinism, and therefore Fabric does not require specialized domain-specific languages (DSL) for smart contract coding to preserve the reliability of the network.Fabric therefore differs from DSL-constrained platforms by supporting smart contracts ("chaincode") implemented in general-purpose programming languages such as Node.js,Python, Java, and Go (aka "golang").Furthermore, every execution of a smart contract in most DSL-based systems is "public" since the transaction, and often the source code itself, are usually fully visible by other participants.This "public" feature of DSL implementations often complicates or impedes exchange of private data and private (algorithmic) agreements between participants.Many use-cases require subgroups of participants to share information that is kept private from other participants.Fabric achieves such confidentiality by using its channel architecture to restrict the distribution of confidential information exclusively to authorized nodes.The Hyperledger Fabric platform provides for a standardized PKI infrastructure that may provide identity management for aircraft operators who will acquire a PKI-supplied synchronous cypher ("key").The key will enable transmission of ADS-B data to Air Traffic, other selected services, and nearby aircraft in an encrypted format ("cyphertext").The ADS-B data will be received and authenticated by participants who share knowledge of the key.The privacy of the aircraft, or ADS-B data, is maintained by the encryption of the beacon messages.In the context of air traffic use-cases, one of the principal engineering challenges would be the issue of the "on-ramp," i.e. the method that participants (e.g., aircraft operators) use to gain entry to this "permissioned" system.The "on-ramp" method must operate over a wide geographic area, potentially globally.Previous PKI methods have been complicated and sometimes compromised by confusing variations in organizational and international computational conventions.In the following example we describe prototype software employing Hyperledger Fabric that demonstrates the capacity to meet the ADS-B authentication and privacy objectives described above.The software was developed on a Dell 7720 laptop running Red Hat Enterprise Linux (RHEL) 7.5.The chaincode was written in the "go" language and was typically run inside Docker 48 "containers".
+V. Description of PrototypeThe aircraft-PKI-onramp issue is addressed through the Hyperledger Fabric Certificate Authority (CA), which provides features for registration of digital identities, and the issuance, renewal, and revocation of Enrollment Certificates (ECerts).These are (most commonly) X.509 standard cryptographically validated digital certificates.All communication to the CA server is accomplished via secure Representational State Transfer (REST) application program interfaces (API), as specified in a JavaScript Object Notation (JSON) configuration file.The Fabric CA is a private Root CA capable of providing and managing its own certificates as well as (optionally) using third-party public/commercial CA (e.g., Symantec, GoDaddy, DigiCert) to provide identification.The Fabric Membership Service Provider (MSP) uses the enrollment CA ECerts to define members of functional organizations, roles, and access privileges.The Fabric CA is designed to be used as the Root CA node in conjunction with Intermediate CAs running on peer nodes.These peer nodes are architected to be far-flung geographically and still maintain identity-management processing efficiency.The connections and various means and methods that peer nodes may use to accept input from aircraft operators, air traffic management services, and other users, are heterogeneous and may vary greatly in local implementations.Once a participant is "Enrolled" into a defined Membership, however, the modes of communication are well-defined by Fabric standards.All blockchain network peer nodes hold copies of ledgers and chaincode (aka smart contracts).Most of these platforms require all nodes to hold essentially identical ledgers, which contain an immutable record of every transaction from every member.Fabric's privacy-oriented design differs from this design (exemplified by Bitcoin), and allows private chaincode relationships between any two (or more) members and multiple ledgers into private data collections.Fabric "Membership" conveys permissions to transact with other "members" through their private data collections.A single enrolled Identity may be a Member of several different Fabric organizations, and many different relationships and transactions may be defined in chaincode.In the prototype, all simulated aircraft digital identities (created by a Fabric CA for test purposes) were enrolled by default as Members of the Air Traffic Management Services (ATMS) organization.All simulated ADS-B data from each of the aircraft Members were sent to ATMS by default, with no editing or redaction.This rule represents the requirement of real-world ATMS for uncensored air traffic surveillance.Each aircraft creates its own ledger, viewable only by itself and ATMS.The ATMS creates a ledger of all ADS-B transmissions from all aircraft, and it is the only Member with permission to access, so ATMS "knows" about all aircraft, though the aircraft only "know" about its own history.The prototype also has an organization for Military ATMS (MATMS), representing a simplified abstraction of ground-based support services for military aircraft.The simulated flight plan "aircraft type" value was used by the software to detect aircraft operated by the U.S. Military, and each of these was enrolled in Membership to the MATMS organization, in addition to the default ATMS org.The MATMS chaincode resembles the ATMS contracts: ledgers are kept for each military aircraft, accessible only by that particular aircraft and the MATMS.Each simulated "military" aircraft receives a lightweight crypto synchronous cypher that was shared between the aircraft, ATMS, and MATMS.The cypher can be used to encrypt ADS-B data and broadcast its cyphertext from the aircraft, while ATMS and MATMS could use it to authenticate the data as originating from the only aircraft that should be in possession of the cypher-key.Several organizations representing airlines were also simulated.If the first three characters of an aircraft's ID (aka "callsign") matched one of these "airline" organizations (e.g."AAL," "DAL") then private ledgers were created, again with permissions for aircraft and "airline" to access only the ledge of its own messages, and the "Airline" organization possessing exclusive access of all the flight information from the simulated aircraft it "owned" in its cumulative ledger.There is no presumption that Airlines will encrypt their aircraft data, since they currently transmit ADS-B in plaintext.Organizations representing corporate aircraft ground-services were simulated.These functioned similarly to the "Airline" organizations (selected by callsign-matching to corporate aircraft "inventory" lists), again creating individual ledgers for aircraft and cumulative ledgers for all aircraft associated with each "corporation."These aircraft would be processed similarly to the Military in real-world scenarios: Corporate aircraft could maintain privacy by broadcasting encrypted ADS-B, interpretable only by ATMS and their own support service organizations.Neither Military nor Corporate ADS-B could be detectable by conventional ADS-B receivers unless the aircraft operators decided to intentionally transmit the data in plaintext.Another class of ledger contained data only from the simulated cumulative Airline traffic and the civil (non-corporate) aircraft.The algorithm, which is simplistic for demonstration purposes, used to select these latter aircraft was: 1) "N" prefix in their callsign; and 2) that callsign is not in lists of "corporate" aircraft inventory organizations.This ledger was therefore a representation of air traffic data that is nominally available to the public, and is therefore the ledger of the "Aircraft Situation Display to Industry" (ASDI) organization.The ASDI ledger is accessible by everyone, and may be published with impunity inside and outside the Hyperledger Framework.The last type of ledger and accompanying chaincode represented aircraft-to-aircraft communication suitable for TCAS applications.This portion of the prototype was left as "toy" code, insofar as the algorithmic method for passing identities between aircraft that were within three nautical miles of each other was implemented in a manner too simplified for operational use.In real-world applications these various ledgers would be routinely archived to conserve massstorage resources, since there is little need to store historical data on operational ATM systems.This ability to archive obsolete transactions is another differentiator between Fabric and "financial tech" blockchain platforms which require storage of constantly-growing ledger files, making maintenance of a Fabric-based ABI more practical for aviation use-cases.
+Concluding RemarksThis paper's proposes to leverage an industrial-strength open-source enterprise-blockchain framework called Hyperledger Fabric to demonstrate potential solutions to vexing technical issues that threaten the adoption of ADS-B by Military, Corporate, and other aircraft operators who do not want their operations and movements discernable by the general public.This approach is intended to contribute to an eventual systemic solution for the privacy management requirements of ~9% of CONUS flights (~4.4% Corporate; ~4.2% Military).These flights are currently not visible to the public.These two stakeholders' privacy concerns may complicate their adoption of the FAA mandate for full ADS-B (plaintext transmission) operation by 2020.Although this approach is not perfected, it is based on available technology.The prototype chaincode demonstrates methods that may be used to create and maintain a permissioned ledgerbased network that could contribute to the solution to maintaining privacy for NAS stakeholders.The Hyperledger Fabric software was selected as the platform for our prototype because it is designed as to meet Enterprise requirements transactional use-cases, including Root Certification Authorization (CA) mechanisms that provide robust features for security and authentication.One of the features that was not completed was the scheme for guaranteed reception by each aircraft's Traffic Alert and Collision Avoidance System and Cockpit Display of Traffic Information of all nearby aircraft ADS-B transmissions, regardless of whether they may be encrypted or in plaintext.This is a non-trivial problem and should be designed, coded, demonstrated, and evaluated before this scheme may be judged sufficient for operational use.The most interesting next steps may be the development and demonstration of ADS-B modifications (hopefully largely restricted to software running on the ADS-B processors) that might enable an end-to-end demonstration of a practical ADS-B usage model that satisfies the privacy concerns of military and corporate stakeholders.into bordering nations); Fighters and interceptors; Training, including: Combat Aviation Support, Command/Control/Communications & Intelligence, Service Support, Combat Air Assault, Search & Rescue, Ordinance (e.g.bombing practice), Tactical experimentation & modification (indicating strategic evolution); Air Transport, including: Troop and materiel movement, Mission Support, Military Air Routes (geographically separated from civilian routes; see above).
+Figure 1 .1Figure 1.Notional design of blockchain-mitigated channels of communication.Chaincode (aka 'Smart Contracts') routes the information appropriately between aircraft and the ground-based ATM and other support services.
+		
+		
+
+			
+AcknowledgementsThe author thanks those who contributed in various ways to this study, including: W. Blacker of the FAA BARR Program; M. Ma, L. Bagasol, J. Cisek, and the FAA WJH Technical Center for maintaining the NAS research data base; M. Grey, S. Bunyan and J. Cheng, et al, for systems support; and J. Saucedo, G. Gilmore, B. Behlendorf, and W. Diffie for constructive criticism.
+			
+
+			
+
+				
+
+
+	
+		Full Issue Download Vol. 13 No. 1 2021 The Importance of the Measurement Infrastructure in Economic Recovery from the COVID-19 Pandemic Richard J. C. Brown , Fiona Auty, Eugenio Renedo, Mike King NCSLI Measure | Vol. 13 No. 1 (2021) | doi.org/10.51843/measure.13.1.1 Publisher NCSL International | Published February 2021 | Pages 18-21 Abstract: This paper describes the many, evidenced-based benefits to the economy of a well-developed measurement infrastructure. In particular, it explains how assuring confidence in measurement may be used to accelerate economic recovery from the COVID-19 pandemic including in emerging sectors such as the digital economy. Recommendations are made for providing near term support for national economic recovery whilst also demonstrating the advantages of sustained development of the measurement infrastructure in the medium-term to maximize the potential of future innovative and disruptive technologies. These recommendations, whilst focused on consideration of the UK, should apply globally. References: [1] G. Tassey, "Underinvestment in public good technologies," J Technol. Transfer, Vol. 30, pp. 89-113, 2004. https://doi.org/10.1007/s10961-004-4360-0 [2] M. King, and E. Renedo, "Achieving the 2.4% GDP target: The role of measurement in increasing investment in R&D and innovation," NPL Report IEA 3, NPL, Teddington, UK, March 2020. [3] M. King and G. Tellett, "The National Measurement System: A Customer Survey for Three of the Core Labs in the National Measurement System," NMS Customer Survey Report 2018, NPL Teddington, UK, April 2020 [4] H. Kunzmann, T. Pfeifer, R. Schmitt, H. Schwenke, and A.Weckenmann, "Productive metrology-adding value to manufacture," CIRP Annals, vol. 54, pp. 155-168, 2005. https://doi.org/10.1016/S0007-8506(07)60024-9 [5] N. G. Orji, R. G. Dixson, A. Cordes, B. D. Bunday, and J. A. Allgair, "Measurement traceability and quality assurance in a nanomanufacturing environment," Instrumentation, Metrology, and Standards for Nanomanufacturing III, Proceedings Vol. 7405, 740505, August 2009. https://doi.org/10.1117/12.826606 [6] Belmana, Analysis for Policy "Public Support for Innovation and Business Outcomes," Belmana: London, UK, 2020. [7] R. Hawkins, Standards, systems of innovation and policy in Handbook of Innovation and Standards. Cheltenham, UK: Edward Elgar, 2019. [8] N. Nwaigbo, and M. King, "Evaluating the Impact of the NMS Consultancy Projects on Supported Firms (Working Paper)" NPL, Teddington, UK, 2020. [9] M. King, R. Lambert, and P. Temple, Measurement, standards and productivity spillovers in Handbook of Innovation and Standards. Cheltenham, UK: Edward Elgar, 2017, p. 162. https://doi.org/10.4337/9781783470082.00016 [10] A. Font, K. de Hoogh, M. Leal-Sanchez, D. C. Ashworth, R. J. C. Brown, A. L. Hansell, and G. W. Fuller, "Using metal ratios to detect emissions from municipal waste incinerators in ambient air pollution data," Atmos. Environ., vol. 113, pp. 177-186, July 2015. https://doi.org/10.1016/j.atmosenv.2015.05.002 [11] S. Giannis, M. R. L. Gower, G. D. Sims, G. Pask, and G. Edwards, "Increasing UK competitiveness by enhancing the composite materials regulatory infrastructure," NPL Report MAT 90, NPL, Teddington, UK, October 2019. [12] HM Government, UK Research and Development Roadmap, BEIS, London, July 2020. [13] M. R. Mehra, S. S. Desai, F. Ruschitzka, and A. N. Patel, "Hydroxychloroquine or chloroquine with or without a macrolide for treatment of COVID-19: a multinational registry analysis," Lancet, 2020, https://doi.org/10.1016/S0140-6736(20)31180-6 (Print: ISSN 1931-5775) (Online: ISSN 2381-0580) ©2021 NCSL International Smart Power Supply Calibration System Iraj Vasaeli , Brandon Umansky NCSLI Measure | Vol. 13 No. 1 (2021) | doi.org/10.51843/measure.13.1.2 Publisher: NCSL International | Published February 2021 | Pages 22-27 Abstract: This paper details the development of an automated procedure to conduct calibrations of power supplies at Jet Propulsion Laboratory, California Institute of Technology (JPL). The fundamentals of power supply calibrations are given, and discussion on the method by which this custom software handles that calibration. Additionally, this technique provides real time uncertainty quantification of the calibrations. This automated system has demonstrated a time savings over existing automated techniques in use today. References: [1] Keysight, "Low-Profile Modular Power System Series N6700 Service Guide", Part Number: 5969 2938, Edition 7, January 2015. [2] B. N. Taylor and C. E. Kuyatt, "Guidelines for Evaluating and Expressing the Uncertainty of NIST Measurement Results", NIST Technical Note 1297, 1994. https://doi.org/10.6028/NIST.TN.1297 [3] JCGM, "Evaluation of measurement data - Guide to the expression of uncertainty in measurement," first edition (GUM 1995 with minor corrections)," JCGM 100, 2008. (Print: ISSN 1931-5775) (Online: ISSN 2381-0580) © 2021 NCSL International Computer Aided Verification of Voltage Dips and Short Interruption Generators for Electromagnetic Compatibility Immunity Test in Accordance with IEC 61000-4-11: 2004 + AMD: 2017 Hau Wah Lai , Cho Man Tsui , Hing Wah Li NCSLI Measure | Vol. 13 No. 1 (2021) | doi.org/10.51843/measure.13.1.3 Publisher: NCSL International | Published February 2021 | Pages 28-39 Abstract: This paper describes a procedure and a computer-aided system developed by the Standards and Calibration Laboratory (SCL) for verification of voltage dip and short interruption generators in accordance with the international standard IEC 61000-4-11:2004+AMD1:2017. The verification is done by calibrating the specified parameters and comparing with the requirements stated in the standard. The parameters that should be calibrated are the ratios of the residual voltages to the rated voltage, the accuracy of the phase angle at switching, and the rise time, fall time, overshoot and undershoot of the switching waveform. A specially built adapter is used to convert the high voltage output waveforms of the generators to lower level signals to be acquired by a digital oscilloscope. The other circuits required for the testing are also provided. In addition, the paper discusses the uncertainty evaluations for the measured parameters. References: [1] T. Williams, and K. Armstrong, "EMC for Systems and Installations Part 6 - Low-Frequency Magnetics Fields (Emissions and Immunity) Mains Dips, Dropouts, Interruptions, Sags, Brownouts and Swells," EMC Compliance Journal, August 2000. [2] M.I. Montrose, and E. M. Nakauchi, Testing for EMC Compliance: Approaches and Techniques, Wiley Interscience, 2004. https://doi.org/10.1002/047164465X [3] International Standard IEC 61000-4-11:2004+AMD1:2017:Electromagnetic Compatibility (EMC) Part 4-11: Testing and measurement techniques - Voltage dips, short interruptions and voltage variations immunity tests. [4] Evaluation of measurement data - Guide to the expression of uncertainty in measurement, First Edition JCGM 100:2008. (Print: ISSN 1931-5775) (Online: ISSN 2381-0580) © 2021 NCSL International Validation of the Photometric Method Used for Micropipette Calibration Elsa Batista , Isabel Godinho, George Rodrigues, Doreen Rumery NCSLI Measure | Vol. 13 No. 1 (2021) | doi.org/10.51843/measure.13.1.4 Publisher: NCSL International | Published February 2021 | Pages 40-45 Abstract: There are two methods generally used for calibration of micropipettes: the gravimetric method described in ISO 8655-6:2002 and the photometric method described in ISO 8655-7:2005. In order to validate the photometric method, several micropipettes of different capacities from 0.1 µL to 1000 µL were calibrated using both methods (gravimetric and photometric) in two different laboratories, IPQ (Portuguese Institute for Quality) and Artel. These tests were performed by six different operators. The uncertainty for both methods was determined and it was verified that the uncertainty component that has a higher contribution to the final uncertainty budget depends on the volume delivered. In the photometric method for small volumes, the repeatability of the pipette is the largest uncertainty component, but for volumes, larger than 100 µL, the photometric instrument is the most significant source of uncertainty. Based on all the results obtained with this study, one may consider the photometric method validated. References: [1] ISO 8655-1/2/6/7, Piston-operated volumetric apparatus, 2002. [2] BIPM, International Vocabulary of Metrology, 3rd edition, JCGM 200:2012. [3] George Rodrigues, Bias and transferability in standards methods of pipette calibration, Artel, June 2003. [4] Taylor, et.al. The definition of primary method of measurement (PMM) of the 'highest metrological quality': a challenge in understanding and communication, Accred. Qual.Assur (2001) 6:103-106. https://doi.org/10.1007/PL00010444 [5] EURAMET project 1353, Volume comparison on Calibration of micropipettes - Gravimetric and photometric methods. [6] ASTM E542: Standard Practice for Calibration of laboratory Volumetric Apparatus, 2000. [7] ISO 4787; Laboratory glassware - Volumetric glassware - Methods for use and testing of capacity, 2010 . [8] ISO 13528:2005 - Statistical methods used in proficiency testing by interlaboratory comparisons. [9] BIPM et al, Guide to the Expression of Uncertainty in Measurement (GUM), 2nd ed., International Organization for Standardization, Genève, 1995. [10] EURAMET guide, cg 19, - Guidelines on the determination of uncertainty in gravimetric volume calibration, version 3.0, 2012. [11] E. Batista et all, A Study of Factors that Influence Micropipette Calibrations, Measure Vol. 10 No. 1, 2015 https://doi.org/10.1080/19315775.2015.11721717 [12] www.BIPM.org. (Print: ISSN 1931-5775) (Online: ISSN 2381-0580) © 2021 NCSL International Material Flow Rate Estimation in Material Extrusion Additive Manufacturing G. P. Greeff NCSLI Measure | Vol. 13 No. 1 (2021) | doi.org/10.51843/measure.13.1.5 Publisher: NCSL International | Published February 2021 | Pages 46-56 Abstract: The additive manufacturing of products promises exciting possibilities. Measurement methodologies, which measure an in-process dataset of these products and interpret the results, are essential. However, before developing such a level of quality assurance several in-process measurands must be realized. One of these is the material flow rate, or rate of adding material during the additive manufacturing process. Yet, measuring this rate directly in material extrusion additive manufacturing presents challenges. This work presents two indirect methods to estimate the volumetric flow rate at the liquefier exit in material extrusion, specifically in Fused Deposition Modeling or Fused Filament Fabrication. The methods are cost effective and may be applied in future sensor integration. The first method is an optical filament feed rate and width measurement and the second is based on the liquefier pressure. Both are used to indirectly estimate the volumetric flow rate. The work also includes a description of linking the G-code command to the final print result, which may be used to create a per extrusion command model of the part. References: [1] T. Wohlers, I. Campbell, O. Diegel, J. Kowen, I. Fidan, and D.L. Bourell, "Wohlers Report 2017: 3D Printing and Additive Manufacturing State of the Industry Annual Worldwide Progress Report," 2017. [2] Additive manufacturing -- General principles -- Terminology. Geneva, CH: International Organization for Standardization, 2015. [3] R. Jones et al., "Reprap - The replicating rapid prototyper," Robotica, vol. 29, no. 1 SPEC. ISSUE, pp. 177-191, 2011, https://doi.org/10.1017/S026357471000069X [4] T. Wohlers and T. Gornet, "History of Additive Manufacturing 2017," 2017. [5] S. A. M. Tofail, E. P. Koumoulos, A. Bandyopadhyay, S. Bose, L. O'Donoghue, and C. Charitidis, "Additive manufacturing: scientific and technological challenges, market uptake and opportunities, "Materials Today, vol. 21, no. 1, pp. 22-37, Jan. 2018, https://doi.org/10.1016/j.mattod.2017.07.001 [6] G. Moroni and S. Petrò, "Managing uncertainty in the new manufacturing era," Procedia CIRP, vol. 75, pp. 1-2, 2018, https://doi.org/10.1016/j.procir.2018.07.001 [7] R. Leach et al., "Information-rich manufacturing metrology,"in Eighth International Precision Assembly Seminar (IPAS), 2018, no. January. https://doi.org/10.1007/978-3-030-05931-6_14 [8] S. Moylan, J. Slotwinski, A. Cooke, K. Jurrens, M. A. Donmez, and A. Donmez, "Proposal for a Standardized Test Artifact for Additive Manufacturing Machines and Processes," Solid Freeform Fabrication Symposium Proceedings, pp. 902-920, 2012. https://doi.org/10.6028/NIST.IR.7858 [9] ASME Y14.46-2017 Product Definition for Additive Manufacturing. New York:The American Society of Mechanical Engineers, 2017. [10] H. Li, T. Wang, J. Sun, and Z. Yu, "The effect of process parameters in fused deposition modelling on bonding degree and mechanical properties," Rapid Prototyping Journal, vol. 24, no. 1, pp. 80-92, Jan. 2018, https://doi.org/10.1108/RPJ-06-2016-0090 [11] A. W. Gebisa and H. G. Lemu, "Investigating effects of Fused-deposition modeling (FDM) processing parameters on flexural properties of ULTEM 9085 using designed experiment, "Materials, vol.11, no. 4, pp. 1-23, 2018, https://doi.org/10.3390/ma11040500 PMid:29584674 PMCid:PMC5951346 [12] B. Wittbrodt and J. M. Pearce, "The effects of PLA color on material properties of 3-D printed components," Additive Manufacturing, vol. 8, pp. 110-116, 2015, https://doi.org/10.1016/j.addma.2015.09.006 [13] O. A. Mohamed, S. H. Masood, and J. L. Bhowmik, "Optimization of fused deposition modeling process parameters: a review of current research and future prospects," Advances in Manufacturing, vol. 3, no. 1, pp. 42-53, Mar. 2015, https://doi.org/10.1007/s40436-014-0097-7 [14] S. K. Everton, M. Hirsch, P. Stravroulakis, R. K. Leach and A. T. Clare, "Review of in-situ process monitoring and in-situ metrology for metal additive manufacturing," Materials and Design, vol. 95, pp. 431-445, 2016, https://doi.org/10.1016/j.matdes.2016.01.099 [15] P. K. Rao, J. P. Liu, D. Roberson, Z. J. Kong, and C. Williams,"Online Real-Time Quality Monitoring in Additive Manufacturing Processes Using Heterogeneous Sensors," Journal of Manufacturing Science and Engineering, vol. 137, no. 6, p.061007, Sep. 2015, https://doi.org/10.1115/1.4029823 [16] J. Pellegrino, T. Makila, S. McQueen, and E. Taylor, "Measurement science roadmap for polymer-based additive manufacturing," Gaithersburg, MD, Dec. 2016. https://doi.org/10.6028/NIST.AMS.100-5 [17] T. R. Kramer, F. M. Proctor, and E. Messina, "The NIST RS274NGC Interpreter -Version 3," Gaithersburg, Maryland, 2000. https://doi.org/10.6028/NIST.IR.6556 [18] B. N. Turner, R. Strong, and S. A. Gold, "A review of melt extrusion additive manufacturing processes: I. Process design and modeling," Rapid Prototyping Journal, vol. 20, no. 3, pp.192-204, Apr. 2014, https://doi.org/10.1108/RPJ-01-2013-0012 [19] Conrad Electronic, "Renkforce RF1000 3D Drucker," 2016. https://www.conrad.de/de/renkforce-rf1000-3d-drucker-single-extruder-inkl-software-franzis-designcad-v24-3d-printrenkforce-edition-1007508.html (accessed Sep. 20, 2016). [20] G. Hodgson, A. Ranellucci, and J. Moe, "Slic3r Manual - Flow Math," 2016. http://manual.slic3r.org/advanced/flow-math (accessed Jun. 21, 2016). [21] Repetier, "Repetier-Firmware Documentation." https://www.repetier.com/documentation/repetier firmware/repetier-firmware-introduction/ (accessed Apr. 17, 2018). [22] B. Weiss, D. W. Storti, and M. A. Ganter, "Low-cost closedloop control of a 3D printer gantry," Rapid Prototyping Journal, vol. 21, no. 5, pp. 482-490, Aug. 2015, https://doi.org/10.1108/RPJ-09-2014-0108 [23] R. L. Zinniel and J. S. Batchelder, "Volumetric Feed Control for Flexible Filament," US 6085957, 2000. [24] W. J. Heij, Applied Metrology in Additive Manufacturing. Delft: Delft University of Technology, 2016. [25] G. P. Greeff and M. Schilling, "Closed loop control of slippage during filament transport in molten material extrusion," Additive Manufacturing, vol. 14, pp. 31-38, 2017, https://doi.org/10.1016/j.addma.2016.12.005 [26] G. P. Greeff, Applied Metrology in Additive Manufacturing, vol. 60. Berlin: Mensch und Buch, 2019. [27] G. P. Greeff and M. Schilling, "Comparing Retraction Methods with Volumetric Exit Flow Measurement in Molten Material Extrusion," in Special Interest Group meeting on Dimensional Accuracy and Surface Finish in Additive Manufacturing, 2017, no. October, pp. 70-74. [28] G. P. Greeff and M. Schilling, "Single print optimisation of fused filament fabrication parameters," The International Journal of Advanced Manufacturing Technology, Aug. 2018, https://doi.org/10.1007/s00170-018-2518-4 [29] A. Bellini, S. Güçeri, and M. Bertoldi, "Liquefier Dynamics in Fused Deposition," Journal of Manufacturing Science and Engineering, vol. 126, no. 2, p. 237, 2004, https://doi.org/10.1115/1.1688377 [30] P. Virtanen et al., "SciPy 1.0: fundamental algorithms for scientific computing in Python," Nature Methods, vol. 17, no. 3, pp. 261-272, Mar. 2020, https://doi.org/10.1038/s41592-019-0686-2 PMid:32015543 PMCid:PMC7056644 (Print: ISSN 1931-5775) (Online: ISSN 2381-0580) © 2021 NCSL International Software to Maximize End-User Uptake of Conformity Assessment with Measurement Uncertainty, Including Bivariate Cases. The European EMPIR CASoft Project
+		
+			LRPendrill
+			0000-0003-4349-500X
+		
+		
+			AAllard
+		
+		
+			NFischer
+		
+		
+			PMHarris
+		
+		
+			JNguyen
+		
+		
+			IMSmith
+		
+		10.51843/measure.13.1.6
+		Docket No. FAA-2007-29305; Amdt. No. 91-314] RIN 2120-AI92
+		
+	
+	
+		NCSL International measure
+		NCSLI Measure
+		
+			13
+			1
+			
+			May 28, 2010. 30 April 2018. 666e318c1f474d81b&node=se14.2.91. 30 April 2018
+			NCSL International
+		
+	
+	_1225&rgn=div8 and. gp=&SID=92976e93abb3045a3360432d29325bb5&mc=true&r=SECTION&n=s e14.2.91_1227
+	Federal Register, Vol. 75, No. 103, DEPARTMENT OF TRANSPORTATION Federal Aviation Administration 14 CFR Part 91 [Docket No. FAA-2007-29305; Amdt. No. 91-314] RIN 2120-AI92 Automatic Dependent Surveillance-Broadcast (ADS- B) Out Performance Requirements To Support Air Traffic Control (ATC) Service Final Rule. May 28, 2010, URL: https://www.gpo.gov/fdsys/pkg/FR-2010-05-28/pdf/2010-12645.pdf [cited 30 April 2018] 2 US Code of Federal Regulation, Title 14: Aeronautics and Space, PART 91 -GENERAL OPERATING AND FLIGHT RULES, Subpart C-Equipment, Instrument, and Certificate Requirements, §91.225 Automatic Dependent Surveillance- Broadcast (ADS-B) Out equipment and use. & §91.227 Automatic Dependent Surveillance-Broadcast (ADS-B) Out equipment performance requirements, URL: https://www.ecfr.gov/cgi-bin/text-idx?SID=8137158693744ba666e318c1f474d81b&node=se14.2.91_1225&rgn=div8 and: URL: https://www.ecfr.gov/cgibin/retrieveECFR?gp=&SID=92976e93abb3045a3360432d29325bb5&mc=true&r=SECTION&n=s e14.2.91_1227 [cited 30 April 2018]
+
+
+
+	
+		Activity Identification using ADS-B data at General Aviation Airports
+		
+			JohnCroft
+		
+		10.2514/6.2021-2956.vid
+	
+	
+		Aviation Week and Space Technology
+		
+			American Institute of Aeronautics and Astronautics (AIAA)
+			
+			23
+		
+	
+	Croft, John, "General Aviation May Not Meet FAA ADS-B Mandate For 2020," Aviation Week and Space Technology, 23
+
+
+
+	
+		Addressing shared vulnerabilities and risks in Asia and the Pacific
+		
+			BillCarey
+		
+		10.18356/995c7ef3-en
+		
+	
+	
+		Aerospace Daily & Defense Report
+		
+			Jan 25. 2018
+			United Nations Publications
+		
+	
+	cited 3 Dec. 2018] 5
+	Carey, Bill, "GAO: Pentagon, FAA Lag In Addressing ADS-B Risks," Aerospace Daily & Defense Report, Jan 25, 2018. URL: http://aviationweek.com/awindefense/gao-pentagon-faa-lag-addressing-ads-b-risks [cited 3 Dec. 2018] 5
+
+
+
+	
+		What is the Answer to Business Aviation's ADS-B Privacy Concern?
+		
+			WBellamy
+		
+		
+		
+			October-November, 2018
+		
+	
+	Avionics International. cited 3 Dec. 2018
+	Bellamy, W., "What is the Answer to Business Aviation's ADS-B Privacy Concern?" Avionics International, October- November, 2018. URL: http://interactive.aviationtoday.com/avionicsmagazine/october-november-2018/what-is-the-answer-to- business-aviations-ads-b-privacy-concern/ [cited 3 Dec. 2018]
+
+
+
+	
+		Privacy of future air traffic management broadcasts
+		
+			KrishnaSampigethaya
+		
+		
+			RadhaPoovendran
+		
+		10.1109/dasc.2009.5347456
+		
+	
+	
+		2009 IEEE/AIAA 28th Digital Avionics Systems Conference
+		Orlando, FL
+		
+			IEEE
+			October 25-29, 2009. 30 April 2018
+		
+	
+	Sampigethaya, K., and Poovendran,R., "Privacy of future air traffic management broadcasts, Digital Avionics Systems Conference,". 28th Digital Avionics Systems Conference, Orlando, FL, October 25-29, 2009. URL: https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=5347456 [cited 30 April 2018]
+
+
+
+	
+		AIR-130) Advisory Circular
+		
+			Faa
+		
+	
+	
+		Airworthiness Approval of Automatic Dependent Surveillance -Broadcast
+		
+			ADS-B
+		
+	
+	FAA (AIR-130) Advisory Circular, "Airworthiness Approval of Automatic Dependent Surveillance -Broadcast (ADS-B)
+
+
+
+	
+		Origins of AC Line Disturbances
+		10.1201/9781315222028-16
+		
+	
+	
+		AC Power Systems Handbook
+		
+			CRC Press
+			2010 May 10. 30 April 2018
+			
+		
+	
+	Out Systems," AC No: 20-16, 2010 May 10, URL: http://www.faa.gov/documentLibrary/media/Advisory_Circular/AC%2020- 165.pdf [cited 30 April 2018]
+
+
+
+	
+		Security analysis of the ADS-B implementation in the next generation air transportation system
+		
+			DonaldMccallie
+		
+		
+			JonathanButts
+		
+		
+			RobertMills
+		
+		10.1016/j.ijcip.2011.06.001
+	
+	
+		International Journal of Critical Infrastructure Protection
+		International Journal of Critical Infrastructure Protection
+		1874-5482
+		
+			4
+			2
+			
+			2011
+			Elsevier BV
+		
+	
+	McCallie, D., Butts J., and Mills, R., "Security analysis of the ADS-B implementation in the next generation air transportation system," International Journal of Critical Infrastructure Protection, 4 (2) , pp. 78-87, 2011
+
+
+
+	
+		Ghost in the Air (Traffic): On insecurity of ADS-B protocol and practical attacks on ADS-B devices
+		
+			ACostin
+		
+		
+			AFrancillon
+		
+		
+	
+	
+		Black Hat Conference
+		
+			July 21-26, 2012. 30 April 2018
+		
+	
+	Costin, A., and Francillon, A.,"Ghost in the Air (Traffic): On insecurity of ADS-B protocol and practical attacks on ADS-B devices," Black Hat Conference, July 21-26, 2012 URL: http://www.eurecom.fr/en/publication/3788/download/rs-publi- 3788.pdf [cited 30 April 2018]
+
+
+
+	
+		Spoofing ADS-B," from "Hackers + Airplanes = No good can come of this
+		
+			BradHaines
+		
+		
+			NickFostrer
+		
+		
+		
+			2012
+			11
+			Las Vegas, NV
+		
+	
+	presented at Defcon 20. cited 30 April 2018
+	Haines, Brad, and Fostrer, Nick, "Spoofing ADS-B," from "Hackers + Airplanes = No good can come of this" presented at Defcon 20, Las Vegas, NV, 2012. URL: https://www.youtube.com/watch?v=NSLqRXyxiBo [cited 30 April 2018] 11
+
+
+
+	
+		Realities and challenges of nextgen air traffic management: the case of ADS-B
+		
+			MartinStrohmeier
+		
+		
+			MatthiasSchafer
+		
+		
+			VincentLenders
+		
+		
+			IvanMartinovic
+		
+		10.1109/mcom.2014.6815901
+		
+	
+	
+		IEEE Communications Magazine
+		IEEE Commun. Mag.
+		0163-6804
+		
+			52
+			5
+			
+			May. 2014. 27 Nov 2018
+			Institute of Electrical and Electronics Engineers (IEEE)
+		
+	
+	IEEE
+	Strohmeier, M., Schäfer, M., Lenders, V., Martinovic, I., "Realities and Challenges of NextGen Air Traffic Management: The Case of ADS-B," Communications Magazine, IEEE 52 (5), pp. 111-118. May, 2014 URL: https://ieeexplore.ieee.org/abstract/document/6815901 [cited 27 Nov 2018]
+
+
+
+	
+		Addressing Operator Privacy in Automatic Dependent Surveillance - Broadcast (ADS-B)
+		
+			RyanGauthier
+		
+		
+			RemziSeker
+		
+		10.24251/hicss.2018.693
+		
+	
+	
+		Proceedings of the 51st Hawaii International Conference on System Sciences
+		the 51st Hawaii International Conference on System Sciences
+		
+			Hawaii International Conference on System Sciences
+			2018. 30 April 2018
+			
+		
+	
+	Gauthier, Ryan, and Seker, Remzi, "Addressing Operator Privacy in Automatic Dependent Surveillance -Broadcast (ADS- B)," Proceedings of the 51st Hawaii International Conference on System Sciences, pp. 5554-5563. 2018 URL: https://scholarspace.manoa.hawaii.edu/bitstream/10125/50582/1/paper0695.pdf [cited 30 April 2018]
+
+
+
+	
+		Methods to Provide System-Wide ADS-B Back-Up, Validation and Security
+		
+			ASmith
+		
+		
+			RCassell
+		
+		
+			TBreen
+		
+		
+			RHulstrom
+		
+		
+			CEvers
+		
+		10.1109/dasc.2006.313681
+	
+	
+		2006 ieee/aiaa 25TH Digital Avionics Systems Conference
+		
+			IEEE
+			2006
+			
+		
+	
+	Smith, A., Cassell, R., Breen, T., Hulstrom, R., and Evers, C., "Methods to provide system-wide ADS-B back-up, validation and security," in Proceedings of the 25th Digital Avionics Systems Conference (DASC), pp. 1-7, 2006.
+
+
+
+	
+		Identification of ADS-B system vulnerabilities and threats
+		
+			LPurton
+		
+		
+			HAbbass
+		
+		
+			SAlam
+		
+		
+	
+	
+		Proceedings of the Australasian Transport Research Forum
+		the Australasian Transport Research ForumCanberra, Australia
+		
+			2010. 2010. 1 Dec 2018
+			15
+		
+	
+	Purton, L., Abbass, H., and Alam, S., "Identification of ADS-B system vulnerabilities and threats," in Proceedings of the Australasian Transport Research Forum 2010, Canberra, Australia, pp. 8, 2010. URL: https://atrf.info/papers/2010/2010_Purton_Abbass_Alam.pdf [cited 1 Dec 2018] 15
+
+
+
+	
+		Technical progress report. [Nuclear Physics Lab. , Univ. of Colorado]
+		
+			BKovell
+		
+		
+			BMellish
+		
+		
+			TNewman
+		
+		
+			OKajopaiye
+		
+		10.2172/6506276
+		
+		
+			2012. 1 Dec 2018
+			Office of Scientific and Technical Information (OSTI)
+			Boulder, BO, USA
+		
+		
+			Univ. Colorado
+		
+	
+	M.S. thesis
+	Kovell, B., Mellish, B., Newman, T., and Kajopaiye, O., "Comparative analysis of ADS-B verification techniques," M.S. thesis, Univ. Colorado, Boulder, BO, USA, pp. 6 & 7, 2012. URL: https://morse.colorado.edu/~tlen5710/12s/ADSBVerification.pdf [cited 1 Dec 2018]
+
+
+
+	
+		Security and privacy of future aircraft wireless communications with offboard systems
+		
+			KSampigethaya
+		
+		
+			RPoovendran
+		
+		10.1109/comsnets.2011.5716527
+		
+	
+	
+		2011 Third International Conference on Communication Systems and Networks (COMSNETS 2011)
+		
+			IEEE
+			Jan. 2011. 1 Dec 2018
+			17
+		
+	
+	Sampigethaya, K., and Poovendran, R., "Security and privacy of future aircraft wireless communications with offboard systems," in Proceedings of the Third International Conference on Communication Systems and Networks (COMSNETS 2011), pp. 1-6, Jan. 2011. URL: https://ieeexplore.ieee.org/document/5716527 [cited 1 Dec 2018] 17
+
+
+
+	
+		Aircraft ADS-B Data Integrity Check
+		
+			JimmyKrozel
+		
+		
+			DominickAndrisani
+		
+		
+			MohammadAyoubi
+		
+		
+			TakayukiHoshizaki
+		
+		
+			CSchwalm
+		
+		10.2514/6.2004-6263
+		
+	
+	
+		AIAA 4th Aviation Technology, Integration and Operations (ATIO) Forum
+		
+			American Institute of Aeronautics and Astronautics
+			2004. 1 Dec 2018
+			
+		
+	
+	Krozel, J., Andrisani, D., Ayoubi, M., Hoshizaki, T., and Schwalm, C., "Aircraft ADS-B Data Integrity Check", in AIAA 4th Aviation Technology, Integration and Operations (ATIO) Forum, pp. 1-11. 2004. URL: https://arc.aiaa.org/doi/pdf/10.2514/6.2004-6263 [cited 1 Dec 2018]
+
+
+
+	
+		Multi-Sensor Fusion and Fault Detection using Hybrid Estimation for Air Traffic Surveillance
+		
+			WeiyiLiu
+		
+		
+			JianWei
+		
+		
+			MengchenLiang
+		
+		
+			YiCao
+		
+		
+			InseokHwang
+		
+		10.1109/taes.2013.6621819
+	
+	
+		IEEE Transactions on Aerospace and Electronic Systems
+		IEEE Trans. Aerosp. Electron. Syst.
+		0018-9251
+		
+			49
+			4
+			
+			Oct. 2013
+			Institute of Electrical and Electronics Engineers (IEEE)
+		
+	
+	Liu, W., Wei, J., Liang, M., Cao, Y., and Hwang, I., "Multi-sensor fusion and fault detection using hybrid estimation for air traffic surveillance," IEEE Trans. Aerospace Electronics Systems, vol. 49, no. 4, pp. 2323-2339, Oct. 2013. 19
+
+
+
+	
+		POSITION VERIFICATION APPROACHES FOR VEHICULAR AD HOC NETWORKS
+		
+			TimLeinmuller
+		
+		
+			ElmarSchoch
+		
+		
+			FrankKargl
+		
+		10.1109/wc-m.2006.250353
+	
+	
+		IEEE Wireless Communications
+		IEEE Wireless Commun.
+		1536-1284
+		
+			13
+			5
+			
+			October 2006
+			Institute of Electrical and Electronics Engineers (IEEE)
+		
+	
+	Leinmuller, T., Schoch, E., and Kargl, F., "Position verification approaches for vehicular ad-hoc networks", IEEE Wireless Communications, vol. 13, no. 5, pp. 16-21, October 2006.
+
+
+
+	
+		Non-cryptographic authentication and identification in wireless networks [Security and Privacy in Emerging Wireless Networks
+		
+			KaiZeng
+		
+		
+			KannanGovindan
+		
+		
+			PrasantMohapatra
+		
+		10.1109/mwc.2010.5601959
+		
+	
+	
+		IEEE Wireless Communications
+		IEEE Wireless Commun.
+		1536-1284
+		
+			17
+			5
+			
+			2010. 1 Dec 2018
+			Institute of Electrical and Electronics Engineers (IEEE)
+		
+	
+	Zeng, K., Govindan, K., and Mohapatra, P., "Non-Cryptographic Authentication and Identification in Wireless Networks", IEEE Wireless Communications, pp. 1-8, 2010. URL: https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=5601959 [cited 1 Dec 2018] 21
+
+
+
+	
+		A Data Authentication Solution Of ADS-B System Based On X.509 Certificate
+		
+			FZiliang
+		
+		
+			PWeijun
+		
+		
+			WYang
+		
+		
+	
+	
+		27th International Congress of the Aeronautical Sciences
+		
+			2010. 1 Dec 2018. 27 Nov 2018
+			22
+		
+	
+	Ziliang, F., Weijun, P., and Yang, W., "A Data Authentication Solution Of ADS-B System Based On X.509 Certificate", in 27th International Congress of the Aeronautical Sciences, 2010. URL: http://www.icas.org/ICAS_ARCHIVE/ICAS2010/PAPERS/062.PDF [cited 1 Dec 2018] 22 "FlightRadar24.com. Live Air Traffic," URL: https://www.flightradar24.com [cited 27 Nov 2018]
+
+
+
+	
+		Next-gen air traffic control vulnerable to hackers spoofing planes out of thin air
+		
+			AGreenberg
+		
+		
+	
+	
+		Forbes
+		
+			July 25. 2012. 30 April 2018
+		
+	
+	Greenberg, A.,"Next-gen air traffic control vulnerable to hackers spoofing planes out of thin air." Forbes, July 25, 2012: URL: http://www.forbes.com/sites/andygreenberg/2012/07/25/next-gen-air-traffic-control-vulnerable-to-hackers-spoofing- planes-out-of-thin-air/ [cited 30 April 2018]
+
+
+
+	
+		On the Security of the Automatic Dependent Surveillance-Broadcast Protocol
+		
+			MartinStrohmeier
+		
+		
+			VincentLenders
+		
+		
+			IvanMartinovic
+		
+		10.1109/comst.2014.2365951
+		
+	
+	
+		IEEE Communications Surveys & Tutorials
+		IEEE Commun. Surv. Tutorials
+		2373-745X
+		
+			17
+			2
+			
+			2015. 30 April 2018
+			Institute of Electrical and Electronics Engineers (IEEE)
+		
+	
+	Strohmeier, Martin, Lenders, Vincent, and Martinovic, Ivan, "On the Security of the Automatic Dependent Surveillance- Broadcast Protocol." IEEE Communication Surveys & Tutorials, Vol. 17, No. 2, Second Quarter, 2015, URL: http://www.lenders.ch/publications/journals/CST15.pdf [cited 30 April 2018]
+
+
+
+	
+		Analysis of vulnerabilities, attacks, countermeasures and overall risk of the Automatic Dependent Surveillance-Broadcast (ADS-B) system
+		
+			MManesh
+		
+		
+			NKaabouch
+		
+		
+	
+	
+		International Journal of Critical Infrastructure Protection
+		
+			19
+			26
+			December 2017. Dec 2018
+		
+	
+	Manesh, M., Kaabouch, N., Analysis of vulnerabilities, attacks, countermeasures and overall risk of the Automatic Dependent Surveillance-Broadcast (ADS-B) system," International Journal of Critical Infrastructure Protection, Volume 19, Pages 16-31, December 2017. URL: https://www.sciencedirect.com/science/article/pii/S1874548217300446 [cited 1 Dec 2018] 26
+
+
+
+	
+		Exploiting the Automatic Dependent Surveillance-Broadcast system via false target injection
+		
+			DMagazu
+		
+		
+	
+	
+		Wright-Patterson Air Force Base
+		Dayton
+		
+			Air Force Institute of Technology
+			2012. 1 Dec 2018
+		
+	
+	Magazu, D., "Exploiting the Automatic Dependent Surveillance-Broadcast system via false target injection," Wright- Patterson Air Force Base, Dayton: Air Force Institute of Technology, 2012. URL: https://apps.dtic.mil/dtic/tr/fulltext/u2/a561697.pdf [cited 1 Dec 2018]
+
+
+
+	
+		Potential Vulnerabilities of the Next Gen Air Traffic Control System
+		
+			CGiannatto
+		
+		
+			GMarkowsky
+		
+		
+	
+	
+		World Congress in Computer Science, Computer Engineering and Applied Computing
+		
+			2014. 1 Dec 2018
+		
+	
+	Giannatto, C., and Markowsky, G., "Potential Vulnerabilities of the Next Gen Air Traffic Control System," in World Congress in Computer Science, Computer Engineering and Applied Computing, 2014. URL: https://www.researchgate.net/publication/294457234_Potential_Vulnerabilities_of_the_NextGen_Air_Traffic_Control_System [cited 1 Dec 2018]
+
+
+
+	
+		Experimental Analysis of Attacks on Next Generation Air Traffic Communication
+		
+			MatthiasSchäfer
+		
+		
+			VincentLenders
+		
+		
+			IvanMartinovic
+		
+		10.1007/978-3-642-38980-1_16
+		
+	
+	
+		Applied Cryptography and Network Security
+		
+			MichaelJacobson
+		
+		
+			MichaelLocasto
+		
+		
+			PaymanMohassel
+		
+		
+			ReihanehSafavi-Naini
+		
+		Berlin, Heidelberg
+		
+			Springer Berlin Heidelberg
+			2013. 30 April 2018
+			
+		
+	
+	Schäfer, Matthias, Lenders, Vincent, and Martinovic, Ivan, "Experimental analysis of attacks on next generation air traffic communication," Proceedings of the 11th international conference on Applied Cryptography and Network Security (ACNS'13), Michael Jacobson, Michael Locasto, Payman Mohassel, and Reihaneh Safavi-Naini (Eds.). Springer-Verlag, Berlin, Heidelberg, 253-271, 2013. URL: http://lenders.ch/publications/conferences/acns13.pdf [cited 30 April 2018]
+
+
+
+	
+		AIR-130) Advisory Circular
+		
+			Faa
+		
+	
+	
+		Airworthiness Approval of Automatic Dependent Surveillance -Broadcast
+		
+			ADS-B
+		
+	
+	FAA (AIR-130) Advisory Circular, "Airworthiness Approval of Automatic Dependent Surveillance -Broadcast (ADS-B)
+
+
+
+	
+		Origins of AC Line Disturbances
+		10.1201/9781315222028-16
+		
+	
+	
+		AC Power Systems Handbook
+		
+			CRC Press
+			2010 May 10, p.18. 30 April 2018
+			
+		
+	
+	Out Systems," AC No: 20-16, 2010 May 10, p.18: URL: http://www.faa.gov/documentLibrary/media/Advisory_Circular/AC%2020- 165.pdf [cited 30 April 2018]
+
+
+
+	
+		Adu, K.K. and Adjei, E. (2018). The phenomenon of data loss and cyber security issues in Ghana. Foresight, 20(2), 150–61. Ahmed, M.T.U., Bhuiya, N.I. and Rahman, M.M. (2017). A secure enterprise architecture focused on security and technology-transformation (SEAST), The 12th International Conference for Internet Technology and Secured Transactions, (ICITST-2017), Cambridge, UK, 11–4/12/2017. Alanazi, S.T., Anbar, M., Ebad, S.A., Karuppayah, S. and Al-Ani, H.A. (2020). Theory-based model and prediction analysis of information security compliance behavior in the Saudi healthcare sector. Symmetry, 12(9), 1544. DOI: 10.3390/sym12091544 Alateyah, S.A., Crowder, R.M. and Wills, G.B. (2013). Identified factors affecting the citizen’s intention to adopt e-government in Saudi Arabia. World Academy of Science, Engineering and Technology, 7(8), 904–12. Antonino, P., Duszynski, S., Jung, C. and Rudolph, M. (2010). Indicator-based architecture-level security evaluation in a service-oriented environment. In: The Fourth European Conference on Software Architecture: Copenhagen, Denmark, 23–26/08/2010. DOI: 10.1145/1842752.1842795. Chaturvedi, M., Gupta, M. and Bhattacharya, J. (2008). Cyber Security Infrastructure in India: A Study, Emerging Technologies in E-Government. Available at: http://www.csi-sigegov.org/emerging_pdf/9_70-84.pdf (Accessed on 15/11/2020). Dalol, M.H. (2018). Effectiveness of Accounting Information Systems in Light of Development of IT Infrastructure and Information Security. Master’s Dissertation, The Islamic University of Gaza, Gaza, Palestine. Dooley, K. (2001). Designing Large Scale LANs: Help for Network Designers. USA: O'Reilly Media. Ebad, S. (2018a) An exploratory study of ICT projects failure in emerging markets. Journal of Global Information Technology Management, 21(2), 139–60. DOI: 10.1080/1097198X.2018.1462071. Ebad, S. (2018b). The influencing causes of software unavailability: A case study from industry. Software Practice and Experience, 48(5), 1056–76. DOI: 10.1002/spe.2569. Hashizume, K., Rosado, D.G., Fernández-Medina, E. and Fernandez, E.B. (2013). An analysis of security issues for cloud computing. Journal of Internet Services and Applications, 4(5), n/a. DOI: 10.1186/1869-0238-4-5. Kirby, L. (2015). Beyond Cyber Security: Protecting Your IT Infrastructure. Available at https://uptimeinstitute.com/images/Documents/ProtectingYourITInfrastructure.pdf (accessed on 15/11/2020). Lethbridge, T.C., Sim, S.E. and Singer, J. (2005). Studying software engineers: Data collection techniques for software field studies. Empirical Software Engineering, 10(3), 311–41. Marrone, M. and Kolbe, L.M. (2011). Impact of IT service management frameworks on the IT organization. Business and Information Systems Engineering, 3(1), 5–18. Mastelic, T. and Brandic, I. (2013). TimeCap: Methodology for comparing IT infrastructures based on time and capacity metrics. In: The IEEE 6th International Conference on Cloud Computing, 131–8, Santa Clara, CA, USA, 28/06–03/07/2013. Mimura, M. and Suga, Y. (2019). Filtering malicious JavaScript code with Doc2Vec on an imbalanced dataset. In: The 14th Asia Joint Conference on Information Security (AsiaJCIS), Kobe, Japan, 24–31/08/2019. Pearlson, K.E., Saunders, C.S. and Galletta, D.F. (2019). Managing and Using Information Systems. 5th edition, USA: Wiley. Popp, K. and Meyer, R. (2011). Profit from Software Ecosystems Models, Ecosystems and Partnerships in the Software Industry. Norderstedt, Germany: Books on Demand. Priem, R. (2020). Distributed ledger technology for securities clearing and settlement: Benefits, risks, and regulatory implications. Financial Innovation, 6(11), n/a. DOI: 10.1186/s40854-019-0169-6. Rabii, L. and Abdelaziz, D. (2015). Comparison of e-readiness composite indicators, The 15th International Conference on Intelligent Systems Design and Applications (ISDA), Marrakech, Morocco, 14–16/12/2015. Sanchez-Nielsen, E., Padron-Ferrer, A. and Marreo-Estevez, F. (2011). A multi-agent system for incident management solutions on IT infrastructures. In: The 14th Conference of the Spanish Association for Artificial Intelligence (CAEPIA 2011), La Laguna, Spain, 07–11/11/2011. Schoenfisch, J, Meilicke, C., Stülpnagel, J.V. and Ortmann, J (2018). Root cause analysis in IT infrastructures using ontologies and abduction in Markov logic networks. Information Systems, 74(2), 103–16. Shang, S. and Seddon, P.B. (2000). A comprehensive framework for classifying the benefits of ERP systems. In: The 2000 American Conference of Information Systems, Long Beach, California, 10–13/08/2000. Shoffner, M., Owen, P., Mostafa, J., Lamm, B., Wang, X., Schmitt, C.P. and Ahalt S.C. (2013). The secure medical research workspace: An IT infrastructure to enable secure research on clinical data. Clinical and Translational Science, 6 (3), 222–5. Shrivastava, A.K. (2015). The impact assessment of IT Infrastructure on information security: a survey report. In: International Conference on Information Security and Privacy (ICISP2015), Nagpur, India, 11–12/12/2015. Sommerville, I. (2015). Software Engineering. 10th edition, UK: Pearson. Sousa, K.J. and Oz, E. (2015). Management Information Systems. 7th edition, USA: Cengage Learning. Teymourlouei, H., and Harris, V. (2019). Effective methods to monitor IT infrastructure security for small business. In: The 2019 International Conference on Computational Science and Computational Intelligence (CSCI), Las Vegas, NV, USA, 5–7/12/2019. Topper, J. (2018). Compliance is not security. Computer Fraud and Security, 2018(3), 5–8. DOI: 10.1016/S1361-3723(18)30022-8. Wohlin, C., Runeson, P., Host, M., Ohlsson, M.C., Regnell, B. and Wesslen, A. (2012). Experimentation in Software Engineering. Germany: Springer. Yasasin, E., Prester, J., Wagner, G. and Schryen, G. (2020). Forecasting IT security vulnerabilities –an empirical analysis. Computers and Security, 88(n/a), n/a. DOI: 10.1016/j.cose.2019.101610. Zambon, E., Etalle, S., Wieringa, R.J. and Hartel, P. (2010). Model-based qualitative risk assessment for availability of IT infrastructures. Software and Systems Modeling, 10(4), 553–80.
+		
+			EmadAl Khoufi
+		
+		10.37575/b/med/0038
+		No. FAA -2007-29305 Notice No. 07-15
+		
+	
+	
+		Basic and Applied Sciences - Scientific Journal of King Faisal University
+		BAS-SJKFU
+		1658-8371
+		
+			22
+			1
+			27
+			January 2018. 30 April 2018. 2008
+			Scientific Journal of King Faisal University
+		
+		
+			ADS-B)
+		
+	
+	DOD Policy Board on Federal Aviation, DOD Comments to Docket. Out Performance Requirements to Support ATC Service,"(Feb. 29
+	United States Government Accountability Office, "HOMELAND DEFENSE Urgent Need for DOD and FAA to Address Risks and Improve Planning for Technology That Tracks Military Aircraft," GAO-18-177, January 2018, pp. 23, 24. URL: https://www.gao.gov/assets/690/689478.pdf [cited 30 April 2018] 31 Ibid., p. 27 32 National Archives CUI webpage, "CUI Category: DoD Critical Infrastructure Security Information," URL: https://www.archives.gov/cui/registry/category-detail/dod-critical-infrastructure-security-information [cited 30 April 2018] 33 Department of Defense, DOD Policy Board on Federal Aviation, DOD Comments to Docket No. FAA -2007-29305 Notice No. 07-15, "Automatic Dependent Surveillance -Broadcast (ADS-B) Out Performance Requirements to Support ATC Service,"(Feb. 29, 2008).
+
+
+
+	
+		Practice for Application of Federal Aviation Administration (FAA) Federal Aviation Regulations Part 21 Requirements to Unmanned Aircraft Systems (UAS)
+		10.1520/f2505-07
+		
+	
+	
+		Aircraft Situation Display to Industry (ASDI) Block Program FAQ
+		
+			ASTM International
+			null
+		
+	
+	Federal Aviation Administration. cited 27 Nov 2018] 35 Federal Aviation Administration, "FAA Aeronautical Data Exchange [ADX. cited 27 Nov. 2018
+	Federal Aviation Administration, "Aircraft Situation Display to Industry (ASDI) Block Program FAQ" URL: https://www.fly.faa.gov/ASDI/asdi.html [cited 27 Nov 2018] 35 Federal Aviation Administration, "FAA Aeronautical Data Exchange [ADX]," URL: https://www.adx.faa.gov/portal/ [cited 27 Nov. 2018]
+
+
+
+	
+		ADS-B encryption
+		
+			CindyFinke
+		
+		
+			JonathanButts
+		
+		
+			RobertMills
+		
+		10.1145/2459976.2459986
+	
+	
+		Proceedings of the Eighth Annual Cyber Security and Information Intelligence Research Workshop
+		the Eighth Annual Cyber Security and Information Intelligence Research WorkshopOak Ridge, Tennessee, USA
+		
+			ACM
+			October 30-November 2, 2012
+		
+	
+	Cindy Finke, Jonathan Butts, and Robert Mills, "ADS-B Encryption: Confidentiality in the Friendly Skies," CSIIRW '12, Oak Ridge, Tennessee, USA, October 30-November 2, 2012.
+
+
+
+	
+		Ciphers with arbitrary finite domains
+		
+			JBlack
+		
+		
+			RogawayP
+		
+		10.1007/3-540-45760-79
+	
+	
+		Topics in Cryptology, U CT-RSA 2002
+		Lecture Notes in Computer Science
+		
+			BPreneel
+		
+		Berlin / Heidelberg
+		
+			Springer
+			2002
+			2271
+			
+		
+	
+	Black, J., and Rogaway. P., "Ciphers with arbitrary finite domains," In Preneel, B., editor, Topics in Cryptology, U CT-RSA 2002, volume 2271 of Lecture Notes in Computer Science, pp. 185-203. Springer Berlin / Heidelberg, 2002. 10.1007/3-540-45760- 79.
+
+
+
+	
+		Can Cryptography Secure Next Generation Air Traffic Surveillance?
+		
+			KyleDWesson
+		
+		
+			ToddEHumphreys
+		
+		
+			BrianLEvans
+		
+		
+	
+	
+		IEEE Security & Privacy
+		
+			X
+			9dccbb8708a2ca1444ae8b24afb128026762. 30 April 2018
+		
+	
+	Wesson, Kyle D., Humphreys, Todd E., and Evans, Brian L., "Can Cryptography Secure Next Generation Air Traffic Surveillance?" IEEE Security & Privacy, Vol. X, No. X.014. URL: https://pdfs.semanticscholar.org/94be/9dccbb8708a2ca1444ae8b24afb128026762.pdf [cited 30 April 2018]
+
+
+
+	
+		Protection Method for Data Communication between ADS-B Sensor and Next-Generation Air Traffic Control Systems
+		
+			Seoung-HyeonLee
+		
+		
+			Yong-KyunKim
+		
+		
+			Jong-WookHan
+		
+		
+			Deok-GyuLee
+		
+		10.3390/info5040622
+	
+	
+		Information
+		Information
+		2078-2489
+		
+			5
+			4
+			
+			2014 40. 2003
+			MDPI AG
+		
+	
+	Practical Cryptography
+	Lee, Seoung-Hyeon, Yong-Kyun Kim, Jong Wook Han and Deok-Gyu Lee. "Protection Method for Data Communication between ADS-B Sensor and Next-Generation Air Traffic Control Systems." Information 5: pp. 622-633, 2014 40 Ferguson, Niels, and Schneier, Bruce, "Practical Cryptography." Indianapolis, Wiley Publishing, p. 333, 2003
+
+
+
+	
+		Hyperledger fabric
+		
+			ElliAndroulaki
+		
+		
+			ArtemBarger
+		
+		
+			VitaBortnikov
+		
+		
+			ChristianCachin
+		
+		
+			KonstantinosChristidis
+		
+		
+			AngeloDe Caro
+		
+		
+			DavidEnyeart
+		
+		
+			ChristopherFerris
+		
+		
+			GennadyLaventman
+		
+		
+			YacovManevich
+		
+		
+			SrinivasanMuralidharan
+		
+		
+			ChetMurthy
+		
+		
+			BinhNguyen
+		
+		
+			ManishSethi
+		
+		
+			GariSingh
+		
+		
+			KeithSmith
+		
+		
+			AlessandroSorniotti
+		
+		
+			ChrysoulaStathakopoulou
+		
+		
+			MarkoVukolić
+		
+		
+			SharonWeedCocco
+		
+		
+			JasonYellick
+		
+		10.1145/3190508.3190538
+		pp. 30:1-30:15
+		
+	
+	
+		Proceedings of the Thirteenth EuroSys Conference
+		the Thirteenth EuroSys ConferenceEuroSys; New York
+		
+			ACM
+			2018. 2018. 10 Nov. 2018
+		
+	
+	Androulaki, E., et al.: Hyperledger fabric: a distributed operating system for permissioned blockchains. In: Proceedings of the Thirteenth EuroSys Conference, EuroSys 2018, pp. 30:1-30:15. ACM, New York (2018). URL: https://dl.acm.org/citation.cfm?id=3190538 [cited 10 Nov. 2018]
+
+
+
+	
+		Blockchain Technology and Smart Privacy-Preserving Tools
+		
+			JonatanBergquist
+		
+		
+		
+			2017. 30 April 2018
+			43
+		
+		
+			Uppsala Universitet, Sweden
+		
+	
+	Masters Thesis
+	Bergquist, Jonatan, "Blockchain Technology and Smart Privacy-Preserving Tools," Masters Thesis, Uppsala Universitet, Sweden, 2017, URL: http://www.diva-portal.org/smash/get/diva2:1107612/FULLTEXT01.pdf [cited 30 April 2018] 43
+
+
+
+	
+		A Next-Generation Smart Contract and Decentralized Application Platform
+		
+			Seong-IlLee
+		
+		
+		
+			30 April 2018
+		
+	
+	cited
+	Seong-il Lee, et al, "A Next-Generation Smart Contract and Decentralized Application Platform," URL: https://github.com/ethereum/wiki/wiki/White-Paper [cited 30 April 2018]
+
+
+
+	
+		Avaliação de Desempenho do Blockchain Hyperledger Fabric com Dados Médicos Heterogêneos
+		
+			AnaCaroline FernandesSpengler
+		
+		10.11606/d.55.2022.tde-09082022-113642
+		
+		
+			30 April 2018. 30 April 2018. 30 April 2018
+			Universidade de Sao Paulo, Agencia USP de Gestao da Informacao Academica (AGUIA)
+			45
+		
+	
+	"ICO Statistics -By Blockchain Platform," URL: https://icowatchlist.com/statistics/blockchain [cited 30 April 2018] 45 URL: https://www.hyperledger.org/projects/fabric [cited 30 April 2018] 46 URL: http://hyperledger-fabric.readthedocs.io/en/release-1.1/ [cited 30 April 2018]
+
+
+
+	
+		Comparative analysis of blockchain consensus algorithms
+		
+			LMBach
+		
+		
+			BMihaljevic
+		
+		
+			MZagar
+		
+		10.23919/mipro.2018.8400278
+	
+	
+		2018 41st International Convention on Information and Communication Technology, Electronics and Microelectronics (MIPRO)
+		
+			IEEE
+			2018
+			
+		
+	
+	L. M. Bach, B. Mihaljevic, M. Zagar, "Comparative analysis of blockchain consensus algorithms", Information and Communication Technology Electronics and Microelectronics (MIPRO) 2018 41st International Convention on, pp. 1545-1550, 2018.
+
+
+
+	
+		Docker: lightweight linux containers for consistent development and deployment
+		
+			DMerkel
+		
+		
+	
+	
+		Linux Journal
+		
+			May 19. 2014
+		
+	
+	cited 10 Nov. 2018
+	Merkel, D., "Docker: lightweight linux containers for consistent development and deployment, "Linux Journal, May 19, 2014 URL: https://www.linuxjournal.com/content/docker-lightweight-linux-containers-consistent-development-and-deployment [cited 10 Nov. 2018]
+
+
+				
+			
+		
+	
